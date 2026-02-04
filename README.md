@@ -1,5 +1,7 @@
 # MAiDay
-<img width="490" height="166" alt="maiday-removebg-preview" src="https://github.com/user-attachments/assets/9ba2266c-ac9f-4122-983b-7ee41b5df547" />
+
+<img width="478" height="164" alt="Captura_de_pantalla_2026-02-04_205952-removebg-preview" src="https://github.com/user-attachments/assets/70488fc4-ddba-4ee3-a97d-c629fc7c221a" />
+
 
 ## Qué es?
 
