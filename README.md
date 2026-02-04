@@ -5,3 +5,4 @@
 
 ## Qué es?
 
+MAiDay es el asistente diseñado para equilibrar el sector inmobiliario madrileño. Ofrecemos recomendaciones de precios precisas para propietarios, búsqueda personalizada para inquilinos y evaluación de modernidad mediante IA. Gracias a la inteligencia geográfica, transformamos la incertidumbre en decisiones informadas.
