@@ -9,6 +9,7 @@ Original file is located at
 
 import requests
 import json
+import pandas as pd
 
 urls = {"bibliotecas": "https://datos.madrid.es/egob/catalogo/201747-0-bibliobuses-bibliotecas.json",
         "parques_bomberos": "https://datos.madrid.es/egob/catalogo/211642-0-bomberos-parques.json",
@@ -36,11 +37,20 @@ def get_datos(url):
   if isinstance(datos,list):
     return datos
 
+
 for nombre,url in urls.items():
   print("descargando:",nombre)
-
   dato = get_datos(url)
+
   with open(f"{nombre}.json","w",encoding = "utf-8") as f:
     json.dump(dato,f,ensure_ascii=False)
-    print("descarga terminada:",nombre)
+
+  try:
+    df = pd.DataFrame(dato)
+    df.to_parquet(f"{nombre}.parquet",engine="pyarrow",index=False)
+    print(nombre, "guardado como parquet")
+  except Exception as e:
+    print(nombre, "no se pudo guardar como parquet:", e) 
+
+  
 print("Terminado")
