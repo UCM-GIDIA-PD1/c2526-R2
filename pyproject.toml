@@ -5,8 +5,11 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "dotenv>=0.9.9",
     "drissionpage>=4.1.1.2",
+    "minio>=7.2.20",
     "osmnx>=2.0.7",
     "pandas>=3.0.0",
+    "pyarrow>=23.0.1",
     "requests>=2.32.5",
 ]
