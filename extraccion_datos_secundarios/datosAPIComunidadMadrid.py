@@ -37,7 +37,6 @@ def get_datos(url):
   if isinstance(datos,list):
     return datos
 
-
 for nombre,url in urls.items():
   print("descargando:",nombre)
   dato = get_datos(url)
@@ -50,7 +49,8 @@ for nombre,url in urls.items():
     df.to_parquet(f"{nombre}.parquet",engine="pyarrow",index=False)
     print(nombre, "guardado como parquet")
   except Exception as e:
-    print(nombre, "no se pudo guardar como parquet:", e) 
+    print(nombre, "no se pudo guardar como parquet:", e)
 
-  
+
 print("Terminado")
+
