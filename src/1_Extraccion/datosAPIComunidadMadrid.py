@@ -7,47 +7,41 @@ Original file is located at
     https://colab.research.google.com/drive/1V_vPEBWCSXlcBfV6WY2F1clEGI3W1vvQ
 """
 
+
 import requests
 import json
 import pandas as pd
+from io import StringIO
 
-urls = {"bibliotecas": "https://datos.madrid.es/egob/catalogo/201747-0-bibliobuses-bibliotecas.json",
-        "parques_bomberos": "https://datos.madrid.es/egob/catalogo/211642-0-bomberos-parques.json",
-        "cementerios": "https://datos.madrid.es/egob/catalogo/205026-0-cementerios.json",
-        "centros_dia": "https://datos.madrid.es/egob/catalogo/200342-0-centros-dia.json",
-        "comisarias": "https://datos.madrid.es/egob/catalogo/300600-0-comisaria.json",
-        "polideportivos": "https://datos.madrid.es/egob/catalogo/200186-0-polideportivos.json",
-        "embajadas_consulados": "https://datos.madrid.es/egob/catalogo/201000-0-embajadas-consulados.json",
-        "puntos_limpios": "https://datos.madrid.es/egob/catalogo/200284-0-puntos-limpios-fijos.json",
-        "iglesias_catolicas": "https://datos.madrid.es/egob/catalogo/209426-0-templos-catolicas.json",
-        "sede_comunidad_madrid": "https://datos.madrid.es/egob/catalogo/212822-0-comunidad-madrid.json",
-        "centros_servicios_sociales": "https://datos.madrid.es/egob/catalogo/209094-0-centros-servicios-sociales.json",
-        "centros_municipales_mayores" : "https://datos.madrid.es/egob/catalogo/200337-0-centros-mayores.json",
-        "piscinas_municipales" : "https://datos.madrid.es/egob/catalogo/210227-0-piscinas-publicas.json",
-        "oficinas_registro" : "https://datos.madrid.es/egob/catalogo/202139-0-oficinas-registro.json",
-        "puntos_informacion_turistica" : "https://datos.madrid.es/egob/catalogo/201105-0-informacion-turismo.json"
+urls = {
+        "bibliotecas": "https://datos.madrid.es/egob/catalogo/201747-0-bibliobuses-bibliotecas.csv",
+        "parques_bomberos": "https://datos.madrid.es/egob/catalogo/211642-0-bomberos-parques.csv",
+        "cementerios": "https://datos.madrid.es/egob/catalogo/205026-0-cementerios.csv",
+        "centros_dia": "https://datos.madrid.es/egob/catalogo/200342-0-centros-dia.csv",
+        "comisarias": "https://datos.madrid.es/egob/catalogo/300600-0-comisaria.csv",
+        "polideportivos": "https://datos.madrid.es/egob/catalogo/200186-0-polideportivos.csv",
+        "puntos_limpios": "https://datos.madrid.es/egob/catalogo/200284-0-puntos-limpios-fijos.csv",
+        "iglesias_catolicas": "https://datos.madrid.es/egob/catalogo/209426-0-templos-catolicas.csv",
+        "centros_servicios_sociales": "https://datos.madrid.es/egob/catalogo/209094-0-centros-servicios-sociales.csv",
+        "centros_municipales_mayores" : "https://datos.madrid.es/egob/catalogo/200337-0-centros-mayores.csv",
+        "piscinas_municipales" : "https://datos.madrid.es/egob/catalogo/210227-0-piscinas-publicas.csv"
         }
 
 def get_datos(url):
-  r = requests.get(url,headers={"Accept": "application/json"})
+  r = requests.get(url,headers={"Accept": "text/csv"})
   r.raise_for_status()
-  datos = r.json()
-  if "@graph" in datos:
-    return datos["@graph"]
-  if isinstance(datos,list):
-    return datos
+  datos = r.text
+  return datos
 
 for nombre,url in urls.items():
   print("descargando:",nombre)
-  dato = get_datos(url)
-
-  with open(f"{nombre}.json","w",encoding = "utf-8") as f:
-    json.dump(dato,f,ensure_ascii=False)
-
+  
   try:
-    df = pd.DataFrame(dato)
+    dato = get_datos(url)
+    df = pd.read_csv(StringIO(dato), sep=";")
     df.to_parquet(f"{nombre}.parquet",engine="pyarrow",index=False)
     print(nombre, "guardado como parquet")
+  
   except Exception as e:
     print(nombre, "no se pudo guardar como parquet:", e)
 

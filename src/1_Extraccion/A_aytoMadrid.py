@@ -9,7 +9,18 @@ tipos = [
     "UNIVERSIDAD",
     "SANIDAD",
     "LOCALES",
-    "PARQUES"
+    "PARQUES",
+    "BIBLIOTECAS",
+    "PARQUES_BOMBEROS",
+    "CEMENTERIOS",
+    "CENTROS_DIA",
+    "COMISARIAS",
+    "POLIDEPORTIVOS",
+    "PUNTOS_LIMPIOS",
+    "IGLESIAS_CATOLICAS",
+    "CENTROS_SERVICIOS_SOCIALES",
+    "CENTROS_MUNICIPALES_MAYORES",
+    "PISCINAS_MUNICIPALES"
 ]
 
 URLS = {
@@ -17,7 +28,18 @@ URLS = {
 "URL_UNIVERSIDAD" : "https://datos.madrid.es/dataset/203166-0-universidades-educacion/resource/203166-0-universidades-educacion-csv/download/203166-0-universidades-educacion-csv.csv",
 "URL_SANIDAD" : "https://datos.madrid.es/dataset/212769-0-atencion-medica/resource/212769-0-atencion-medica-csv/download/212769-0-atencion-medica-csv.csv",
 "URL_LOCALES" : "https://datos.madrid.es/dataset/209548-0-censo-locales-historico/resource/209548-722-censo-locales-historico-csv/download/209548-722-censo-locales-historico-csv.csv",
-"URL_PARQUES" : "https://datos.madrid.es/dataset/200761-0-parques-jardines/resource/200761-0-parques-jardines-csv/download/200761-0-parques-jardines-csv.csv"
+"URL_PARQUES" : "https://datos.madrid.es/dataset/200761-0-parques-jardines/resource/200761-0-parques-jardines-csv/download/200761-0-parques-jardines-csv.csv",
+"URL_BIBLIOTECAS" : "https://datos.madrid.es/egob/catalogo/201747-0-bibliobuses-bibliotecas.csv",
+"URL_PARQUES_BOMBEROS" : "https://datos.madrid.es/egob/catalogo/211642-0-bomberos-parques.csv",
+"URL_CEMENTERIOS" : "https://datos.madrid.es/egob/catalogo/205026-0-cementerios.csv",
+"URL_CENTROS_DIA": "https://datos.madrid.es/egob/catalogo/200342-0-centros-dia.csv",
+"URL_COMISARIAS": "https://datos.madrid.es/egob/catalogo/300600-0-comisaria.csv",
+"URL_POLIDEPORTIVOS": "https://datos.madrid.es/egob/catalogo/200186-0-polideportivos.csv",
+"URL_PUNTOS_LIMPIOS": "https://datos.madrid.es/egob/catalogo/200284-0-puntos-limpios-fijos.csv",
+"URL_IGLESIAS_CATOLICAS": "https://datos.madrid.es/egob/catalogo/209426-0-templos-catolicas.csv",
+"URL_CENTROS_SERVICIOS_SOCIALES": "https://datos.madrid.es/egob/catalogo/209094-0-centros-servicios-sociales.csv",
+"URL_CENTROS_MUNICIPALES_MAYORES" : "https://datos.madrid.es/egob/catalogo/200337-0-centros-mayores.csv",
+"URL_PISCINAS_MUNICIPALES" : "https://datos.madrid.es/egob/catalogo/210227-0-piscinas-publicas.csv",
 }
 
 OBJECTS = {
@@ -25,7 +47,18 @@ OBJECTS = {
 "OBJECT_UNIVERSIDAD" : "grupo2/raw/universidades.parquet",
 "OBJECT_SANIDAD" : "grupo2/raw/hospitales.parquet",
 "OBJECT_LOCALES" : "grupo2/raw/locales.parquet",
-"OBJECT_PARQUES" : "grupo2/raw/parques.parquet"
+"OBJECT_PARQUES" : "grupo2/raw/parques.parquet",
+"OBJECT_BIBLIOTECAS" : "grupo2/raw/bibliotecas.parquet",
+"OBJECT_PARQUES_BOMBEROS" : "grupo2/raw/parques_bomberos.parquet",
+"OBJECT_CEMENTERIOS" : "grupo2/raw/cementerios.parquet",
+"OBJECT_CENTROS_DIA": "grupo2/raw/centros_dia.parquet",
+"OBJECT_COMISARIAS": "grupo2/raw/comisarias.parquet",
+"OBJECT_POLIDEPORTIVOS": "grupo2/raw/polideportivos.parquet",
+"OBJECT_PUNTOS_LIMPIOS": "grupo2/raw/puntos_limpios.parquet",
+"OBJECT_IGLESIAS_CATOLICAS": "grupo2/raw/iglesias_catolicas.parquet",
+"OBJECT_CENTROS_SERVICIOS_SOCIALES": "grupo2/raw/centros_servicios_sociales.parquet",
+"OBJECT_CENTROS_MUNICIPALES_MAYORES": "grupo2/raw/centros_municipales_mayores.parquet",
+"OBJECT_PISCINAS_MUNICIPALES": "grupo2/raw/piscinas_municipales.parquet"
 }
 
 def preparar_parquet(url: str) -> io.BytesIO:
