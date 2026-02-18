@@ -20,6 +20,7 @@ def descargar_y_procesar():
     response = requests.get(url_catastro)
     
     if response.status_code == 200:
+        print("Descargando datos del catastro...")
         with open(nombre_zip, 'wb') as f:
             f.write(response.content)
         
@@ -38,6 +39,7 @@ def descargar_y_procesar():
         # Nos quedamos solo con el año de construcción y borramos los q no tengan esa info
         archivo_final['beginning'] = pd.to_datetime(archivo_final['beginning'], format='%Y-%m-%dT%H:%M:%S', errors='coerce').dt.year
         archivo_final = archivo_final[archivo_final['beginning'] > 0].copy()
+        archivo_final.rename(columns={'beginning': 'anio_construccion'}, inplace=True)
 
         # Guardamos en Parquet
         archivo_final.to_parquet(nombre_parquet)
@@ -56,6 +58,7 @@ def descargar_y_procesar():
 def subir_a_minio(ruta_archivo):
     if not ruta_archivo: return
     
+    print("Subiendo archivo a MinIO...")
     load_dotenv()
     minio_bucket = os.getenv("MINIO_BUCKET")
     minio_group = os.getenv("GROUP_PATH")
@@ -86,6 +89,10 @@ def subir_a_minio(ruta_archivo):
             pass 
 
 if __name__ == "__main__":
+    print("Iniciando el proceso de extracción del catastro...")
+
     ruta_parquet = descargar_y_procesar()
+    print("Archivo descargado y convertido a parquet")
+
     subir_a_minio(ruta_parquet)
-    
+    print("Archivo subido a MinIO")
