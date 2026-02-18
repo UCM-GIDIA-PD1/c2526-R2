@@ -3,6 +3,8 @@ from minio import Minio
 import io
 from dotenv import load_dotenv
 import os
+from funciones_minio import crear_cliente_minio, minio_subir_memoria
+
 
 tipos = [
     "EDUCACION",
@@ -70,42 +72,8 @@ def preparar_parquet(url: str) -> io.BytesIO:
     buffer.seek(0)
     return buffer
 
-def crear_cliente_minio() -> Minio:
-    '''Crea cliente MinIO'''
-    load_dotenv()
-    minio_access_key=os.getenv("MINIO_ACCESS_KEY")
-    minio_secret_key=os.getenv("MINIO_SECRET_KEY")
-    minio_endpoint=os.getenv("MINIO_ENDPOINT")
-
-    assert minio_access_key, "Falta MINIO_ACCESS_KEY en el entorno/.env"
-    assert minio_secret_key, "Falta MINIO_SECRET_KEY en el entorno/.env"
-    assert minio_endpoint, "Falta MINIO_ENDPOINT en el entorno/.env"
-
-    return Minio(
-        endpoint=minio_endpoint,
-        access_key=minio_access_key,
-        secret_key=minio_secret_key,
-        secure=True
-    )
-
-def subir_minio(client: Minio, buffer: io.BytesIO, minio_object: str):
-    '''Sube el contenido del buffer a MinIO'''
-    load_dotenv()
-    minio_bucket=os.getenv("MINIO_BUCKET")
-    assert minio_bucket, "Falta MINIO_BUCKET en el entorno/.env"
-    assert client.bucket_exists(minio_bucket), (
-        f"El bucket {minio_bucket} no existe o no tienes permisos."
-    )
-    
-    client.put_object(
-        bucket_name=minio_bucket,
-        object_name=minio_object,
-        data=buffer,
-        length=buffer.getbuffer().nbytes
-    )
-
 if __name__ == "__main__":
     client = crear_cliente_minio()
     for tipo in tipos:
         buffer = preparar_parquet(URLS[f'URL_{tipo}'])
-        subir_minio(client, buffer, OBJECTS[f'OBJECT_{tipo}'])
+        minio_subir_memoria(client, buffer, OBJECTS[f'OBJECT_{tipo}'])
