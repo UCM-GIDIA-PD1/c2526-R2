@@ -6,6 +6,12 @@ from dotenv import load_dotenv
 from funciones_minio import crear_cliente_minio, minio_subir_memoria
 
 def descargar_secciones_censales():
+    """ 
+    Descarga las secciones censales del Ayuntamiento de Madrid
+
+    Returns:
+        Nada: Se sube todo al MinIO
+    """
     print("Iniciando proceso de extracción de las secciones censales del Ayuntamiento de Madrid...")
     url = "https://geoportal.madrid.es/fsdescargas/IDEAM_WBGEOPORTAL/LIMITES_ADMINISTRATIVOS/Seccionado/TopoJSON/Secciones_Censales.json"
     

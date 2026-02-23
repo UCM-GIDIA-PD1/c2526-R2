@@ -8,6 +8,14 @@ from dotenv import load_dotenv
 from funciones_minio import crear_cliente_minio, minio_subir_memoria
 
 def descargar_catastro():
+    """
+    Función que descarga datos del catastro de Madrid y los sube a MinIO directamente
+
+    Requiere: .env con claves de MinIO
+
+    Returns:
+        Nada: Se sube todo al MinIO directamente
+    """
     print("Iniciando proceso de extracción del catastro...")
     url_catastro= "https://www.catastro.hacienda.gob.es/INSPIRE/Buildings/28/28900-MADRID/A.ES.SDGC.BU.28900.zip"
 

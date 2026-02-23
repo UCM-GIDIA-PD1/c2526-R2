@@ -5,7 +5,37 @@ import io
 from dotenv import load_dotenv
 from funciones_minio import crear_cliente_minio, minio_subir_memoria
 
+
+def sacar_codigo_seccion(metadata_lista):
+    """
+    Extrae el código de sección censal (10 dígitos) desde la lista de metadatos.
+
+    Args:
+        metadata_lista (list): Lista de diccionarios con información de metadatos.
+
+    Returns:
+        str | None: Código de sección encontrado o None si no existe.
+    """
+    try:
+        for item in metadata_lista:
+            # El código de sección tiene 10 dígitos, por ejemplo: 2807901001
+            # 28 Madrid, 079 Madrid Capital, 01 Distrito (Centro), 001 Sección
+            if 'Codigo' in item and len(item['Codigo']) == 10: 
+                return item['Codigo']
+    except:
+        pass
+    return None
+
+
 def descargar_ine():
+    """
+    Descarga datos del INE, filtra la renta neta media por hogar
+    para las secciones censales de Madrid en el último año disponible
+    y sube el resultado en formato Parquet a MinIO.
+
+    Returns:
+        Nada: Se sube todo al MinIO directamente
+    """
     print("Iniciando proceso de extracción del INE...")
     url_ine = "https://servicios.ine.es/wstempus/js/es/DATOS_TABLA/30824?tip=AM"
     
@@ -18,16 +48,6 @@ def descargar_ine():
     
     print("Procesando datos del INE...")
     df = pd.DataFrame(response.json())
-
-    def sacar_codigo_seccion(metadata_lista):
-        try:
-            for item in metadata_lista:
-                # El código de sección tiene 10 dígitos, por ejemplo: 2807901001
-                # 28 Madrid, 079 Madrid Capital, 01 Distrito (Centro), 001 Sección
-                if 'Codigo' in item and len(item['Codigo']) == 10: 
-                    return item['Codigo']
-        except: pass
-        return None
         
     df['CUSEC'] = df['MetaData'].apply(sacar_codigo_seccion)
     df_madrid = df[df['CUSEC'].str.startswith('28079', na=False)].copy()
@@ -61,6 +81,7 @@ def descargar_ine():
     nombre_objeto = f"{os.getenv('MINIO_GROUP_PATH')}/datos_secundarios/ine/renta_hogar_secciones_madrid.parquet"
     minio_subir_memoria(cliente, buffer, nombre_objeto)
     print("Archivo del INE subido a MinIO")
+
 
 if __name__ == "__main__":
     descargar_ine()

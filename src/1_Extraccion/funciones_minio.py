@@ -14,7 +14,12 @@ import pandas as pd
 
 
 def crear_cliente_minio() -> Minio:
-    '''Crea cliente MinIO'''
+    """ Inicializa un cliente MinIO a partir de las variables de entorno en .env
+    (MINIO_ACCESS_KEY, MINIO_SECRET_KEY y MINIO_ENDPOINT).
+
+    Returns:
+        Minio: Cliente de MinIO
+    """
     load_dotenv()
     minio_access_key=os.getenv("MINIO_ACCESS_KEY")
     minio_secret_key=os.getenv("MINIO_SECRET_KEY")
@@ -32,7 +37,14 @@ def crear_cliente_minio() -> Minio:
     )
 
 def minio_subir_memoria(client: Minio, buffer: io.BytesIO, minio_object: str) -> None:
-    '''Sube el contenido del buffer a MinIO'''
+    """Sube a MinIO el contenido de un buffer en memoria como un objeto.
+
+    Args:
+        client (Minio): Cliente MinIO ya inicializado
+        buffer (io.BytesIO): Buffer en memoria con los datos a subir
+        minio_object (str): Nombre del objeto destino en el bucket
+    """
+    
     load_dotenv()
     minio_bucket=os.getenv("MINIO_BUCKET")
     assert minio_bucket, "Falta MINIO_BUCKET en el entorno/.env"
@@ -52,7 +64,16 @@ def minio_subir_memoria(client: Minio, buffer: io.BytesIO, minio_object: str) ->
     )
 
 def bajar_minio(client: Minio, minio_object: str) -> pd.DataFrame:
-    '''Obtiene un dataframe de un objeto de Minio'''
+    """ 
+    Descarga desde MinIO un dataframe
+
+    Args:
+        client (Minio): Cliente de MinIO ya inicializado
+        minio_object (str): Nombre del objeto de origen en el bucket
+
+    Returns:
+        pd.DataFrame: Dataframe solicitado
+    """
     load_dotenv()
     minio_bucket=os.getenv("MINIO_BUCKET")
     assert minio_bucket, "Falta MINIO_BUCKET en el entorno/.env"
