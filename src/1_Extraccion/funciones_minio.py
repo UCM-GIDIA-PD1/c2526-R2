@@ -36,18 +36,21 @@ def crear_cliente_minio() -> Minio:
         secure=True
     )
 
-def minio_subir_memoria(client: Minio, buffer: io.BytesIO, minio_object: str) -> None:
+
+def minio_subir_memoria(client: Minio, path: str, minio_object: str, buffer: io.BytesIO) -> None:
     """Sube a MinIO el contenido de un buffer en memoria como un objeto.
 
     Args:
         client (Minio): Cliente MinIO ya inicializado
+        path: ruta dentro del bucket donde se guarda el objeto
         buffer (io.BytesIO): Buffer en memoria con los datos a subir
         minio_object (str): Nombre del objeto destino en el bucket
     """
-    
     load_dotenv()
     minio_bucket=os.getenv("MINIO_BUCKET")
+    minio_groupPath=os.getenv("MINIO_GROUP_PATH")
     assert minio_bucket, "Falta MINIO_BUCKET en el entorno/.env"
+    assert minio_groupPath, "Falta MINIO_GROUP_PATH en el entorno/.env"
     assert client.bucket_exists(minio_bucket), (
         f"El bucket {minio_bucket} no existe o no tienes permisos."
     )
@@ -57,33 +60,37 @@ def minio_subir_memoria(client: Minio, buffer: io.BytesIO, minio_object: str) ->
 
     client.put_object(
         bucket_name=minio_bucket,
-        object_name=minio_object,
+        object_name=f'{minio_groupPath}/{path}/{minio_object}',
         data=buffer,
         length=length,
         content_type="application/octet-stream"
     )
 
-def bajar_minio(client: Minio, minio_object: str) -> pd.DataFrame:
+def bajar_minio(client: Minio, path: str, minio_object: str) -> pd.DataFrame:
     """ 
     Descarga desde MinIO un dataframe
 
     Args:
         client (Minio): Cliente de MinIO ya inicializado
+        path: Ruta dentro del bucket dond se encuentra el objeto
         minio_object (str): Nombre del objeto de origen en el bucket
 
     Returns:
         pd.DataFrame: Dataframe solicitado
     """
+
     load_dotenv()
     minio_bucket=os.getenv("MINIO_BUCKET")
+    minio_groupPath=os.getenv("MINIO_GROUP_PATH")
     assert minio_bucket, "Falta MINIO_BUCKET en el entorno/.env"
+    assert minio_groupPath, "Falta MINIO_GROUP_PATH en el entorno/.env"
     assert client.bucket_exists(minio_bucket), (
         f"El bucket {minio_bucket} no existe o no tienes permisos."
     )
 
     response = client.get_object(
         bucket_name=minio_bucket,
-        object_name=minio_object,
+        object_name=f'{minio_groupPath}/{path}/{minio_object}'
     )
 
     # Leer en memoria
