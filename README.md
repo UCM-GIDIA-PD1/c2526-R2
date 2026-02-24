@@ -17,3 +17,65 @@ El sistema articula tres motores tecnológicos complementarios que transforman d
 **Motor Geointeligente de Madrid:** Una herramienta visual que cruza datos de fuentes como OSM y el CRTM para representar en un mapa interactivo las ventajas estratégicas de cada vivienda, analizando su conexión con el transporte, servicios y ocio.
 
 **Análisis Visual mediante IA:** Un sistema de aprendizaje profundo entrenado para examinar las fotografías de los inmuebles y asignar un "Score de Modernidad" objetivo, permitiendo validar el estado de reforma de la vivienda de forma automática.
+
+## Configuración del entorno de desarrollo
+
+Este proyecto utiliza uv como gestor de entornos y dependencias, hay que seguir los siguientes pasos:
+
+**Paso 1, Instalar uv**
+```bash
+pip install uv
+```
+Más información:(https://docs.astral.sh/uv/)
+
+**Paso 2, Crear el entorno virtual**
+```bash
+uv venv
+```
+para activar el entorno:
+**-Windows**
+```bash
+.venv\Scripts\activate
+```
+**-macOS/Linux**
+```bash
+source .venv/bin/activate
+```
+
+**Paso 3, Instalar dependencias**
+Como el proyecto contiene pyproject.toml, para instalar las depedencias se puede ejecutar el comando:
+```bash
+uv sync
+```
+**Paso 4, Verificar la versión de Python del entorno**
+Una vez creado el entorno virtual, se puede comprobar que versión de Python se está usando:
+**Windows**
+```bash
+.\.venv\Scripts\python.exe --version
+```
+**macOS/Linux**
+```bash
+./.venv/bin/python --version
+```
+
+## Uso de MinIO en el proyecto
+El proyecto utiliza un servidor MinIO para almacenar y recuperar datasets.
+
+Debes crear un fichero .env en la raíz del proyecto con el siguiente contenido:
+```env
+MINIO_ENDPOINT=minio.fdi.ucm.es
+MINIO_ACCESS_KEY=TU_ACCESS_KEY
+MINIO_SECRET_KEY=TU_SECRET_KEY
+MINIO_BUCKET=pd1
+MINIO_GROUP_PATH=grupo2
+```
+**Importante:** 
+-NO subir el fichero .env a GitHub
+-Añadir .env al .gitignore
+
+## Descripción de las variables
+**MINIO_ENDPOINT:** Dirección del servidor MinIO
+**MINIO_ACCESS_KEY:** Clave de acceso al servidor
+**MINIO_SECRET_KEY:** Clave secreta
+**MINIO_BUCKET:** Bucket donde se almacenan los datos
+**MINIO_GROUP_PATH:** Carpeta base del grupo dentro del bucket
