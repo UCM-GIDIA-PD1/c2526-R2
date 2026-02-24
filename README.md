@@ -26,13 +26,14 @@ Este proyecto utiliza uv como gestor de entornos y dependencias, hay que seguir 
 ```bash
 pip install uv
 ```
-Más información:(https://docs.astral.sh/uv/)
+Más información: https://docs.astral.sh/uv/
 
 **Paso 2, Crear el entorno virtual**
 ```bash
 uv venv
 ```
 para activar el entorno:
+
 **-Windows**
 ```bash
 .venv\Scripts\activate
@@ -43,12 +44,15 @@ source .venv/bin/activate
 ```
 
 **Paso 3, Instalar dependencias**
+
 Como el proyecto contiene pyproject.toml, para instalar las depedencias se puede ejecutar el comando:
 ```bash
 uv sync
 ```
 **Paso 4, Verificar la versión de Python del entorno**
+
 Una vez creado el entorno virtual, se puede comprobar que versión de Python se está usando:
+
 **Windows**
 ```bash
 .\.venv\Scripts\python.exe --version
@@ -70,12 +74,19 @@ MINIO_BUCKET=pd1
 MINIO_GROUP_PATH=grupo2
 ```
 **Importante:** 
+
 -NO subir el fichero .env a GitHub
+
 -Añadir .env al .gitignore
 
 ## Descripción de las variables
+
 **MINIO_ENDPOINT:** Dirección del servidor MinIO
+
 **MINIO_ACCESS_KEY:** Clave de acceso al servidor
+
 **MINIO_SECRET_KEY:** Clave secreta
+
 **MINIO_BUCKET:** Bucket donde se almacenan los datos
+
 **MINIO_GROUP_PATH:** Carpeta base del grupo dentro del bucket
