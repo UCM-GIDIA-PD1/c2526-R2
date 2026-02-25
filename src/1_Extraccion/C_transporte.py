@@ -46,10 +46,11 @@ URL_METRO_BASE = (
 # L8(71), L9A(80), L9B(83), L10a(95), L10b(98), L11(110), L12(119), LR(128)
 METRO_LAYER_IDS = [2, 11, 20, 29, 38, 47, 56, 59, 71, 80, 83, 95, 98, 110, 119, 128]
 
-# Rutas de destino en MinIO
+# Rutas de destino en MinIO (path relativo al grupo + nombre del objeto)
+MINIO_PATH = "raw"
 OBJECTS = {
-    "bus": "grupo2/raw/paradas_bus.parquet",
-    "metro": "grupo2/raw/estaciones_metro.parquet",
+    "bus": "paradas_bus.parquet",
+    "metro": "estaciones_metro.parquet",
 }
 
 
@@ -140,18 +141,27 @@ if __name__ == "__main__":
     print("Procesando: bus")
     try:
         buffer = descargar_bus()
-        minio_subir_memoria(client, buffer, OBJECTS["bus"])
+        minio_subir_memoria(client, MINIO_PATH, OBJECTS["bus"], buffer)
         print(f"  bus subido a MinIO -> {OBJECTS['bus']}")
+    except requests.exceptions.RequestException as e:
+        # Error de red: la API de ArcGIS no responde o devuelve error HTTP
+        print(f"  ERROR de red en bus: {e}")
     except Exception as e:
+        # Cualquier otro error (parseo, conversión a parquet, subida a MinIO, etc.)
         print(f"  ERROR en bus: {e}")
 
     # Metro
     print("Procesando: metro")
     try:
         buffer = descargar_metro()
-        minio_subir_memoria(client, buffer, OBJECTS["metro"])
+        minio_subir_memoria(client, MINIO_PATH, OBJECTS["metro"], buffer)
         print(f"  metro subido a MinIO -> {OBJECTS['metro']}")
+    except requests.exceptions.RequestException as e:
+        # Error de red: alguna de las 16 capas de ArcGIS no responde
+        print(f"  ERROR de red en metro: {e}")
     except Exception as e:
+        # Cualquier otro error (parseo, conversión a parquet, subida a MinIO, etc.)
         print(f"  ERROR en metro: {e}")
 
     print("Extracción de transporte finalizada.")
+

@@ -90,3 +90,9 @@ MINIO_GROUP_PATH=grupo2
 **MINIO_BUCKET:** Bucket donde se almacenan los datos
 
 **MINIO_GROUP_PATH:** Carpeta base del grupo dentro del bucket
+
+## Ejecución de los scripts y notebooks
+Para poder ejecutar los scripts y notebooks, se puede con el siguiente comando en el terminal de visual studio code o por la consola:
+```bash
+uv run python (ubicacion del scrip o notebook)
+```
