@@ -1,39 +1,37 @@
-import os
 import pandas as pd
 import requests
 import zipfile
 import geopandas as gpd
 import io
-from dotenv import load_dotenv
 from funciones_minio import crear_cliente_minio, minio_subir_memoria
+'''
+Script para la extracción de los datos del Catastro de Madrid, incluyendo geometrías de edificios y su año de construcción.
+'''
 
 def descargar_catastro():
     """
-    Función que descarga datos del catastro de Madrid y los sube a MinIO directamente
+    Extrae los edificios del Catastro, con su geometría, procesa el año de construcción 
+    y sube los datos espaciales a MinIO en formato Parquet.
 
-    Requiere: .env con claves de MinIO
-
-    Returns:
-        Nada: Se sube todo al MinIO directamente
+    Raises:
+        requests.exceptions.RequestException: Si la conexión con el catastro falla.
     """
-    print("Iniciando proceso de extracción del catastro...")
-    url_catastro= "https://www.catastro.hacienda.gob.es/INSPIRE/Buildings/28/28900-MADRID/A.ES.SDGC.BU.28900.zip"
-
-    print("Descargando datos del catastro...")
-    response = requests.get(url_catastro)
-    zip_buffer = io.BytesIO(response.content)
+    print("Iniciando proceso de extracción del catastro... \n")
+    url_catastro = "https://www.catastro.hacienda.gob.es/INSPIRE/Buildings/28/28900-MADRID/A.ES.SDGC.BU.28900.zip"
     
-    if response.status_code != 200:
-        print(f"ERROR: {response.status_code}")
-        return None
+    print("Descargando datos del catastro... \n")
+    resp = requests.get(url_catastro)
+    if resp.status_code != 200: 
+        print(f"ERROR: {resp.status_code}")
+        return
     
-    print("Procesando datos del catastro...")
-    with zipfile.ZipFile(zip_buffer, 'r') as z:
+    print("Procesando datos del catastro... \n")
+    with zipfile.ZipFile(io.BytesIO(resp.content)) as z:
         archivo_gml = [f for f in z.namelist() if f.endswith('building.gml')][0]
-        with z.open(archivo_gml) as gml_file:
-            gdf = gpd.read_file(gml_file)
+        with z.open(archivo_gml) as f:
+            gdf = gpd.read_file(f)
 
-    print("Sacando año de construcción...")
+    print("Sacando año de construcción... \n")
     columnas_utiles = ['geometry', 'beginning']
     gdf = gdf[[c for c in columnas_utiles if c in gdf.columns]].copy()
 
@@ -42,18 +40,16 @@ def descargar_catastro():
         gdf = gdf[gdf['beginning'] > 0].copy()  # Filtramos años válidos
         gdf.rename(columns={'beginning': 'anio_construccion'}, inplace=True)
         gdf.reset_index(drop=True, inplace=True)
-    
-    print("Guardando datos del catastro en formato Parquet...")
-    buffer = io.BytesIO()  
+
+
+    print("Guardando datos del catastro en formato Parquet... \n")
+    buffer = io.BytesIO()
     gdf.to_parquet(buffer, index=False)
     buffer.seek(0)
-
-    load_dotenv()
-    cliente = crear_cliente_minio()
-    nombre_objeto = f"{os.getenv('MINIO_GROUP_PATH')}/datos_secundarios/catastro/edificios_madrid.parquet"
     
-    minio_subir_memoria(cliente, buffer, nombre_objeto)
-    print("Archivo del catastro subido a MinIO")
+    client = crear_cliente_minio()
+    minio_subir_memoria(client, "datos_secundarios/catastro", "edificios_madrid.parquet", buffer)
+    print("Datos del Catastro subidos a MinIO. \n")
 
 if __name__ == "__main__":
     descargar_catastro()
