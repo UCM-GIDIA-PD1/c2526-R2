@@ -1,5 +1,7 @@
 import pandas as pd
 from DrissionPage import ChromiumPage,WebPage
+from DrissionPage.errors import ElementNotFoundError
+from funciones_minio import *
 import requests
 from PIL import Image
 import re
@@ -9,19 +11,26 @@ import time
 import random
 import os
 from tqdm import tqdm
+from pathlib import Path
 
 
 url_alquiler = 'https://www.idealista.com/alquiler-viviendas/madrid-madrid/mapa'
 url_venta = 'https://www.idealista.com/venta-viviendas/madrid-madrid/mapa'
+path_minio = 'raw/datos_primarios'
 
-def extraer_datos_anuncio(page,url):
-    """
-    Extrae el conjunto de datos que queremos de un anuncio en idealista accedido con ka variable page
+def extraer_datos_anuncio(page:ChromiumPage,url:str)->dict:
+    """_summary_
+        Extrae los datos de la vivienda que corresponde a la pagina cargada en el anuncio
+    Args:
+        page (ChromiumPage): acceso a idealista con pagina cargada
+        url (str): url de la vivienda
 
-    :param page: la pagina del anuncio que se va a analizar
+    Returns:
+        dict: informacion de vivienda
     """
 
     vivienda = {
+        'id':'',
         'Nombre':'',
         'Barrio':'',
         'Distrito':'',
@@ -47,10 +56,13 @@ def extraer_datos_anuncio(page,url):
     page = corrige_page(page,url)
     info_primaria = page.ele('tag:section@class=detail-content-wrapper')
     if info_primaria:
+        match = re.search(r'/inmueble/(\d+)/', url)
+        vivienda['id'] = match.group(1) 
         vivienda['Nombre'] = info_primaria.ele('tag:span@class=main-info__title-main').text
         precio_loc = info_primaria.ele('tag:span@class=info-data-price')
         vivienda['Precio'] = precio_loc.ele('tag:span@class=txt-bold').text
         caract_box = page.ele('tag:section@class=details-box')
+        page.scroll.to_see(caract_box)
         vivienda['Consumo'] = extraer_certificado_ennergetico(caract_box)
         vivienda['Descripcion'] = extraer_descripcion(info_primaria.ele('tag:div@class=comment'))
         vivienda['Anuncia'] = extrae_anunciante(page.ele('tag:div@id=module-contact-container'))
@@ -67,7 +79,15 @@ def extraer_datos_anuncio(page,url):
 
 
 
-def extraer_certificado_ennergetico(info):
+def extraer_certificado_ennergetico(info)->str:
+    """_summary_
+        Extrae el certificado de consumo energetico del anuncio
+    Args:
+        info (ElementoChromiumPage): contenedor en el que encuentran las caracteristicas de la vivienda
+
+    Returns:
+        str: consumo de la vivienda (Letra de la etiqueta correspondiente)
+    """
     certificado = info.ele('tag:div@class=energy-certificate-dropdown')
     if certificado :
         contenedor = info.ele('tag:div@class=details-property-feature-two')
@@ -82,8 +102,16 @@ def extraer_certificado_ennergetico(info):
         return 'No determinado'
     
 
-def extraer_imagenes(page,contenedor):
+def extraer_imagenes(page:ChromiumPage,contenedor)->list:
+    """_summary_
+        Extrae las imagenes controlando el numero de imagenes por habitacon, solicitandolas y pasandolas a formato bytes
+    Args:
+        page (ChromiumPage): acceso a idealista con pagina cargada
+        contenedor (ElementoChromiumPage): contenedor en el que se encuentran las imagenes
 
+    Returns:
+        list: lista de diccionario de imagenes con el nombre de a que habitacion corresponde
+    """
     page.scroll.to_see(contenedor)
 
     imagenes = contenedor.eles('css:picture')
@@ -109,17 +137,29 @@ def extraer_imagenes(page,contenedor):
                         im = im.convert("RGB")
                     buffer_webp = io.BytesIO()
                     im.save(buffer_webp, format="WebP", quality=80, method=6)
-                    im.show()
                     lista.append({titulo.text:buffer_webp.getvalue()})
                     total+=1
         elif total >= 8:
             break
     return lista
 
-def extrae_anunciante(info):
+def ver_anuncio(vivienda:dict):
+    """_summary_
+        Visualizar la vivienda con imagenes aparte 
+    Args:
+        vivienda (dict): vivienda con su informacion
+    """
+    for key,value in vivienda.items():
+        if key != "Imagenes":
+            print(f"{key}:{value}")
+
+def extrae_anunciante(info)->str:
     contenedor = info.ele('tag:div@class=ide-box-contact module-contact-gray contact-data-container ')
     nombre = contenedor.ele('tag:div@class=professional-name').ele('tag:div@class=name')
-    return nombre.text
+    if nombre.text:
+        return nombre.text
+    else:
+        return "Particular" 
 
 def extraer_caracteristicas(info):
     caracteristicas = {
@@ -136,6 +176,7 @@ def extraer_caracteristicas(info):
         'Orientacion':None
     }
 
+    enteros = ['Num_habitaciones','Banyos','Planta']
     categoria = info.ele('tag:div@class=details-property-feature-one')
     if categoria:
         lista = categoria.eles('tag:li')
@@ -144,7 +185,10 @@ def extraer_caracteristicas(info):
             for key,elem in res.items():
                 if key in caracteristicas and caracteristicas[key] is None:
                     caracteristicas[key] = elem
-
+    
+    for k,v in caracteristicas.items():
+        if k in enteros and caracteristicas[k] is None:
+            caracteristicas[k] = 0
     caracteristicas = {k:(False if v is None else v) for k,v in caracteristicas.items()}
 
     return caracteristicas
@@ -202,7 +246,7 @@ def caracteristica(texto):
         res['Balcon'] = 'Balcón' in texto or 'balcón' in texto
         res['Terraza']='Terraza' in texto or 'terraza' in texto
         return res
-    elif 'Planta' in texto or 'exterior' in texto or 'interior' in texto:
+    elif 'Planta' in texto or 'exterior' in texto or 'interior' in texto or "Exterior" in texto or "Interior" in texto:
         res={   
             'Planta':None,
             'Ventanas':None
@@ -213,7 +257,10 @@ def caracteristica(texto):
         else:
             res['Planta'] = max(planta)
         ventana = texto.split()[-1:]
-        res['Ventanas'] = ventana[0]
+        if "exterior" in texto or "interior" in texto or "Exterior" in texto or "Interior" in texto :
+            res['Ventanas'] = ventana[0]
+        else:
+            res['Ventanas'] = "no indicado"
         return res
     elif 'ascensor' in texto:
         ascensor = 'Con' in texto
@@ -254,17 +301,18 @@ def links_regiones(page,url,regiones_unicos,num:0):
         lista_zonas = contenedor.eles('tag:li')
         barra_progreso = tqdm(lista_zonas,desc="Extrayendo links de regiones")
         for zona in barra_progreso :
-            if zona.ele('tag:a') and zona.ele('tag:a').attr('href').removesuffix('mapa') not in regiones_unicos:
-                if int(zona.ele("tag:span@class=subdued").text.replace(".","")) < umbral :
-                    link = zona.ele('tag:a').attr('href').removesuffix('mapa')
-                    if "alquiler" in link :
-                        region = link.removeprefix("https://www.idealista.com/alquiler-viviendas/madrid/")[:-1].replace('/',' - ')
-                    else:
-                        region = link.removeprefix("https://www.idealista.com/venta-viviendas/madrid/")[:-1].replace('/',' - ')
-                    páginas_zonas.append({"region":region,"link":link,"num":int(zona.ele("tag:span@class=subdued").text.replace(".",""))})
-                    regiones_unicos.add(zona.ele('tag:a').attr('href').removesuffix('mapa'))
+            if zona.ele('tag:a') :
+                link = zona.ele('tag:a').attr('href').removesuffix('mapa')
+                if "alquiler" in link :
+                    region = link.removeprefix("https://www.idealista.com/alquiler-viviendas/madrid/")[:-1].replace('/',' - ')
                 else:
-                    zonas_expandir.append({"link":zona.ele('tag:a').attr('href'),"num":int(zona.ele("tag:span@class=subdued").text.replace(".",""))})
+                    region = link.removeprefix("https://www.idealista.com/venta-viviendas/madrid/")[:-1].replace('/',' - ')
+                if region.split(' - ')[0] not in regiones_unicos and region not in regiones_unicos:
+                    if int(zona.ele("tag:span@class=subdued").text.replace(".","")) < umbral :
+                        páginas_zonas.append({"region":region,"link":link,"num":int(zona.ele("tag:span@class=subdued").text.replace(".",""))})
+                        regiones_unicos.add(region)
+                    else:
+                        zonas_expandir.append({"link":zona.ele('tag:a').attr('href'),"num":int(zona.ele("tag:span@class=subdued").text.replace(".",""))})
         print("Extrayendo links regiones restantes...")
         for urls in zonas_expandir:
             if urls not in páginas_zonas:
@@ -285,12 +333,12 @@ def sacar_link(anuncio,lista):
 
 def analizar_pagina(page,lista_links):
     pagina = []
+    time.sleep(random.uniform(1, 3))
     anuncios = page.eles('tag:article')
     for anuncio in anuncios:
         clase = anuncio.attr('class')
         if 'adv' in clase:
             continue
-        page.scroll.to_see(anuncio)
         anuncio_nuevo = sacar_link(anuncio,lista_links)
         if anuncio_nuevo:
             pagina.append(anuncio_nuevo)
@@ -309,7 +357,8 @@ def guardar_pagina_en_csv(lista_diccionarios, ruta_archivo):
     
     df.to_csv(ruta_archivo, mode='a', index=False, header=not archivo_existe, encoding='utf-8')
 
-def guardas_links_regiones(lista_zonas,ruta):    
+def guardas_links_regiones(lista_zonas,ruta): 
+       
     df = pd.DataFrame(lista_zonas)
         
     df = df[['link', 'num']]
@@ -318,19 +367,28 @@ def guardas_links_regiones(lista_zonas,ruta):
         
     df.to_csv(ruta, mode='a', index=False, header=not archivo_existe, encoding='utf-8')
 
+def guardas_viviendas(lista_viviendas):
+    home = Path.home()
 
-def obtiene_anuncios(links_regiones,page):
-    anuncios_unicos = set()
+# Creamos la ruta completa (puedes mandarlo al Escritorio para verlo rápido)
+    ruta_test = home / "test_maiday.csv"
+    df = pd.DataFrame(lista_viviendas)
+        
+    archivo_existe = os.path.isfile(ruta_test)
+        
+    df.to_csv(ruta_test, mode='a', index=False, header=not archivo_existe, encoding='utf-8')
+
+def obtiene_anuncios(links_regiones,page,anuncios_unicos):
     res = {}
     for url in links_regiones:
         siguiente = True
         page.get(url["link"])
         page = corrige_page(page,url["link"])
         res[url["region"]] = []
-        barra_progreso = tqdm(desc=f"tratando la region de {url["region"]}")
+        barra_progreso = tqdm(desc=f"Extrayendo anuncios de la region de {url["region"]}")
         while siguiente:
             next = page.ele('.next')
-            res[url["region"]].append(analizar_pagina(page,anuncios_unicos))
+            res[url["region"]].extend(analizar_pagina(page,anuncios_unicos))
             if not next:
                 siguiente = False
             else:
@@ -366,7 +424,7 @@ def imprimir_regiones(lista_datos):
         nombre = data['region']
         cantidad = f"{data['num']:,}".replace(",", ".")
         
-        print(f"{i:<4} │ {nombre:<25} │ {cantidad:>10} 📢")
+        print(f"{i:<4} │ {nombre:<40} │ {cantidad:>10} 📢")
 
     print("─" * 56)
     
@@ -374,14 +432,67 @@ def imprimir_regiones(lista_datos):
     
     print("\n          ╔════════════════════════════════════════╗")
     print(f"          ║   [0]  🌟  PROCESAR TODAS LAS ZONAS    ║")
-    print(f"          ║        Acumulado: {total_str:>12} ads      ║")
+    print(f"          ║        Acumulado: {total_str:>12} ads     ║")
     print("          ╚════════════════════════════════════════╝\n")
+    print(f"          ║   [-1]  🌟  PARA SALIR AL MENU PRINCIPAL    ║")
+    while True:
+        entrada = input("\n Introduce el ID (o '0' para todas): ").strip()
 
-    respuesta = int(input())
-    while respuesta > len(lista_datos) and respuesta < 0:
-        print("Entrada errónea")
-        respuesta = input()
+        if not entrada.isdigit():
+            print("❌ Error: Por favor, introduce un número, no letras.")
+            continue
+
+        opcion = int(entrada)
+        if opcion == 0:
+            print(f"✅ Has seleccionado: [TODAS LAS REGIONES]")
+            return lista_datos
+
+        if opcion == -1:
+            print("\n🔄 Volviendo al inicio...")
+            return []
+
+        if 1 <= opcion <= len(lista_datos):
+            seleccionada = lista_datos[opcion - 1]
+            nombre = seleccionada['region']
+            
+            print(f"✅ Has seleccionado: [{nombre}]")
+            return [seleccionada]
+
+        print(f"⚠️ El ID {opcion} no existe en la lista. Prueba otra vez.")
     
+def analiza_lista(lista_anuncios,region,page):
+    progreso = tqdm(lista_anuncios,desc=f"Analizando anuncios de la zona {region}...")
+    errores = 0
+    lista_viviendas = []
+    for vivienda in progreso:
+        nombre = vivienda["nombre"]
+        url = vivienda["anuncio"]
+        try:
+            page.get(url)
+            lista_viviendas.append(extraer_datos_anuncio(page,url))
+        except ElementNotFoundError:
+            # Error específico: La página cargo pero el dato no esta (piso borrado o diseño distinto)
+            errores += 1
+            progreso.set_postfix(Error = errores,Solucion = "Salto de anuncio") 
+            continue 
+        except Exception as e:
+            # Error genérico: Se cerró el navegador, se fue el internet, etc.
+            print(f"\n🔥 Error crítico en {nombre},{url}: {e}")
+            continue
+    return lista_viviendas,errores
+
+def subir_viviendas(modo:str,buffer: io.BytesIO,region:str,cliente:Minio):
+    if modo == "venta":
+        path = path_minio +"/"+  "venta"
+    elif modo == "alquiler":
+        path = path_minio +"/"+ "alquiler"
+    
+    nombre_fichero = f"batch_{region}.parquet"
+
+    minio_subir_memoria(cliente,path,nombre_fichero,buffer)
+
+
+
 
 def webscraping_idealista():
     imprimir_header()
@@ -393,11 +504,52 @@ def webscraping_idealista():
         modo = input()
     if modo == 'A' or modo == 'a':
         url = url_venta
+        modo = "venta"
     elif modo == 'B' or modo == 'b':
         url = url_alquiler
+        modo = "alquiler"
     
     page = ChromiumPage()
     page.get(url)
+    cliente = crear_cliente_minio()
     regiones_unicas = set()
     links_regiones_madrid = links_regiones(page,url,regiones_unicas,0)
-    imprimir_regiones(links_regiones_madrid)
+    regiones_interesadas = imprimir_regiones(links_regiones_madrid)
+    anuncios_unicos = set()
+    if len(regiones_interesadas) == links_regiones_madrid:
+        for region in regiones_interesadas:
+            lista_anuncios = obtiene_anuncios(region,page,anuncios_unicos)
+            for clave,lista in lista_anuncios.items():
+                lista_viviendas,errores = analiza_lista(lista,clave,page) 
+                df = pd.DataFrame(lista_viviendas)
+                #guardar el dataframe, evitando duplicados porfa
+                df = pd.read_csv(url, sep=';', encoding= 'latin-1', dtype=str, low_memory=False)
+                buffer = io.BytesIO()
+                df.to_parquet(buffer, engine="pyarrow", index=False)
+                buffer.seek(0)
+    else:
+        while len(regiones_interesadas) > 0:
+            lista_anuncios = obtiene_anuncios(regiones_interesadas,page,anuncios_unicos)
+            for clave,lista in lista_anuncios.items():
+                lista_viviendas,errores = analiza_lista(lista,clave,page) 
+                df = pd.DataFrame(lista_viviendas)
+                buffer = io.BytesIO()
+                df.to_parquet(buffer, engine="pyarrow", index=False)
+                buffer.seek(0)
+                subir_viviendas(modo,buffer,clave,cliente)
+            #guardar el dataframe, evitando duplicados porfa
+            pos = next((i for i , d in enumerate(links_regiones_madrid) if d["region"] == regiones_interesadas[0]["region"]),None)
+            links_regiones_madrid.pop(pos)
+            regiones_interesadas = imprimir_regiones(links_regiones_madrid)
+
+
+if __name__ == '__main__':
+    webscraping_idealista()
+    page = ChromiumPage()
+"""    page.get("https://www.idealista.com/inmueble/105122568/")
+    df = pd.DataFrame(extraer_datos_anuncio(page,"https://www.idealista.com/inmueble/105122568/"))
+    buffer = io.BytesIO()
+    df.to_parquet(buffer, engine="pyarrow", index=False)
+    buffer.seek(0)
+    cliente = crear_cliente_minio()
+    subir_viviendas("venta",buffer,"sucio",cliente)"""
