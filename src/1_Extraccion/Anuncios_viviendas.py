@@ -328,7 +328,9 @@ def sacar_link(anuncio,lista):
         link = tag_a.attr('href')
         if link is not None and link not in lista:
             nombre = tag_a.attr('title')
-            return {"nombre":nombre, "anuncio":link}
+            match = re.search(r'/inmueble/(\d+)/', link)
+            id = match.group(1)
+            return {"nombre":nombre, "anuncio":link,"id":id}
     return None
 
 def analizar_pagina(page,lista_links):
@@ -481,13 +483,17 @@ def analiza_lista(lista_anuncios,region,page):
             continue
     return lista_viviendas,errores
 
-def subir_viviendas(modo:str,buffer: io.BytesIO,region:str,cliente:Minio):
+def subir_viviendas(modo:str,buffer: io.BytesIO,region:str,batch:int,cliente:Minio):
+    
     if modo == "venta":
         path = path_minio +"/"+  "venta"
     elif modo == "alquiler":
         path = path_minio +"/"+ "alquiler"
-    
-    nombre_fichero = f"batch_{region}.parquet"
+    nombre_region = region.replace(' - ', '')
+    if batch != -1:
+        nombre_fichero = f"batch_{nombre_region}_n_{batch}.parquet"
+    else:
+        nombre_fichero = f"batch_{nombre_region}.parquet"
 
     minio_subir_memoria(cliente,path,nombre_fichero,buffer)
 
@@ -537,7 +543,6 @@ def webscraping_idealista():
                 df.to_parquet(buffer, engine="pyarrow", index=False)
                 buffer.seek(0)
                 subir_viviendas(modo,buffer,clave,cliente)
-            #guardar el dataframe, evitando duplicados porfa
             pos = next((i for i , d in enumerate(links_regiones_madrid) if d["region"] == regiones_interesadas[0]["region"]),None)
             links_regiones_madrid.pop(pos)
             regiones_interesadas = imprimir_regiones(links_regiones_madrid)
@@ -546,10 +551,3 @@ def webscraping_idealista():
 if __name__ == '__main__':
     webscraping_idealista()
     page = ChromiumPage()
-"""    page.get("https://www.idealista.com/inmueble/105122568/")
-    df = pd.DataFrame(extraer_datos_anuncio(page,"https://www.idealista.com/inmueble/105122568/"))
-    buffer = io.BytesIO()
-    df.to_parquet(buffer, engine="pyarrow", index=False)
-    buffer.seek(0)
-    cliente = crear_cliente_minio()
-    subir_viviendas("venta",buffer,"sucio",cliente)"""
