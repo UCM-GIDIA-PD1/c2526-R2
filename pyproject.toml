@@ -10,6 +10,8 @@ dependencies = [
     "minio>=7.2.20",
     "osmnx>=2.0.7",
     "pandas>=3.0.0",
+    "pillow>=12.1.1",
     "pyarrow>=23.0.1",
     "requests>=2.32.5",
+    "tqdm>=4.67.3",
 ]
