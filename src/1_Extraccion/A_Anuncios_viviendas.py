@@ -539,6 +539,7 @@ def analiza_lista(lista_anuncios,region,page,cliente,modo):
     if descargar:
         path,nombre_fichero = construye_path(modo,region,cont_arch)
         df_total = bajar_minio(cliente,path,nombre_fichero)
+        print("Descargando existente")
     cont_anuncios = 0
     for vivienda in progreso:
         nombre = vivienda["nombre"]
