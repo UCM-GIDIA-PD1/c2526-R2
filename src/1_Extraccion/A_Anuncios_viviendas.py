@@ -538,7 +538,6 @@ def analiza_lista(lista_anuncios,region,page,cliente,modo):
     lista_viviendas = []
     df_total = pd.DataFrame()
     cont_arch,descargar = obtener_siguiente_indice(cliente,modo,region.replace(' - ', '_'))
-    print(cont_arch,descargar)
     if descargar:
         path,nombre_fichero = construye_path(modo,region,cont_arch)
         df_total = bajar_minio(cliente,path,nombre_fichero)
