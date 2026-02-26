@@ -88,7 +88,7 @@ def preparar_parquet(url: str) -> io.BytesIO:
 
 if __name__ == "__main__":
     cliente = crear_cliente_minio()
-    carpeta = "raw"
+    carpeta = "raw/secundarios"
     for nombre, cfg in DATASETS.items():
         buffer = preparar_parquet(cfg["url"])
         minio_subir_memoria(client=cliente, path=carpeta, buffer=buffer, minio_object=cfg["object"])

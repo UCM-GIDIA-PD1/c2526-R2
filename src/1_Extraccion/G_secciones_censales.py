@@ -3,7 +3,7 @@ import requests
 import geopandas as gdp
 import io
 from dotenv import load_dotenv
-from funciones_minio import crear_cliente_minio, minio_subir_memoria
+from src.utils.funciones_minio import crear_cliente_minio, minio_subir_memoria
 
 '''
 Script para la extracción de la cartografía de secciones censales del Ayuntamiento de Madrid.
