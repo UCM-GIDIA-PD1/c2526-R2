@@ -17,7 +17,6 @@ Pipeline:
     4. Lo sube a MinIO en grupo2/raw/
 """
 
-import os
 import io
 import requests
 import pandas as pd
@@ -25,33 +24,10 @@ import geopandas as gpd
 from shapely.geometry import Point
 from dotenv import load_dotenv
 from src.utils.funciones_minio import crear_cliente_minio, minio_subir_memoria
-
-# ── Bus ─────────────────────────────────────────────────────────────────────
-# URL del servicio M6_Red (paradas de bus) en ArcGIS
-URL_BUS = (
-    "https://services5.arcgis.com/UxADft6QPcvFyDU1/arcgis/rest/services/"
-    "M6_Red/FeatureServer/0/query?where=1%3D1"
-    "&outFields=DENOMINACION,X,Y,GRADOACCESIBILIDAD&outSR=4326&f=json"
+from src.config import (
+    URL_BUS, URL_METRO_BASE, METRO_LAYER_IDS,
+    MINIO_RAW, OBJ_BUS, OBJ_METRO,
 )
-
-# ── Metro ───────────────────────────────────────────────────────────────────
-# Base del servicio Lineas_Metro en ArcGIS
-URL_METRO_BASE = (
-    "https://services5.arcgis.com/UxADft6QPcvFyDU1/arcgis/rest/services/"
-    "Lineas_Metro/FeatureServer"
-)
-
-# IDs de las capas de ESTACION (sentido 1 = S1, para cada línea de metro)
-# L1(2), L2(11), L3(20), L4(29), L5(38), L6(47), L7a(56), L7b(59),
-# L8(71), L9A(80), L9B(83), L10a(95), L10b(98), L11(110), L12(119), LR(128)
-METRO_LAYER_IDS = [2, 11, 20, 29, 38, 47, 56, 59, 71, 80, 83, 95, 98, 110, 119, 128]
-
-# Rutas de destino en MinIO (path relativo al grupo + nombre del objeto)
-MINIO_PATH = "raw"
-OBJECTS = {
-    "bus": "paradas_bus.parquet",
-    "metro": "estaciones_metro.parquet",
-}
 
 
 def _parsear_arcgis_json(data: dict) -> gpd.GeoDataFrame:
@@ -141,8 +117,8 @@ if __name__ == "__main__":
     print("Procesando: bus")
     try:
         buffer = descargar_bus()
-        minio_subir_memoria(client, MINIO_PATH, OBJECTS["bus"], buffer)
-        print(f"  bus subido a MinIO -> {OBJECTS['bus']}")
+        minio_subir_memoria(client, MINIO_RAW, OBJ_BUS, buffer)
+        print(f"  bus subido a MinIO -> {OBJ_BUS}")
     except requests.exceptions.RequestException as e:
         # Error de red: la API de ArcGIS no responde o devuelve error HTTP
         print(f"  ERROR de red en bus: {e}")
@@ -154,8 +130,8 @@ if __name__ == "__main__":
     print("Procesando: metro")
     try:
         buffer = descargar_metro()
-        minio_subir_memoria(client, MINIO_PATH, OBJECTS["metro"], buffer)
-        print(f"  metro subido a MinIO -> {OBJECTS['metro']}")
+        minio_subir_memoria(client, MINIO_RAW, OBJ_METRO, buffer)
+        print(f"  metro subido a MinIO -> {OBJ_METRO}")
     except requests.exceptions.RequestException as e:
         # Error de red: alguna de las 16 capas de ArcGIS no responde
         print(f"  ERROR de red en metro: {e}")
