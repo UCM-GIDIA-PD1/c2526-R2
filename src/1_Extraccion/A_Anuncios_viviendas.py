@@ -569,8 +569,6 @@ def analiza_lista(lista_anuncios,region,page,cliente,modo):
             print(f"\n🔥 Error crítico en {nombre},{url}: {e}")
             continue
     if not df_total.empty:
-        if cont_arch == 1:
-            cont_arch = -1
         df = pd.DataFrame(lista_viviendas)
         df_total = pd.concat([df_total, df], ignore_index=True)
         buffer = io.BytesIO()
