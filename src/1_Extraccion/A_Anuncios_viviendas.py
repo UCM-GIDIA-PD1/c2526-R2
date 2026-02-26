@@ -419,8 +419,8 @@ def imprimir_header():
 
 def imprimir_menu_modo():
     print("\n" + " Selecciona el tipo de mercado ".center(60, "░"))
-    print("\n   [A] 💰 VENTA")
-    print("   [B] 🏠 ALQUILER")
+    print("\n   [A]  VENTA")
+    print("   [B]  ALQUILER")
     print("\n" + "─" * 60)
 
 def imprimir_regiones(lista_datos):
@@ -429,7 +429,7 @@ def imprimir_regiones(lista_datos):
     """
     total_anuncios = sum(item['num'] for item in lista_datos)
     
-    print("\n" + "🗺️  MAPA DE EXTRACCIÓN ".center(56, "▒"))
+    print("\n" + "  MAPA DE EXTRACCIÓN ".center(56, "▒"))
     print(f"{'ID':<4} │ {'REGIÓN':<25} │ {'ANUNCIOS':>12}")
     print("─" * 56)
 
@@ -437,41 +437,41 @@ def imprimir_regiones(lista_datos):
         nombre = data['region']
         cantidad = f"{data['num']:,}".replace(",", ".")
         
-        print(f"{i:<4} │ {nombre:<40} │ {cantidad:>10} 📢")
+        print(f"{i:<4} │ {nombre:<40} │ {cantidad:>10} ")
 
     print("─" * 56)
     
     total_str = f"{total_anuncios:,}".replace(",", ".")
     
     print("\n          ╔════════════════════════════════════════╗")
-    print(f"          ║   [0]  🌟  PROCESAR TODAS LAS ZONAS    ║")
+    print(f"          ║   [0]    PROCESAR TODAS LAS ZONAS     ║")
     print(f"          ║        Acumulado: {total_str:>12} ads     ║")
     print("          ╚════════════════════════════════════════╝\n")
-    print(f"          ║   [-1]  🌟  PARA SALIR AL MENU PRINCIPAL    ║")
+    print(f"          ║   [-1]    PARA SALIR AL MENU PRINCIPAL     ║")
     while True:
         entrada = input("\n Introduce el ID (o '0' para todas): ").strip()
 
         if not entrada.isdigit():
-            print("❌ Error: Por favor, introduce un número, no letras.")
+            print(" Error: Por favor, introduce un número, no letras.")
             continue
 
         opcion = int(entrada)
         if opcion == 0:
-            print(f"✅ Has seleccionado: [TODAS LAS REGIONES]")
+            print(f" Has seleccionado: [TODAS LAS REGIONES]")
             return lista_datos
 
         if opcion == -1:
-            print("\n🔄 Volviendo al inicio...")
+            print("\n Volviendo al inicio...")
             return []
 
         if 1 <= opcion <= len(lista_datos):
             seleccionada = lista_datos[opcion - 1]
             nombre = seleccionada['region']
             
-            print(f"✅ Has seleccionado: [{nombre}]")
+            print(f" Has seleccionado: [{nombre}]")
             return [seleccionada]
 
-        print(f"⚠️ El ID {opcion} no existe en la lista. Prueba otra vez.")
+        print(f" El ID {opcion} no existe en la lista. Prueba otra vez.")
 
 def obtener_siguiente_indice(client, modo, region, umbral_mb=50):
     """
@@ -481,7 +481,7 @@ def obtener_siguiente_indice(client, modo, region, umbral_mb=50):
     """
     bucket = os.getenv("MINIO_BUCKET")
     group_path = os.getenv("MINIO_GROUP_PATH")
-    prefix = f"{group_path}/datos_primarios/{modo}/"
+    prefix = f"{group_path}/raw/datos_primarios/{modo}/"
     
     umbral_bytes = umbral_mb * 1024 * 1024
     max_indice = 0
@@ -490,8 +490,8 @@ def obtener_siguiente_indice(client, modo, region, umbral_mb=50):
     objetos = client.list_objects(bucket, prefix=prefix, recursive=True)
     
     for obj in objetos:
-        if region.lower() in obj.object_name.lower() and obj.object_name.endswith(".parquet"):
-            match = re.search(r'part(\d+)', obj.object_name)
+        if region in obj.object_name and obj.object_name.endswith(".parquet"):
+            match = re.search(r'_n_(\d+)', obj.object_name)
             if match:
                 indice_actual = int(match.group(1))
                 if indice_actual > max_indice:
@@ -513,8 +513,8 @@ def obtener_ids_existentes(client: Minio, modo: str) -> set:
     
     ids_totales = set()
     objetos = client.list_objects(bucket, prefix=prefix, recursive=True)
-    
-    for obj in objetos:
+    progreso = tqdm(objetos,desc = "Extrayendo ids de anuncios ya descargados")
+    for obj in progreso:
         if obj.object_name.endswith(".parquet"):
             response = client.get_object(bucket, obj.object_name)
             try:
@@ -523,11 +523,13 @@ def obtener_ids_existentes(client: Minio, modo: str) -> set:
                 
                 ids_totales.update(df_temp['id'].astype(str).tolist())
             except Exception as e:
-                print(f"⚠️ Error leyendo {obj.object_name}: {e}")
+                print(f" Error leyendo {obj.object_name}: {e}")
             finally:
                 response.close()
                 response.release_conn()
-                
+
+    print(f"     Extraídos {len(ids_totales)} anuncios para evitar repetición    ")
+  
     return ids_totales
 
 def analiza_lista(lista_anuncios,region,page,cliente,modo):
@@ -536,10 +538,11 @@ def analiza_lista(lista_anuncios,region,page,cliente,modo):
     lista_viviendas = []
     df_total = pd.DataFrame()
     cont_arch,descargar = obtener_siguiente_indice(cliente,modo,region.replace(' - ', '_'))
+    print(cont_arch,descargar)
     if descargar:
         path,nombre_fichero = construye_path(modo,region,cont_arch)
         df_total = bajar_minio(cliente,path,nombre_fichero)
-        print("Descargando existente")
+        print("             Progreso recuperado          ")
     cont_anuncios = 0
     for vivienda in progreso:
         nombre = vivienda["nombre"]
@@ -567,7 +570,7 @@ def analiza_lista(lista_anuncios,region,page,cliente,modo):
             continue 
         except Exception as e:
             # Error genérico: Se cerró el navegador, se fue el internet, etc.
-            print(f"\n🔥 Error crítico en {nombre},{url}: {e}")
+            print(f"\n Error crítico en {nombre},{url}: {e}")
             continue
     if not df_total.empty:
         df = pd.DataFrame(lista_viviendas)
@@ -596,13 +599,6 @@ def subir_viviendas(modo:str,buffer: io.BytesIO,region:str,batch:int,cliente:Min
     minio_subir_memoria(cliente,path,nombre_fichero,buffer)
 
 
-def carga_ids(cliente:Minio,modo:str):
-    if modo == "venta":
-        path = path_minio +"/"+ "venta"
-    elif modo == "alquiler":
-        path = path_minio +"/"+ "alquiler"
-    
-
 
 def webscraping_idealista():
     imprimir_header()
@@ -624,9 +620,8 @@ def webscraping_idealista():
     cliente = crear_cliente_minio()
     regiones_unicas = set()
     links_regiones_madrid = links_regiones(page,url,regiones_unicas,0)
-    regiones_interesadas = imprimir_regiones(links_regiones_madrid)
     anuncios_unicos = obtener_ids_existentes(cliente,modo)
-    print(f"     Extraídos {len(anuncios_unicos)} anuncios para evitar repetición    ")
+    regiones_interesadas = imprimir_regiones(links_regiones_madrid)
     if len(regiones_interesadas) == links_regiones_madrid:
         for region in regiones_interesadas:
             lista_anuncios = obtiene_anuncios(region,page,anuncios_unicos)
