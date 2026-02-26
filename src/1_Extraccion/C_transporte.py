@@ -24,7 +24,7 @@ import pandas as pd
 import geopandas as gpd
 from shapely.geometry import Point
 from dotenv import load_dotenv
-from funciones_minio import crear_cliente_minio, minio_subir_memoria
+from src.utils.funciones_minio import crear_cliente_minio, minio_subir_memoria
 
 # ── Bus ─────────────────────────────────────────────────────────────────────
 # URL del servicio M6_Red (paradas de bus) en ArcGIS

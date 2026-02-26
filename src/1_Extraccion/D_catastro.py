@@ -3,7 +3,7 @@ import requests
 import zipfile
 import geopandas as gpd
 import io
-from funciones_minio import crear_cliente_minio, minio_subir_memoria
+from src.utils.funciones_minio import crear_cliente_minio, minio_subir_memoria
 '''
 Script para la extracción de los datos del Catastro de Madrid, incluyendo geometrías de edificios y su año de construcción.
 '''

@@ -2,7 +2,7 @@ import os
 import osmnx as ox
 import pandas as pd
 import io
-from funciones_minio import crear_cliente_minio, minio_subir_memoria
+from src.utils.funciones_minio import crear_cliente_minio, minio_subir_memoria
 
 '''
 Script para la extracción de puntos de interés desde OpenStreetMap (OSM),
