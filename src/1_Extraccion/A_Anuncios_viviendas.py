@@ -73,9 +73,9 @@ def extraer_datos_anuncio(page:ChromiumPage,url:str)->dict:
         for key,elem in extraer_datos_geograficos(page).items():
             if key in vivienda:
                 vivienda[key] = elem
-        
-
-    return vivienda
+        return vivienda
+    else:
+        raise ElementNotFoundError(f"Contenedor primario no hallado en: {url}")
 
 def controla_dataframe(df:pd.DataFrame)->pd.DataFrame:
     columnas_numericas = ['Num_habitaciones','Banyos','Planta']
