@@ -1,7 +1,7 @@
 import pandas as pd
 from DrissionPage import ChromiumPage,WebPage
 from DrissionPage.errors import ElementNotFoundError
-from funciones_minio import *
+from src.utils.funciones_minio import *
 import requests
 from PIL import Image
 import re
@@ -77,7 +77,13 @@ def extraer_datos_anuncio(page:ChromiumPage,url:str)->dict:
 
     return vivienda
 
-
+def controla_dataframe(df:pd.DataFrame)->pd.DataFrame:
+    columnas_numericas = ['Num_habitaciones','Banyos','Planta']
+    df_res = df.copy()
+    for col in columnas_numericas:
+        if col in df_res.columns:
+            df_res[col] = pd.to_numeric(df_res[col],errors='coerce')
+    return df_res
 
 def extraer_certificado_ennergetico(info)->str:
     """_summary_
@@ -177,6 +183,7 @@ def extraer_caracteristicas(info):
     }
 
     enteros = ['Num_habitaciones','Banyos','Planta']
+    no_determinados = ["Orientacion",'Ventanas']
     categoria = info.ele('tag:div@class=details-property-feature-one')
     if categoria:
         lista = categoria.eles('tag:li')
@@ -189,7 +196,10 @@ def extraer_caracteristicas(info):
     for k,v in caracteristicas.items():
         if k in enteros and caracteristicas[k] is None:
             caracteristicas[k] = 0
-    caracteristicas = {k:(False if v is None else v) for k,v in caracteristicas.items()}
+    for k,v in caracteristicas.items():
+        if k in no_determinados and caracteristicas[k] is None:
+            caracteristicas[k] = "no determinado"
+    caracteristicas = {k:(False if v is None and k != "Orientacion" else v) for k,v in caracteristicas.items()}
 
     return caracteristicas
 
@@ -312,10 +322,10 @@ def links_regiones(page,url,regiones_unicos,num:0):
                         páginas_zonas.append({"region":region,"link":link,"num":int(zona.ele("tag:span@class=subdued").text.replace(".",""))})
                         regiones_unicos.add(region)
                     else:
-                        zonas_expandir.append({"link":zona.ele('tag:a').attr('href'),"num":int(zona.ele("tag:span@class=subdued").text.replace(".",""))})
-        print("Extrayendo links regiones restantes...")
+                        zonas_expandir.append({"region":region,"link":zona.ele('tag:a').attr('href'),"num":int(zona.ele("tag:span@class=subdued").text.replace(".",""))})
         for urls in zonas_expandir:
             if urls not in páginas_zonas:
+                print(f"Extrayendo subregiones de la region madrid - {urls["region"]}")
                 page.get(urls["link"])
                 páginas_zonas.extend(links_regiones(page,urls["link"],regiones_unicos,urls["num"]))
 
@@ -326,14 +336,15 @@ def sacar_link(anuncio,lista):
     tag_a = anuncio.ele('tag:a@role=heading')
     if tag_a:
         link = tag_a.attr('href')
-        if link is not None and link not in lista:
-            nombre = tag_a.attr('title')
+        if link is not None:
             match = re.search(r'/inmueble/(\d+)/', link)
             id = match.group(1)
-            return {"nombre":nombre, "anuncio":link,"id":id}
+            if id not in lista:
+                nombre = tag_a.attr('title')
+                return {"nombre":nombre, "anuncio":link,"id":id}
     return None
 
-def analizar_pagina(page,lista_links):
+def analizar_pagina(page,lista_ids):
     pagina = []
     time.sleep(random.uniform(1, 3))
     anuncios = page.eles('tag:article')
@@ -341,10 +352,10 @@ def analizar_pagina(page,lista_links):
         clase = anuncio.attr('class')
         if 'adv' in clase:
             continue
-        anuncio_nuevo = sacar_link(anuncio,lista_links)
+        anuncio_nuevo = sacar_link(anuncio,lista_ids)
         if anuncio_nuevo:
             pagina.append(anuncio_nuevo)
-            lista_links.add(anuncio_nuevo["anuncio"])
+            lista_ids.add(anuncio_nuevo["id"])
     return pagina
 
 def guardar_pagina_en_csv(lista_diccionarios, ruta_archivo):
@@ -461,17 +472,93 @@ def imprimir_regiones(lista_datos):
             return [seleccionada]
 
         print(f"⚠️ El ID {opcion} no existe en la lista. Prueba otra vez.")
+
+def obtener_siguiente_indice(client, modo, region, umbral_mb=50):
+    """
+    Busca el último índice de la región. 
+    Si el último archivo es menor al umbral, devuelve ese mismo índice para sobreescribirlo/completarlo.
+    Si es mayor o no existe, devuelve el siguiente.
+    """
+    bucket = os.getenv("MINIO_BUCKET")
+    group_path = os.getenv("MINIO_GROUP_PATH")
+    prefix = f"{group_path}/datos_primarios/{modo}/"
     
-def analiza_lista(lista_anuncios,region,page):
+    umbral_bytes = umbral_mb * 1024 * 1024
+    max_indice = 0
+    size_ultimo = 0
+    
+    objetos = client.list_objects(bucket, prefix=prefix, recursive=True)
+    
+    for obj in objetos:
+        if region.lower() in obj.object_name.lower() and obj.object_name.endswith(".parquet"):
+            match = re.search(r'part(\d+)', obj.object_name)
+            if match:
+                indice_actual = int(match.group(1))
+                if indice_actual > max_indice:
+                    max_indice = indice_actual
+                    size_ultimo = obj.size 
+
+    if max_indice == 0:
+        return 1,False 
+        
+    if size_ultimo < umbral_bytes:
+        return max_indice,True
+    else:
+        return max_indice + 1,False
+
+def obtener_ids_existentes(client: Minio, modo: str) -> set:
+    bucket = os.getenv("MINIO_BUCKET")
+    group_path = os.getenv("MINIO_GROUP_PATH")
+    prefix = f"{group_path}/raw/datos_primarios/{modo}/"
+    
+    ids_totales = set()
+    objetos = client.list_objects(bucket, prefix=prefix, recursive=True)
+    
+    for obj in objetos:
+        if obj.object_name.endswith(".parquet"):
+            response = client.get_object(bucket, obj.object_name)
+            try:
+                buffer = io.BytesIO(response.read())
+                df_temp = pd.read_parquet(buffer, columns=['id'])
+                
+                ids_totales.update(df_temp['id'].astype(str).tolist())
+            except Exception as e:
+                print(f"⚠️ Error leyendo {obj.object_name}: {e}")
+            finally:
+                response.close()
+                response.release_conn()
+                
+    return ids_totales
+
+def analiza_lista(lista_anuncios,region,page,cliente,modo):
     progreso = tqdm(lista_anuncios,desc=f"Analizando anuncios de la zona {region}...")
     errores = 0
     lista_viviendas = []
+    df_total = pd.DataFrame()
+    cont_arch,descargar = obtener_siguiente_indice(cliente,modo,region.replace(' - ', '_'))
+    if descargar:
+        path,nombre_fichero = construye_path(modo,region,cont_arch)
+        df_total = bajar_minio(cliente,path,nombre_fichero)
+    cont_anuncios = 0
     for vivienda in progreso:
         nombre = vivienda["nombre"]
         url = vivienda["anuncio"]
         try:
             page.get(url)
             lista_viviendas.append(extraer_datos_anuncio(page,url))
+            cont_anuncios+=1
+            if len(lista_viviendas) >= 30:
+                df = pd.DataFrame(lista_viviendas)
+                df_total = pd.concat([df_total, df], ignore_index=True)
+                lista_viviendas = []
+            if df_total.memory_usage(deep=True).sum()/ (1024**2) >= 350:
+                buffer = io.BytesIO()
+                df_total = controla_dataframe(df_total)
+                df_total.to_parquet(buffer, engine="pyarrow", index=False)
+                buffer.seek(0)
+                subir_viviendas(modo,buffer,region,cont_arch,cliente)
+                df_total = pd.DataFrame()
+                cont_arch+=1
         except ElementNotFoundError:
             # Error específico: La página cargo pero el dato no esta (piso borrado o diseño distinto)
             errores += 1
@@ -481,23 +568,41 @@ def analiza_lista(lista_anuncios,region,page):
             # Error genérico: Se cerró el navegador, se fue el internet, etc.
             print(f"\n🔥 Error crítico en {nombre},{url}: {e}")
             continue
-    return lista_viviendas,errores
+    if not df_total.empty:
+        if cont_arch == 1:
+            cont_arch = -1
+        df = pd.DataFrame(lista_viviendas)
+        df_total = pd.concat([df_total, df], ignore_index=True)
+        buffer = io.BytesIO()
+        df_total = controla_dataframe(df_total)
+        df_total.to_parquet(buffer, engine="pyarrow", index=False)
+        buffer.seek(0)
+        subir_viviendas(modo,buffer,region,cont_arch,cliente)
+    return cont_arch,cont_anuncios,errores
 
-def subir_viviendas(modo:str,buffer: io.BytesIO,region:str,batch:int,cliente:Minio):
-    
+def construye_path(modo:str,region:str,batch:int)->str:
     if modo == "venta":
         path = path_minio +"/"+  "venta"
     elif modo == "alquiler":
         path = path_minio +"/"+ "alquiler"
-    nombre_region = region.replace(' - ', '')
-    if batch != -1:
-        nombre_fichero = f"batch_{nombre_region}_n_{batch}.parquet"
-    else:
-        nombre_fichero = f"batch_{nombre_region}.parquet"
+    nombre_region = region.replace(' - ', '_')
+    nombre_fichero = f"batch_{nombre_region}_n_{batch}.parquet"
+
+    return path,nombre_fichero
+
+def subir_viviendas(modo:str,buffer: io.BytesIO,region:str,batch:int,cliente:Minio):
+    
+    path,nombre_fichero = construye_path(modo,region,batch)
 
     minio_subir_memoria(cliente,path,nombre_fichero,buffer)
 
 
+def carga_ids(cliente:Minio,modo:str):
+    if modo == "venta":
+        path = path_minio +"/"+ "venta"
+    elif modo == "alquiler":
+        path = path_minio +"/"+ "alquiler"
+    
 
 
 def webscraping_idealista():
@@ -521,28 +626,24 @@ def webscraping_idealista():
     regiones_unicas = set()
     links_regiones_madrid = links_regiones(page,url,regiones_unicas,0)
     regiones_interesadas = imprimir_regiones(links_regiones_madrid)
-    anuncios_unicos = set()
+    anuncios_unicos = obtener_ids_existentes(cliente,modo)
+    print(f"     Extraídos {len(anuncios_unicos)} anuncios para evitar repetición    ")
     if len(regiones_interesadas) == links_regiones_madrid:
         for region in regiones_interesadas:
             lista_anuncios = obtiene_anuncios(region,page,anuncios_unicos)
             for clave,lista in lista_anuncios.items():
-                lista_viviendas,errores = analiza_lista(lista,clave,page) 
-                df = pd.DataFrame(lista_viviendas)
-                #guardar el dataframe, evitando duplicados porfa
-                df = pd.read_csv(url, sep=';', encoding= 'latin-1', dtype=str, low_memory=False)
-                buffer = io.BytesIO()
-                df.to_parquet(buffer, engine="pyarrow", index=False)
-                buffer.seek(0)
+                archivos,anuncios,errores = analiza_lista(lista,clave,page,cliente,modo) 
+                if archivos == -1:
+                    archivos = 1
+                print(f"    Se han subido {archivos} archivos de {anuncios} anuncios y descartando {errores} anuncios con errores   ") 
     else:
         while len(regiones_interesadas) > 0:
             lista_anuncios = obtiene_anuncios(regiones_interesadas,page,anuncios_unicos)
             for clave,lista in lista_anuncios.items():
-                lista_viviendas,errores = analiza_lista(lista,clave,page) 
-                df = pd.DataFrame(lista_viviendas)
-                buffer = io.BytesIO()
-                df.to_parquet(buffer, engine="pyarrow", index=False)
-                buffer.seek(0)
-                subir_viviendas(modo,buffer,clave,cliente)
+                archivos,anuncios,errores = analiza_lista(lista,clave,page,cliente,modo) 
+                if archivos == -1:
+                    archivos = 1
+                print(f"    Se han subido {archivos} archivos de {anuncios} anuncios y descartando {errores} anuncios con errores   ")
             pos = next((i for i , d in enumerate(links_regiones_madrid) if d["region"] == regiones_interesadas[0]["region"]),None)
             links_regiones_madrid.pop(pos)
             regiones_interesadas = imprimir_regiones(links_regiones_madrid)
@@ -550,4 +651,3 @@ def webscraping_idealista():
 
 if __name__ == '__main__':
     webscraping_idealista()
-    page = ChromiumPage()
