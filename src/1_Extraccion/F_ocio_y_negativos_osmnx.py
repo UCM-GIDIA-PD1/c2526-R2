@@ -1,8 +1,12 @@
-import os
 import osmnx as ox
 import pandas as pd
 import io
 from src.utils.funciones_minio import crear_cliente_minio, minio_subir_memoria
+from src.config import (
+    PLACE_OSM, TAGS_OCIO, TAGS_NEGATIVOS,
+    MINIO_OCIO, MINIO_NEGATIVOS,
+    OBJ_OCIO, OBJ_NEGATIVOS,
+)
 
 '''
 Script para la extracción de puntos de interés desde OpenStreetMap (OSM),
@@ -23,11 +27,10 @@ def procesar_y_subir_osm(tags: dict, nombre_fichero: str, subcarpeta: str):
         Exception: Si no se encuentran elementos para los tags proporcionados en el área.
     """
     print(f"Iniciando extracción de datos OSM para {nombre_fichero}...\n")
-    place = "Madrid, Spain"
     ox.settings.use_cache = True
     
     # Extracción
-    features = ox.features.features_from_place(place, tags=tags)
+    features = ox.features.features_from_place(PLACE_OSM, tags=tags)
     
     if features.empty:
         print(f"No se encontraron datos para {nombre_fichero} \n")
@@ -82,13 +85,5 @@ def identificar_tipo_negativo(row: pd.Series) -> str:
     return 'otros'
 
 if __name__ == "__main__":
-    tags_ocio = {'shop': ['mall', 'department_store'], 
-                 'leisure': ['fitness_centre', 'sports_centre'], 
-                 'amenity': ['cinema', 'bar', 'pub']}
-    
-    tags_neg = {'landuse': ['industrial', 'landfill'],
-                 'amenity': ['prison', 'grave_yard'],
-                 'power': ['substation']}
-    
-    procesar_y_subir_osm(tags_ocio, "indicadores_ocio_madrid.parquet", "datos_secundarios/ocio")
-    procesar_y_subir_osm(tags_neg, "indicadores_negativos_madrid.parquet", "datos_secundarios/negativos")
+    procesar_y_subir_osm(TAGS_OCIO, OBJ_OCIO, MINIO_OCIO)
+    procesar_y_subir_osm(TAGS_NEGATIVOS, OBJ_NEGATIVOS, MINIO_NEGATIVOS)

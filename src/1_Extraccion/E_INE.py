@@ -1,9 +1,9 @@
-import os
 import requests
 import pandas as pd
 import io
-from dotenv import load_dotenv
 from src.utils.funciones_minio import crear_cliente_minio, minio_subir_memoria
+from src.config import URL_INE, MINIO_INE, OBJ_INE
+
 '''
 Script para la extracción de datos de renta media por hogar del INE, filtrado por Madrid Capital,
 además selecciona el año más reciente y sube el resultado a MinIO.
@@ -18,10 +18,9 @@ def descargar_ine():
         requests.exceptions.RequestException: Si la conexión con el INE falla.
     """
     print("Iniciando proceso de extracción de datos del INE... \n")
-    url_ine = "https://servicios.ine.es/wstempus/js/es/DATOS_TABLA/30824?tip=AM"
 
     print("Descargando datos del INE... \n")
-    response = requests.get(url_ine)
+    response = requests.get(URL_INE)
     if response.status_code != 200: return
 
     print("Procesando datos del INE... \n")
@@ -50,7 +49,7 @@ def descargar_ine():
     buffer.seek(0)
     
     client = crear_cliente_minio()
-    minio_subir_memoria(client, "datos_secundarios/ine", "renta_hogar_secciones_madrid.parquet", buffer)
+    minio_subir_memoria(client, MINIO_INE, OBJ_INE, buffer)
     print("Renta INE subida a MinIO. \n")
 
 if __name__ == "__main__":

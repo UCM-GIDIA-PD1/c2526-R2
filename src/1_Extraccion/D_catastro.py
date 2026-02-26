@@ -4,6 +4,8 @@ import zipfile
 import geopandas as gpd
 import io
 from src.utils.funciones_minio import crear_cliente_minio, minio_subir_memoria
+from src.config import URL_CATASTRO, MINIO_CATASTRO, OBJ_CATASTRO
+
 '''
 Script para la extracción de los datos del Catastro de Madrid, incluyendo geometrías de edificios y su año de construcción.
 '''
@@ -17,10 +19,9 @@ def descargar_catastro():
         requests.exceptions.RequestException: Si la conexión con el catastro falla.
     """
     print("Iniciando proceso de extracción del catastro... \n")
-    url_catastro = "https://www.catastro.hacienda.gob.es/INSPIRE/Buildings/28/28900-MADRID/A.ES.SDGC.BU.28900.zip"
     
     print("Descargando datos del catastro... \n")
-    resp = requests.get(url_catastro)
+    resp = requests.get(URL_CATASTRO)
     if resp.status_code != 200: 
         print(f"ERROR: {resp.status_code}")
         return
@@ -48,8 +49,9 @@ def descargar_catastro():
     buffer.seek(0)
     
     client = crear_cliente_minio()
-    minio_subir_memoria(client, "datos_secundarios/catastro", "edificios_madrid.parquet", buffer)
+    minio_subir_memoria(client, MINIO_CATASTRO, OBJ_CATASTRO, buffer)
     print("Datos del Catastro subidos a MinIO. \n")
 
 if __name__ == "__main__":
     descargar_catastro()
+

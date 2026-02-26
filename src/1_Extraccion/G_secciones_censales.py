@@ -1,9 +1,8 @@
-import os
 import requests
 import geopandas as gdp
 import io
-from dotenv import load_dotenv
 from src.utils.funciones_minio import crear_cliente_minio, minio_subir_memoria
+from src.config import URL_SECCIONES, MINIO_SECCIONES, OBJ_SECCIONES
 
 '''
 Script para la extracción de la cartografía de secciones censales del Ayuntamiento de Madrid.
@@ -19,10 +18,9 @@ def descargar_secciones_censales():
         requests.exceptions.RequestException: Si la conexión con el Geoportal del Ayuntamiento de Madrid falla.
     """
     print("Iniciando proceso de extracción de las secciones censales del Ayuntamiento de Madrid... \n")
-    url = "https://geoportal.madrid.es/fsdescargas/IDEAM_WBGEOPORTAL/LIMITES_ADMINISTRATIVOS/Seccionado/TopoJSON/Secciones_Censales.json"
     
     print("Descargando datos de las secciones censales... \n")
-    response = requests.get(url)
+    response = requests.get(URL_SECCIONES)
     
     if response.status_code != 200:
         print(f"ERROR: {response.status_code}")
@@ -42,7 +40,7 @@ def descargar_secciones_censales():
     buffer.seek(0)
 
     cliente = crear_cliente_minio()
-    minio_subir_memoria(cliente, "datos_secundarios/secciones_censales", "secciones_censales_madrid.parquet", buffer)
+    minio_subir_memoria(cliente, MINIO_SECCIONES, OBJ_SECCIONES, buffer)
     print("Archivo de secciones censales subido a MinIO \n")
 
 if __name__ == "__main__":

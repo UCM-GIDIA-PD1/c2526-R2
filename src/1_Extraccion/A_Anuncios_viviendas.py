@@ -2,6 +2,7 @@ import pandas as pd
 from DrissionPage import ChromiumPage,WebPage
 from DrissionPage.errors import ElementNotFoundError
 from src.utils.funciones_minio import *
+from src.config import URL_ALQUILER, URL_VENTA, MINIO_RAW_PRIMARIOS, IDEALISTA_UMBRAL_ANUNCIOS
 import requests
 from PIL import Image
 import re
@@ -12,11 +13,6 @@ import random
 import os
 from tqdm import tqdm
 from pathlib import Path
-
-
-url_alquiler = 'https://www.idealista.com/alquiler-viviendas/madrid-madrid/mapa'
-url_venta = 'https://www.idealista.com/venta-viviendas/madrid-madrid/mapa'
-path_minio = 'raw/datos_primarios'
 
 def extraer_datos_anuncio(page:ChromiumPage,url:str)->dict:
     """_summary_
@@ -290,7 +286,7 @@ def corrige_page(page,url):
         pagina_valida = page.ele('tag:body').attr('class')
     return page
 
-umbral = 1200
+umbral = IDEALISTA_UMBRAL_ANUNCIOS
 
 def links_regiones(page,url,regiones_unicos,num:0):
     page = corrige_page(page,url)
@@ -583,9 +579,9 @@ def analiza_lista(lista_anuncios,region,page,cliente,modo):
 
 def construye_path(modo:str,region:str,batch:int)->str:
     if modo == "venta":
-        path = path_minio +"/"+  "venta"
+        path = MINIO_RAW_PRIMARIOS +"/"+  "venta"
     elif modo == "alquiler":
-        path = path_minio +"/"+ "alquiler"
+        path = MINIO_RAW_PRIMARIOS +"/"+ "alquiler"
     nombre_region = region.replace(' - ', '_')
     nombre_fichero = f"batch_{nombre_region}_n_{batch}.parquet"
 
@@ -608,10 +604,10 @@ def webscraping_idealista():
         imprimir_menu_modo()
         modo = input()
     if modo == 'A' or modo == 'a':
-        url = url_venta
+        url = URL_VENTA
         modo = "venta"
     elif modo == 'B' or modo == 'b':
-        url = url_alquiler
+        url = URL_ALQUILER
         modo = "alquiler"
     
     page = ChromiumPage()
