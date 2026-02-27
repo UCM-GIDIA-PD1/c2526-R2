@@ -566,14 +566,14 @@ def analiza_lista(lista_anuncios,region,ids_unicos,page,cliente,modo):
             # Error específico: La página cargo pero el dato no esta (piso borrado o diseño distinto)
             errores += 1
             progreso.set_postfix(Error = errores,Solucion = "Salto de anuncio") 
-            ids_unicos.erase(vivienda["id"])
+            ids_unicos.remove(vivienda["id"])
             lista_errores.append(vivienda)
             continue 
         except Exception as e:
             # Error genérico: Se cerró el navegador, se fue el internet, etc.
             errores += 1
             print(f"\n Error crítico en {nombre},{url}: {e}")
-            ids_unicos.erase(vivienda["id"])
+            ids_unicos.remove(vivienda["id"])
             lista_errores.append(vivienda)
             continue
     if not df_total.empty or lista_viviendas:
