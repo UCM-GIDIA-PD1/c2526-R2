@@ -712,7 +712,7 @@ def inicio():
         
         print(f" Memoria reconstruida con {len(anuncios_unicos)} IDs. Lista para scrapear.")
 
-    return modo, url, anuncios_unicos,cleinte
+    return modo, url, anuncios_unicos,cliente
 
 def webscraping_idealista():
     modo,url,anuncios_unicos,cliente = inicio()
