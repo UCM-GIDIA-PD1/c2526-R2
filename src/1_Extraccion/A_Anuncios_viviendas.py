@@ -621,7 +621,7 @@ def descargar_ids(client, modo: str) -> set:
         
         df_ids = pd.read_parquet(buffer, columns=['id'])
         
-        ids_set = set(df_ids['id_anuncio'].astype(str).tolist())
+        ids_set = set(df_ids['id'].astype(str).tolist())
         
         print(f" Recuperados {len(ids_set)} IDs de {modo}.")
         return ids_set
