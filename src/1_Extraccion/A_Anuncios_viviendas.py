@@ -235,6 +235,8 @@ def caracteristica(texto):
         return {'Num_habitaciones':numero}
     elif 'baños' in texto or 'baño' in texto:
         numero = re.findall(r'-?\d+\.?\d*',texto)
+        if len(numero) == 0:
+            numero = 0
         return {'Banyos':max(numero)}
     elif 'Amueblado' in texto or 'cocina equipada' in texto or 'Cocina equipada' in texto:
         res = {
@@ -469,7 +471,7 @@ def imprimir_regiones(lista_datos):
 
         print(f" El ID {opcion} no existe en la lista. Prueba otra vez.")
 
-def obtener_siguiente_indice(client, modo, region, umbral_mb=50):
+def obtener_siguiente_indice(client, modo, region, umbral_mb=350):
     """
     Busca el último índice de la región. 
     Si el último archivo es menor al umbral, devuelve ese mismo índice para sobreescribirlo/completarlo.
@@ -478,7 +480,6 @@ def obtener_siguiente_indice(client, modo, region, umbral_mb=50):
     bucket = os.getenv("MINIO_BUCKET")
     group_path = os.getenv("MINIO_GROUP_PATH")
     prefix = f"{group_path}/raw/datos_primarios/{modo}/"
-    
     umbral_bytes = umbral_mb * 1024 * 1024
     max_indice = 0
     size_ultimo = 0
@@ -529,7 +530,6 @@ def obtener_ids_existentes(client: Minio, modo: str) -> set:
     return ids_totales
 
 def analiza_lista(lista_anuncios,region,page,cliente,modo):
-    progreso = tqdm(lista_anuncios,desc=f"Analizando anuncios de la zona {region}...")
     errores = 0
     lista_viviendas = []
     df_total = pd.DataFrame()
@@ -537,8 +537,9 @@ def analiza_lista(lista_anuncios,region,page,cliente,modo):
     if descargar:
         path,nombre_fichero = construye_path(modo,region,cont_arch)
         df_total = bajar_minio(cliente,path,nombre_fichero)
-        print("             Progreso recuperado          ")
+        print(f"             .parquet de {region} recuperado          ")
     cont_anuncios = 0
+    progreso = tqdm(lista_anuncios,desc=f"Analizando anuncios de la zona {region}...")
     for vivienda in progreso:
         nombre = vivienda["nombre"]
         url = vivienda["anuncio"]
@@ -565,9 +566,10 @@ def analiza_lista(lista_anuncios,region,page,cliente,modo):
             continue 
         except Exception as e:
             # Error genérico: Se cerró el navegador, se fue el internet, etc.
+            errores += 1
             print(f"\n Error crítico en {nombre},{url}: {e}")
             continue
-    if not df_total.empty:
+    if not df_total.empty or lista_viviendas:
         df = pd.DataFrame(lista_viviendas)
         df_total = pd.concat([df_total, df], ignore_index=True)
         buffer = io.BytesIO()
