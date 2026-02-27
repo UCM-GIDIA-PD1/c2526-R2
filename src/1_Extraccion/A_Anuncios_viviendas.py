@@ -13,6 +13,7 @@ import random
 import os
 from tqdm import tqdm
 from pathlib import Path
+from minio.error import S3Error 
 
 def extraer_datos_anuncio(page:ChromiumPage,url:str)->dict:
     """_summary_
@@ -419,11 +420,11 @@ def imprimir_menu_modo():
     print("\n" + " Selecciona el tipo de mercado ".center(60, "░"))
     print("\n   [A]  VENTA")
     print("   [B]  ALQUILER")
+    print("   [C]  ACTUALIZACION IDs ANTES DE SCRAPPEAR")
     print("\n" + "─" * 60)
 
 def imprimir_regiones(lista_datos):
     """
-    lista_datos: [{'region': 'Madrid', 'num': 1500}, {'region': 'Chamberí', 'num': 250}]
     """
     total_anuncios = sum(item['num'] for item in lista_datos)
     
@@ -449,7 +450,7 @@ def imprimir_regiones(lista_datos):
     while True:
         entrada = input("\n Introduce el ID (o '0' para todas): ").strip()
 
-        if not entrada.isdigit():
+        if not entrada.replace('-','').isdigit():
             print(" Error: Por favor, introduce un número, no letras.")
             continue
 
@@ -524,12 +525,11 @@ def obtener_ids_existentes(client: Minio, modo: str) -> set:
             finally:
                 response.close()
                 response.release_conn()
-
     print(f"     Extraídos {len(ids_totales)} anuncios para evitar repetición    ")
   
     return ids_totales
 
-def analiza_lista(lista_anuncios,region,page,cliente,modo):
+def analiza_lista(lista_anuncios,region,ids_unicos,page,cliente,modo):
     errores = 0
     lista_viviendas = []
     df_total = pd.DataFrame()
@@ -558,7 +558,7 @@ def analiza_lista(lista_anuncios,region,page,cliente,modo):
                 df_total.to_parquet(buffer, engine="pyarrow", index=False)
                 buffer.seek(0)
                 path,nombre_fichero = construye_path(modo,region,cont_arch)
-                subir_viviendas(modo,buffer,region,cont_arch,cliente)
+                subir_viviendas(modo,buffer,region,ids_unicos,cont_arch,cliente)
                 print(f"             Se ha subido el avance en {nombre_fichero}.parquet         ")
                 df_total = pd.DataFrame()
                 cont_arch+=1
@@ -566,13 +566,15 @@ def analiza_lista(lista_anuncios,region,page,cliente,modo):
             # Error específico: La página cargo pero el dato no esta (piso borrado o diseño distinto)
             errores += 1
             progreso.set_postfix(Error = errores,Solucion = "Salto de anuncio") 
-            lista_errores.append({"nombre":nombre,"anuncio":url})
+            ids_unicos.erase(vivienda["id"])
+            lista_errores.append(vivienda)
             continue 
         except Exception as e:
             # Error genérico: Se cerró el navegador, se fue el internet, etc.
             errores += 1
             print(f"\n Error crítico en {nombre},{url}: {e}")
-            lista_errores.append({"nombre":nombre,"anuncio":url})
+            ids_unicos.erase(vivienda["id"])
+            lista_errores.append(vivienda)
             continue
     if not df_total.empty or lista_viviendas:
         df = pd.DataFrame(lista_viviendas)
@@ -581,7 +583,7 @@ def analiza_lista(lista_anuncios,region,page,cliente,modo):
         df_total = controla_dataframe(df_total)
         df_total.to_parquet(buffer, engine="pyarrow", index=False)
         buffer.seek(0)
-        subir_viviendas(modo,buffer,region,cont_arch,cliente)
+        subir_viviendas(modo,buffer,region,ids_unicos,cont_arch,cliente)
         path,nombre_fichero = construye_path(modo,region,cont_arch)
         print(f"             Se ha subido el final en {nombre_fichero}.parquet         ")
     lista_anuncios[:] = lista_errores
@@ -597,35 +599,128 @@ def construye_path(modo:str,region:str,batch:int)->str:
 
     return path,nombre_fichero
 
-def subir_viviendas(modo:str,buffer: io.BytesIO,region:str,batch:int,cliente:Minio):
+def subir_viviendas(modo:str,buffer: io.BytesIO,region:str,ids_unicos:set,batch:int,cliente:Minio):
     
     path,nombre_fichero = construye_path(modo,region,batch)
-
+    actualizar_ids(cliente,modo,ids_unicos)
     minio_subir_memoria(cliente,path,nombre_fichero,buffer)
 
+def descargar_ids(client, modo: str) -> set:
+    """
+    Descarga el Parquet maestro de IDs desde MinIO y lo devuelve como un set de Python.
+    Si el archivo no existe (primera ejecución), devuelve un set vacío.
+    """
+    bucket = os.getenv("MINIO_BUCKET")
+    group_path = os.getenv("MINIO_GROUP_PATH")
+    
+    object_name = f"{group_path}/raw/datos_primarios/{modo}/ids.parquet"
+    
+    try:
+        response = client.get_object(bucket, object_name)
+        buffer = io.BytesIO(response.read())
+        
+        df_ids = pd.read_parquet(buffer, columns=['id'])
+        
+        ids_set = set(df_ids['id_anuncio'].astype(str).tolist())
+        
+        print(f" Recuperados {len(ids_set)} IDs de {modo}.")
+        return ids_set
+        
+    except S3Error as e:
+        if e.code == 'NoSuchKey':
+            print(f" No existe archivo maestro para '{modo}'. Se creará uno nuevo.")
+            return set()
+        else:
+            print(f" Error crítico de MinIO: {e}")
+            raise e
+            
+    finally:
+        if 'response' in locals():
+            response.close()
+            response.release_conn()
 
+def actualizar_ids(client, modo: str, ids_set: set) -> None:
+    """
+    Convierte un set de IDs a Parquet y sobrescribe el archivo  en MinIO.
+    """
+        
+    print(f" Guardando {len(ids_set)} IDs en el archivo de {modo}...")
+    
+    df_ids = pd.DataFrame({'id': list(ids_set)})
+    
+    df_ids['id'] = df_ids['id'].astype(str)
+    
+    buffer = io.BytesIO()
+    df_ids.to_parquet(buffer, engine='pyarrow', index=False)
+    buffer.seek(0)
+    path = f"raw/datos_primarios/{modo}"
+    minio_object = "ids.parquet"
+    
+    try:
+        minio_subir_memoria(client, path, minio_object, buffer)
+    except Exception as e:
+        print(f"Falló la actualización del archivo de ids: {e}")
+    finally:
+        buffer.close()
 
-def webscraping_idealista():
+def inicio():
     imprimir_header()
     imprimir_menu_modo()
-    modo = input()
-    while modo != 'A' and modo !=  'a' and modo != 'B' and modo != 'b':
-        print("Error de entrada")
+    cliente = crear_cliente_minio()
+    
+    modo_input = input("Selecciona un modo: ")
+    entradas = ['A', 'a', 'B', 'b', 'C', 'c']
+    
+    while modo_input not in entradas:
+        print(" Error de entrada")
         imprimir_menu_modo()
-        modo = input()
-    if modo == 'A' or modo == 'a':
+        modo_input = input("Selecciona un modo: ")
+        
+    if modo_input in ['A', 'a']:
         url = URL_VENTA
         modo = "venta"
-    elif modo == 'B' or modo == 'b':
+        anuncios_unicos = descargar_ids(cliente, modo)
+        
+    elif modo_input in ['B', 'b']:
         url = URL_ALQUILER
         modo = "alquiler"
+        anuncios_unicos = descargar_ids(cliente, modo)
+        
+    elif modo_input in ['C', 'c']:
+        print(" Actualizacion de ides")
+        print("\n" + " Selecciona el tipo de mercado ".center(60, "░"))
+        print("\n   [A]  VENTA")
+        print("   [B]  ALQUILER")
+        modo_input = input("Selecciona un modo: ").upper()
+        
+        while modo_input not in ['A', 'a','b','B']:
+            print(" Error de entrada")
+            imprimir_menu_modo()
+            modo_input = input("Selecciona un modo: ")
+            
+        if modo_input in ['A', 'a']:
+            url = URL_VENTA
+            modo = "venta"
+        
+        elif modo_input in ['B', 'b']:
+            url = URL_ALQUILER
+            modo = "alquiler"
+
+        anuncios_unicos = obtener_ids_existentes(cliente, modo)
+        
+        actualizar_ids(cliente, modo, anuncios_unicos)
+        
+        print(f" Memoria reconstruida con {len(anuncios_unicos)} IDs. Lista para scrapear.")
+
+    return modo, url, anuncios_unicos
+
+def webscraping_idealista():
+    modo,url,anuncios_unicos = inicio()
     
     page = ChromiumPage()
     page.get(url)
-    cliente = crear_cliente_minio()
     regiones_unicas = set()
     links_regiones_madrid = links_regiones(page,url,regiones_unicas,0)
-    anuncios_unicos = obtener_ids_existentes(cliente,modo)
     regiones_interesadas = imprimir_regiones(links_regiones_madrid)
     if len(regiones_interesadas) == links_regiones_madrid:
         for region in regiones_interesadas:
@@ -635,6 +730,11 @@ def webscraping_idealista():
                 if archivos == -1:
                     archivos = 1
                 print(f"    Se han subido {archivos} archivos de {anuncios} anuncios y descartando {errores} anuncios con errores   ") 
+                pos = next((i for i , d in enumerate(links_regiones_madrid) if d["region"] == regiones_interesadas[0]["region"]),None)
+                if not lista:
+                    links_regiones_madrid.pop(pos)
+                else:
+                    links_regiones_madrid[pos]["num"] = len(lista)
     else:
         while len(regiones_interesadas) > 0:
             lista_anuncios = obtiene_anuncios(regiones_interesadas,page,anuncios_unicos)
@@ -643,9 +743,11 @@ def webscraping_idealista():
                 if archivos == -1:
                     archivos = 1
                 print(f"    Se han subido {archivos} archivos de {anuncios} anuncios y descartando {errores} anuncios con errores   ")
-            pos = next((i for i , d in enumerate(links_regiones_madrid) if d["region"] == regiones_interesadas[0]["region"]),None)
-            if links_regiones_madrid[pos] == 0:
-                links_regiones_madrid.pop(pos)
+                pos = next((i for i , d in enumerate(links_regiones_madrid) if d["region"] == regiones_interesadas[0]["region"]),None)
+                if not lista:
+                    links_regiones_madrid.pop(pos)
+                else:
+                    links_regiones_madrid[pos]["num"] = len(lista)
             regiones_interesadas = imprimir_regiones(links_regiones_madrid)
 
 
