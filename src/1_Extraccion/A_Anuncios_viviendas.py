@@ -726,7 +726,7 @@ def webscraping_idealista():
         for region in regiones_interesadas:
             lista_anuncios = obtiene_anuncios(region,page,anuncios_unicos)
             for clave,lista in lista_anuncios.items():
-                archivos,anuncios,errores = analiza_lista(lista,clave,page,cliente,modo) 
+                archivos,anuncios,errores = analiza_lista(lista,clave,anuncios_unicos,page,cliente,modo) 
                 if archivos == -1:
                     archivos = 1
                 print(f"    Se han subido {archivos} archivos de {anuncios} anuncios y descartando {errores} anuncios con errores   ") 
@@ -739,7 +739,7 @@ def webscraping_idealista():
         while len(regiones_interesadas) > 0:
             lista_anuncios = obtiene_anuncios(regiones_interesadas,page,anuncios_unicos)
             for clave,lista in lista_anuncios.items():
-                archivos,anuncios,errores = analiza_lista(lista,clave,page,cliente,modo) 
+                archivos,anuncios,errores = analiza_lista(lista,clave,anuncios_unicos,page,cliente,modo) 
                 if archivos == -1:
                     archivos = 1
                 print(f"    Se han subido {archivos} archivos de {anuncios} anuncios y descartando {errores} anuncios con errores   ")
