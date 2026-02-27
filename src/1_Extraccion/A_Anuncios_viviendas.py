@@ -576,7 +576,7 @@ def analiza_lista(lista_anuncios,region,ids_unicos,page,cliente,modo):
             ids_unicos.remove(vivienda["id"])
             lista_errores.append(vivienda)
             continue
-    if not df_total.empty or lista_viviendas:
+    if (not df_total.empty or lista_viviendas) and cont_anuncios:
         df = pd.DataFrame(lista_viviendas)
         df_total = pd.concat([df_total, df], ignore_index=True)
         buffer = io.BytesIO()
