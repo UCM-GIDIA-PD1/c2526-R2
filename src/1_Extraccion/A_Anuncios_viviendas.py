@@ -302,7 +302,7 @@ def links_regiones(page,url,regiones_unicos,num:0):
             boton_mostrar_todo = expandir.ele('tag:a')
             page.scroll.to_see(boton_mostrar_todo)
             boton_mostrar_todo.click()
-            time.sleep(random.uniform(1, 3))
+            time.sleep(random.uniform(0.5, 2))
             contenedor = page.ele('.navList nav-list')
         else:
             contenedor = page.ele('.navList')
@@ -471,7 +471,7 @@ def imprimir_regiones(lista_datos):
 
         print(f" El ID {opcion} no existe en la lista. Prueba otra vez.")
 
-def obtener_siguiente_indice(client, modo, region, umbral_mb=350):
+def obtener_siguiente_indice(client, modo, region, umbral_mb=1000):
     """
     Busca el último índice de la región. 
     Si el último archivo es menor al umbral, devuelve ese mismo índice para sobreescribirlo/completarlo.
@@ -551,14 +551,18 @@ def analiza_lista(lista_anuncios,region,page,cliente,modo):
                 df = pd.DataFrame(lista_viviendas)
                 df_total = pd.concat([df_total, df], ignore_index=True)
                 lista_viviendas = []
-            if df_total.memory_usage(deep=True).sum()/ (1024**2) >= 350:
-                buffer = io.BytesIO()
+            if len(df_total)    >= 500 :
                 df_total = controla_dataframe(df_total)
-                df_total.to_parquet(buffer, engine="pyarrow", index=False)
-                buffer.seek(0)
-                subir_viviendas(modo,buffer,region,cont_arch,cliente)
-                df_total = pd.DataFrame()
-                cont_arch+=1
+                for i in range(0,len(df_total),500):
+                    df_parte = df_total.iloc[i:i+500].copy()
+                    buffer = io.BytesIO()
+                    df_parte.to_parquet(buffer, engine="pyarrow", index=False)
+                    buffer.seek(0)
+                    subir_viviendas(modo,buffer,region,cont_arch,cliente)
+                    print(f"             Se ha subido el avance en {region}_n_{cont_arch}.parquet         ")
+                    df_parte = pd.DataFrame()
+                    cont_arch+=1
+                    path,nombre_fichero = construye_path(modo,region,cont_arch)
         except ElementNotFoundError:
             # Error específico: La página cargo pero el dato no esta (piso borrado o diseño distinto)
             errores += 1
@@ -641,4 +645,34 @@ def webscraping_idealista():
 
 
 if __name__ == '__main__':
-    webscraping_idealista()
+    #webscraping_idealista()
+    imprimir_header()
+    imprimir_menu_modo()
+    modo = input()
+    while modo != 'A' and modo !=  'a' and modo != 'B' and modo != 'b':
+        print("Error de entrada")
+        imprimir_menu_modo()
+        modo = input()
+    if modo == 'A' or modo == 'a':
+        url = URL_VENTA
+        modo = "venta"
+    elif modo == 'B' or modo == 'b':
+        url = URL_ALQUILER
+        modo = "alquiler"
+    page = ChromiumPage()
+    page.get(url)
+    cliente = crear_cliente_minio()
+    regiones_unicas = set()
+    links_regiones_madrid = links_regiones(page,url,regiones_unicas,0)
+    anuncios_unicos = obtener_ids_existentes(cliente,modo)
+    regiones_interesadas = imprimir_regiones(links_regiones_madrid)
+    while len(regiones_interesadas) > 0:
+            lista_anuncios = obtiene_anuncios(regiones_interesadas,page,anuncios_unicos)
+            for clave,lista in lista_anuncios.items():
+                archivos,anuncios,errores = analiza_lista(lista,clave,page,cliente,modo) 
+                if archivos == -1:
+                    archivos = 1
+                print(f"    Se han subido {archivos} archivos de {anuncios} anuncios y descartando {errores} anuncios con errores   ")
+            pos = next((i for i , d in enumerate(links_regiones_madrid) if d["region"] == regiones_interesadas[0]["region"]),None)
+            links_regiones_madrid.pop(pos)
+            regiones_interesadas = imprimir_regiones(links_regiones_madrid)
