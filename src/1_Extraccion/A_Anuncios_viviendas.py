@@ -540,6 +540,7 @@ def analiza_lista(lista_anuncios,region,page,cliente,modo):
         print(f"             .parquet de {region} recuperado          ")
     cont_anuncios = 0
     progreso = tqdm(lista_anuncios,desc=f"Analizando anuncios de la zona {region}...")
+    lista_errores = []
     for vivienda in progreso:
         nombre = vivienda["nombre"]
         url = vivienda["anuncio"]
@@ -565,11 +566,13 @@ def analiza_lista(lista_anuncios,region,page,cliente,modo):
             # Error específico: La página cargo pero el dato no esta (piso borrado o diseño distinto)
             errores += 1
             progreso.set_postfix(Error = errores,Solucion = "Salto de anuncio") 
+            lista_errores.append({"nombre":nombre,"anuncio":url})
             continue 
         except Exception as e:
             # Error genérico: Se cerró el navegador, se fue el internet, etc.
             errores += 1
             print(f"\n Error crítico en {nombre},{url}: {e}")
+            lista_errores.append({"nombre":nombre,"anuncio":url})
             continue
     if not df_total.empty or lista_viviendas:
         df = pd.DataFrame(lista_viviendas)
@@ -581,7 +584,7 @@ def analiza_lista(lista_anuncios,region,page,cliente,modo):
         subir_viviendas(modo,buffer,region,cont_arch,cliente)
         path,nombre_fichero = construye_path(modo,region,cont_arch)
         print(f"             Se ha subido el final en {nombre_fichero}.parquet         ")
-
+    lista_anuncios[:] = lista_errores
     return cont_arch,cont_anuncios,errores
 
 def construye_path(modo:str,region:str,batch:int)->str:
@@ -641,7 +644,8 @@ def webscraping_idealista():
                     archivos = 1
                 print(f"    Se han subido {archivos} archivos de {anuncios} anuncios y descartando {errores} anuncios con errores   ")
             pos = next((i for i , d in enumerate(links_regiones_madrid) if d["region"] == regiones_interesadas[0]["region"]),None)
-            links_regiones_madrid.pop(pos)
+            if links_regiones_madrid[pos] == 0:
+                links_regiones_madrid.pop(pos)
             regiones_interesadas = imprimir_regiones(links_regiones_madrid)
 
 
