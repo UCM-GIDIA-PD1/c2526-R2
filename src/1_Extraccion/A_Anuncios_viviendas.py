@@ -15,6 +15,9 @@ from tqdm import tqdm
 from pathlib import Path
 from minio.error import S3Error 
 
+umbral = IDEALISTA_UMBRAL_ANUNCIOS
+
+
 def extraer_datos_anuncio(page:ChromiumPage,url:str)->dict:
     """_summary_
         Extrae los datos de la vivienda que corresponde a la pagina cargada en el anuncio
@@ -75,6 +78,16 @@ def extraer_datos_anuncio(page:ChromiumPage,url:str)->dict:
         raise ElementNotFoundError(f"Contenedor primario no hallado en: {url}")
 
 def controla_dataframe(df:pd.DataFrame)->pd.DataFrame:
+    """
+
+    Fuerza el tipado de las columnas que pueden quedar con anomalías
+
+    Args:
+        df (pd.DataFrame): El dataframe con un conjutno de viviendas
+
+    Returns:
+        pd.DataFrame: Dataframe con todas las columnas tipadas
+    """
     columnas_numericas = ['Num_habitaciones','Banyos','Planta']
     df_res = df.copy()
     for col in columnas_numericas:
@@ -157,6 +170,14 @@ def ver_anuncio(vivienda:dict):
             print(f"{key}:{value}")
 
 def extrae_anunciante(info)->str:
+    """
+        Extrae el tipo de anunciante del anuncio de una vivienda (Profesional o Particular )
+    Args:
+        info (ElementoChromiumPage): contenedor que contiene la información del anunciante
+
+    Returns:
+        str: Nombre del tipo de anunciante
+    """
     contenedor = info.ele('tag:div@class=ide-box-contact module-contact-gray contact-data-container ')
     nombre = contenedor.ele('tag:div@class=professional-name').ele('tag:div@class=name')
     if nombre.text:
@@ -164,7 +185,17 @@ def extrae_anunciante(info)->str:
     else:
         return "Particular" 
 
-def extraer_caracteristicas(info):
+def extraer_caracteristicas(info)->dict:
+    """
+    Extrae las características básicas de una vivienda que se encuentran en el bloque características
+    en idealista
+
+    Args:
+        info (ElementoChromiumPage): contenedor de las características
+
+    Returns:
+        dict: características básicas de una vivienda
+    """
     caracteristicas = {
         'Superficie':None,
         'Num_habitaciones':None,
@@ -200,7 +231,16 @@ def extraer_caracteristicas(info):
 
     return caracteristicas
 
-def extraer_datos_geograficos(info):
+def extraer_datos_geograficos(info)->dict:
+    """
+        Extrae los datos geográficos que proporciona idealista de la vivienda 
+        Calle - Barrio - Distrito
+    Args:
+        info (ElementoChromiumPage): contenedor con los datos geográficos
+
+    Returns:
+        dict: diccionario con los datos geográficos extraídos
+    """
     ubicacion = {
         'Barrio':None,
         'Distrito':None,
@@ -218,11 +258,28 @@ def extraer_datos_geograficos(info):
     return ubicacion
 
 
-def extraer_descripcion(contenedor):
+def extraer_descripcion(contenedor)->str:
+    """
+        Extrae la descripción de la vivienda
+
+    Args:
+        contenedor (ElementoChromiumPage): Contenedor con la descripción
+
+    Returns:
+        str: string de descripción sin saltos de línea
+    """
     seccion_descripcion = contenedor.ele('tag:p')
     return seccion_descripcion.text.replace('\n',' ')
 
-def caracteristica(texto):
+def caracteristica(texto)->dict:
+    """
+        Extrae de los textos de cracaterísticas la que corresponde al texto
+    Args:
+        texto (str): texto que es una línea del bloque de las características
+
+    Returns:
+        dict: diccionario con tantas entradas como características se han extraído
+    """
     if 'm²' in texto:
         numero = re.findall(r'-?\d+\.?\d*',texto)
         numero = max(numero)
@@ -281,7 +338,16 @@ def caracteristica(texto):
         return {'info_inutil':None}
         
 
-def corrige_page(page,url):
+def corrige_page(page:ChromiumPage,url:str)->ChromiumPage:
+    """
+        Función para evitar lo errores de generación de los html y también en caso de detección por parte de idealista del script
+        Vuelve a ejecutar el html hasta que se genere bien autmáticamente o que lo corrija un usuario pasando el test de verificación
+    Args:
+        page (ChromiumPage): el acceso a la página web
+        url (str): la url que estamos tratando de obtener
+    Returns:
+        ChromiumPage: Devuelve el acceso a la página de la url 
+    """
     pagina_valida = page.ele('tag:div@id=wrapper')
     while not pagina_valida:
         time.sleep(random.uniform(5, 10))
@@ -289,9 +355,21 @@ def corrige_page(page,url):
         pagina_valida = page.ele('tag:body').attr('class')
     return page
 
-umbral = IDEALISTA_UMBRAL_ANUNCIOS
 
-def links_regiones(page,url,regiones_unicos,num:0):
+
+def links_regiones(page:ChromiumPage,url:str,regiones_unicos:set,num:0)->list:
+    """
+        Recursiva de obtención de los links de regiones y subregiones
+        trata de ampliar las regiones mayor que la umbral de 1200 anuncios y hacer que no haya repeticion de zonas 
+    Args:
+        page (ChromiumPage): acceso a la pagina web
+        url (str): url de la pagina activa en el momento
+        regiones_unicos (set): set de las distintas regiones
+        num (0): numero de anuncios por zona
+
+    Returns:
+        list: lista de diccionario con {"region","link","num"} donde num es el numero de anuncios dentro de dicha zona
+    """
     page = corrige_page(page,url)
     if page.ele('tag:main@class=listing-items  core-vitals-listing-map'):
         return {"link":page.url.astype(str),"num":num}
@@ -331,7 +409,16 @@ def links_regiones(page,url,regiones_unicos,num:0):
         return páginas_zonas
 
 
-def sacar_link(anuncio,lista):
+def sacar_link(anuncio,lista:set)->dict:
+    """
+        Extrae el link del anuncio que se le pasa
+    Args:
+        anuncio (ElementoChromiumPage): contenedor del anuncio 
+        lista (set): set de los links de anuncios ya extraídos oo existentes en el minio para evitar repeticiones
+
+    Returns:
+        dict: diccionario con {"nombre":,"anuncio":,"id":}
+    """
     tag_a = anuncio.ele('tag:a@role=heading')
     if tag_a:
         link = tag_a.attr('href')
@@ -343,7 +430,17 @@ def sacar_link(anuncio,lista):
                 return {"nombre":nombre, "anuncio":link,"id":id}
     return None
 
-def analizar_pagina(page,lista_ids):
+def analizar_pagina(page:ChromiumPage,lista_ids:set)->list:
+    """
+        Extrae todos los links de anuncios de una página html de idealista.
+        Además añade los ids a una lista para evitar que causen repetición
+    Args:
+        page (ChromiumPage): acceso a la pagina
+        lista_ids (set): set de ids para no repetir anuncios
+
+    Returns:
+        list: lista de diccionarios con {"nombre":,"anuncio":,"id":} correspondientes a una pagina de anuncios
+    """
     pagina = []
     time.sleep(random.uniform(1, 3))
     anuncios = page.eles('tag:article')
@@ -357,7 +454,13 @@ def analizar_pagina(page,lista_ids):
             lista_ids.add(anuncio_nuevo["id"])
     return pagina
 
-def guardar_pagina_en_csv(lista_diccionarios, ruta_archivo):
+def guardar_pagina_en_csv(lista_diccionarios:list, ruta_archivo:str)->None:
+    """
+        [AUXILIAR] : Para guardar en memoria las paginas de anuncios y visualizar
+    Args:
+        lista_diccionarios (list): lista de anuncios con sus links
+        ruta_archivo (str): ruta de archivo
+    """
     if not lista_diccionarios:
         return
     
@@ -369,8 +472,14 @@ def guardar_pagina_en_csv(lista_diccionarios, ruta_archivo):
     
     df.to_csv(ruta_archivo, mode='a', index=False, header=not archivo_existe, encoding='utf-8')
 
-def guardas_links_regiones(lista_zonas,ruta): 
-       
+def guardas_links_regiones(lista_zonas:list,ruta:str)->None: 
+    """
+    [AUXILIAR] : Para guardar en memoria la lista de regiones y visualizar
+
+    Args:
+        lista_zonas (list): lista de regiones con sus links
+        ruta (str): ruta de archivo
+    """
     df = pd.DataFrame(lista_zonas)
         
     df = df[['link', 'num']]
@@ -379,18 +488,32 @@ def guardas_links_regiones(lista_zonas,ruta):
         
     df.to_csv(ruta, mode='a', index=False, header=not archivo_existe, encoding='utf-8')
 
-def guardas_viviendas(lista_viviendas):
+def guardas_viviendas(lista_viviendas:list)->None:
+    """
+        [AUXILIAR] : Para guardar en memoria la lista de viviendas y visualizar
+    Args:
+        lista_viviendas (list): lista de viviendas con todas sus características
+    """
     home = Path.home()
 
-# Creamos la ruta completa (puedes mandarlo al Escritorio para verlo rápido)
     ruta_test = home / "test_maiday.csv"
     df = pd.DataFrame(lista_viviendas)
-        
+    df = controla_dataframe(df)
     archivo_existe = os.path.isfile(ruta_test)
         
     df.to_csv(ruta_test, mode='a', index=False, header=not archivo_existe, encoding='utf-8')
 
-def obtiene_anuncios(links_regiones,page,anuncios_unicos):
+def obtiene_anuncios(links_regiones:dict,page:ChromiumPage,anuncios_unicos:set)->dict:
+    """
+        Extrae todos los anuncios de las regiones que se encutran en links_regiones
+    Args:
+        links_regiones (dict): {"region","link"} para la region que se extrae
+        page (ChromiumPage): acceso a chrome para acceder las regiones
+        anuncios_unicos (set): conjunto de ids ya tratados hasta el momento
+
+    Returns:
+        dict: diccionario con entrada de {"region":[{},{},{}]} donde los diccionarios internos son los distintos anuncios encontrados
+    """
     res = {}
     for url in links_regiones:
         siguiente = True
@@ -410,21 +533,33 @@ def obtiene_anuncios(links_regiones,page,anuncios_unicos):
         barra_progreso.close()
     return res
 
-def imprimir_header():
+def imprimir_header()->None:
+    """
+    Header inicial del scrapper
+    """
     print("╔" + "═" * 58 + "╗")
     print("║" + "MAiDay SCRAPER".center(58) + "║")
     print("║" + "v11.1".center(58) + "║")
     print("╚" + "═" * 58 + "╝")
 
-def imprimir_menu_modo():
+def imprimir_menu_modo()->None:
+    """
+        Menu para seleccion de modo inicial
+    """
     print("\n" + " Selecciona el tipo de mercado ".center(60, "░"))
     print("\n   [A]  VENTA")
     print("   [B]  ALQUILER")
     print("   [C]  ACTUALIZACION IDs ANTES DE SCRAPPEAR")
     print("\n" + "─" * 60)
 
-def imprimir_regiones(lista_datos):
+def imprimir_regiones(lista_datos:list)->list:
     """
+        Imprime  las regiones disponibles para scrapear y devuelve la o las seleccionadas
+    Args:
+        lista_datos (list): Lista de las regiones de madrid con sus links y numero de viviendas
+
+    Returns:
+        list: lista de regiones con sus links y numeros de viviendas
     """
     total_anuncios = sum(item['num'] for item in lista_datos)
     
@@ -472,11 +607,21 @@ def imprimir_regiones(lista_datos):
 
         print(f" El ID {opcion} no existe en la lista. Prueba otra vez.")
 
-def obtener_siguiente_indice(client, modo, region, umbral_mb=340):
+def obtener_siguiente_indice(client: Minio, modo:str, region:str, umbral_mb=340):
     """
-    Busca el último índice de la región. 
-    Si el último archivo es menor al umbral, devuelve ese mismo índice para sobreescribirlo/completarlo.
-    Si es mayor o no existe, devuelve el siguiente.
+        Obtiene el parquet sobre el que se va a operar. 
+        O decide recupar uno ya existente y descargarlo
+        O no existe uno que corresponde a la misma region y crea uno nuevo
+        O encuentra los de la misma region y los descarta por ya ser muy grandes > umbral-mb(default 340 MB)
+    Args:
+        client (Minio client): cliente de minio 
+        modo (str): tipo de mercado sobre el que estoy operando (venta o alquiler)
+        region (str): nombre de region sobre la que estoy operando
+        umbral_mb (int, optional): Umbral de que tan grande tiene que ser un parquet para que decida no recuperarlo Defaults to 340.
+
+    Returns:
+        int: numero de archivo sobre el que se va a operar
+        bool: si tenemos o no que descragar el archivo
     """
     bucket = os.getenv("MINIO_BUCKET")
     group_path = os.getenv("MINIO_GROUP_PATH")
@@ -505,6 +650,17 @@ def obtener_siguiente_indice(client, modo, region, umbral_mb=340):
         return max_indice + 1,False
 
 def obtener_ids_existentes(client: Minio, modo: str) -> set:
+    """
+        Obtiene todos los ids existentes de viviendas de un tipo de mercado (alquiler o venta) y los descarga.
+        Este es el método bruto pasando por todos los parquets.
+        A ejecutar una vez cada semana para garantizar que no haya repetición
+    Args:
+        client (Minio): cliente de minio
+        modo (str): tipo de mercado sobre el que estoy operando (venta o alquiler)
+
+    Returns:
+        set: conjunto de ids que ya existen en la nube
+    """
     bucket = os.getenv("MINIO_BUCKET")
     group_path = os.getenv("MINIO_GROUP_PATH")
     prefix = f"{group_path}/raw/datos_primarios/{modo}/"
@@ -529,7 +685,22 @@ def obtener_ids_existentes(client: Minio, modo: str) -> set:
   
     return ids_totales
 
-def analiza_lista(lista_anuncios,region,ids_unicos,page,cliente,modo):
+def analiza_lista(lista_anuncios:list,region:str,ids_unicos:set,page:ChromiumPage,cliente:Minio,modo:str):
+    """
+        Analiza todas las viviendas en una lista de viviendas correspondientes a una region de un tipo de mercado
+        Realiza el avance descargando cada vez que el dataframe sea muy grande
+        Garantiza que los anuncios de errores se ignores pero que se sigan manteniendo en la lista de anuncios por si se quieren volver a tratar
+    Args:
+        lista_anuncios (list): lista de anuncios
+        region (str): region sobre la que se etsá operando
+        ids_unicos (set): conjunto de anuncios unicos
+        page (ChromiumPage): Aceeso a la pagina de chrome
+        cliente (Minio): cliente de minio
+        modo (str): tipo de mercado (venta o alquiler)
+
+    Returns:
+        int,int,int: numero de archivos que se han subido, numero de anuncios que se han extraido, numero de errores que se han producido
+    """
     errores = 0
     lista_viviendas = []
     df_total = pd.DataFrame()
@@ -563,7 +734,7 @@ def analiza_lista(lista_anuncios,region,ids_unicos,page,cliente,modo):
                 df_total = pd.DataFrame()
                 cont_arch+=1
         except ElementNotFoundError:
-            # Error específico: La página cargo pero el dato no esta (piso borrado o diseño distinto)
+            # Error específico: La página cargo pero el dato no esta (piso borrado, diseño distinto o muy frecuentemente sin imágenes)
             errores += 1
             progreso.set_postfix(Error = errores,Solucion = "Salto de anuncio") 
             ids_unicos.remove(vivienda["id"])
@@ -590,6 +761,16 @@ def analiza_lista(lista_anuncios,region,ids_unicos,page,cliente,modo):
     return cont_arch,cont_anuncios,errores
 
 def construye_path(modo:str,region:str,batch:int)->str:
+    """
+        construye el path crrespondiente a nuestro parquet tanto para descragar como subir
+    Args:
+        modo (str): _description_
+        region (str): _description_
+        batch (int): _description_
+
+    Returns:
+        str: _description_
+    """
     if modo == "venta":
         path = MINIO_RAW_PRIMARIOS +"/"+  "venta"
     elif modo == "alquiler":
@@ -599,16 +780,35 @@ def construye_path(modo:str,region:str,batch:int)->str:
 
     return path,nombre_fichero
 
-def subir_viviendas(modo:str,buffer: io.BytesIO,region:str,ids_unicos:set,batch:int,cliente:Minio):
-    
+def subir_viviendas(modo:str,buffer: io.BytesIO,region:str,ids_unicos:set,batch:int,cliente:Minio)-> None:
+    """
+        Almacena el batch de viviendas recibido al minio
+        Actualiza los ids de anuncios ya extraidos
+    Args:
+        modo (str): tipo de mercado (alquiler o venta)
+        buffer (io.BytesIO): buffer conteniendo los anuncios
+        region (str): region de madrid a la que corresponden las vivientas
+        ids_unicos (set): ids de anuncios extraidos
+        batch (int): numero de archivos almacenados para esa zona
+        cliente (Minio): cliente de minio
+    """
     path,nombre_fichero = construye_path(modo,region,batch)
     actualizar_ids(cliente,modo,ids_unicos)
     minio_subir_memoria(cliente,path,nombre_fichero,buffer)
 
-def descargar_ids(client, modo: str) -> set:
+def descargar_ids(client:Minio, modo: str) -> set:
     """
-    Descarga el Parquet maestro de IDs desde MinIO y lo devuelve como un set de Python.
-    Si el archivo no existe (primera ejecución), devuelve un set vacío.
+       Descarga el Parquet maestro de IDs desde MinIO y lo devuelve como un set de Python.
+       Si el archivo no existe (primera ejecución), devuelve un set vacío.
+    Args:
+        client (Minio): cliente de minio
+        modo (str): tipo de mercado (alquiler o venta)
+
+    Raises:
+        e: error de no encontrar la lista de ids
+
+    Returns:
+        set: conjunto de ids extraídos hasta el momento
     """
     bucket = os.getenv("MINIO_BUCKET")
     group_path = os.getenv("MINIO_GROUP_PATH")
@@ -639,11 +839,88 @@ def descargar_ids(client, modo: str) -> set:
             response.close()
             response.release_conn()
 
-def actualizar_ids(client, modo: str, ids_set: set) -> None:
-    """
-    Convierte un set de IDs a Parquet y sobrescribe el archivo  en MinIO.
-    """
+def escanear_y_corregir_duplicados(client, modo: str) -> set:
+    bucket = os.getenv("MINIO_BUCKET")
+    group_path = os.getenv("MINIO_GROUP_PATH")
+    prefix = f"{group_path}/raw/datos_primarios/{modo}/"
+    
+    mapa_ids = {} # Diccionario para rastrear { 'id_anuncio': 'nombre_del_fichero.parquet' }
+    archivos_a_limpiar = set() # Aquí guardamos los ficheros que tienen ids repetidas
+    duplicados_encontrados = 0
+    
+    objetos = client.list_objects(bucket, prefix=prefix, recursive=True)
+    
+    for obj in tqdm(objetos,desc="Recuperando los parquets existentes en la nube"):
+        nombre_archivo = obj.object_name
         
+        if not nombre_archivo.endswith(".parquet") or "ids" in nombre_archivo:
+            continue
+            
+        response = client.get_object(bucket, nombre_archivo)
+        try:
+            buffer = io.BytesIO(response.read())
+            df_temp = pd.read_parquet(buffer, columns=['id'])
+            lista_ids = df_temp['id'].astype(str).tolist()
+            
+            # Buscamos duplicados en este archivo
+            for idx in lista_ids:
+                if idx in mapa_ids:
+                    duplicados_encontrados += 1
+                    archivos_a_limpiar.add(nombre_archivo)
+                else:
+                    mapa_ids[idx] = nombre_archivo
+                    
+        finally:
+            response.close()
+            response.release_conn()
+
+    print(f" Escaneo completado. IDs únicos reales: {len(mapa_ids)}")
+    
+    if archivos_a_limpiar:
+        print(f"  Se han detectado {duplicados_encontrados} duplicados.")
+        
+        for archivo_sucio in archivos_a_limpiar:
+            limpiar_archivo_minio(client, bucket, archivo_sucio)
+            
+        print(" Limpieza terminada. Los duplicados han sido eliminados de la nube.")
+    else:
+        print(" Lus datos están inmaculados. 0 duplicados.")
+
+    actualizar_ids(client,modo,set(mapa_ids.keys()))
+
+    return set(mapa_ids.keys())
+
+
+def limpiar_archivo_minio(client, object_name,modo:str):
+    """Descarga un parquet, le quita los duplicados y lo vuelve a subir."""
+    print(f"   ->  Limpiando .parquet: {object_name}")
+    
+    path = f"raw/datos_primarios/{modo}"
+    df_sucio = bajar_minio(client,path,object_name)
+    filas_antes = len(df_sucio)
+    
+    df_limpio = df_sucio.drop_duplicates(subset=['id_anuncio'], keep='first')
+    filas_despues = len(df_limpio)
+    
+    if filas_antes > filas_despues:
+        print(f"      Borradas {filas_antes - filas_despues} filas duplicadas.")
+        
+        buffer_out = io.BytesIO()
+        df_limpio.to_parquet(buffer_out, engine='pyarrow', index=False)
+        buffer_out.seek(0)
+        
+        minio_subir_memoria(client,path,object_name,buffer_out)
+
+
+def actualizar_ids(client:Minio, modo: str, ids_set: set) -> None:
+    """
+            Convierte un set de IDs a Parquet y sobrescribe el archivo  en MinIO.
+
+    Args:
+        client (Minio): cliente de minio
+        modo (str): tipo de mercado (venta o alquiler)
+        ids_set (set): set de ids extraídos hasta el momento
+    """
     print(f" Guardando {len(ids_set)} IDs en el archivo de {modo}...")
     
     df_ids = pd.DataFrame({'id': list(ids_set)})
@@ -664,6 +941,14 @@ def actualizar_ids(client, modo: str, ids_set: set) -> None:
         buffer.close()
 
 def inicio():
+    """
+        menu inicial para selección de mercado sobre el que operamos
+    Returns:
+        str: tipo de mercado seleccionado
+        str: url correspondiente al tipo de mercado seleccionado
+        set: set descargado desde minio de los ids ya extraídos
+        Minio: cliente de minio 
+    """
     imprimir_header()
     imprimir_menu_modo()
     cliente = crear_cliente_minio()
@@ -706,7 +991,7 @@ def inicio():
             url = URL_ALQUILER
             modo = "alquiler"
 
-        anuncios_unicos = obtener_ids_existentes(cliente, modo)
+        anuncios_unicos = escanear_y_corregir_duplicados(cliente, modo)
         
         actualizar_ids(cliente, modo, anuncios_unicos)
         
@@ -714,7 +999,12 @@ def inicio():
 
     return modo, url, anuncios_unicos,cliente
 
-def webscraping_idealista():
+def webscraping_idealista()-> None:
+    """
+        Ejecución del webscraping
+        Función a llamar para ejecutar la extracción
+    """
+
     modo,url,anuncios_unicos,cliente = inicio()
     
     page = ChromiumPage()
