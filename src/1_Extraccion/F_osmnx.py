@@ -3,14 +3,15 @@ import pandas as pd
 import io
 from src.utils.funciones_minio import crear_cliente_minio, minio_subir_memoria
 from src.config import (
-    PLACE_OSM, TAGS_OCIO, TAGS_NEGATIVOS,
-    MINIO_OCIO, MINIO_NEGATIVOS,
-    OBJ_OCIO, OBJ_NEGATIVOS,
+    PLACE_OSM, TAGS_COMERCIO, TAGS_NEGATIVOS, TAGS_ALIMENTACION,
+    MINIO_COMERCIO, MINIO_NEGATIVOS, MINIO_ALIMENTACION,
+    OBJ_COMERCIO, OBJ_NEGATIVOS, OBJ_ALIMENTACION,
 )
 
 '''
 Script para la extracción de puntos de interés desde OpenStreetMap (OSM),
-enfocado en indicadores de ocio (comercios, deportes, cultura, vida nocturna) y negativos (industrias, vertederos, prisiones).
+enfocado en indicadores de comercios en general (peluquerias, restaurantes...), negativos (industrias, vertederos, prisiones)
+y alimentacion (supermercados, panaderias...).
 '''
 
 def procesar_y_subir_osm(tags: dict, nombre_fichero: str, subcarpeta: str):
@@ -48,10 +49,12 @@ def procesar_y_subir_osm(tags: dict, nombre_fichero: str, subcarpeta: str):
 
     # Clasificación y limpieza
     print(f"Clasificando y limpiando datos para {nombre_fichero}... \n")
-    if 'ocio' in nombre_fichero:
-        features['tipo'] = features.apply(identificar_tipo_ocio, axis=1)
+    if 'comercio' in nombre_fichero.lower():
+        features['tipo'] = 'comercio'
+    elif 'alimentacion' in nombre_fichero.lower():
+        features['tipo'] = 'alimentacion'
     else:
-        features['tipo'] = features.apply(identificar_tipo_negativo, axis=1)
+        features['tipo'] = 'negativo'
 
     columnas = ['name', 'lat', 'lon', 'tipo']
     df_final = features[[c for c in columnas if c in features.columns]].copy()
@@ -66,24 +69,7 @@ def procesar_y_subir_osm(tags: dict, nombre_fichero: str, subcarpeta: str):
     minio_subir_memoria(client, subcarpeta, nombre_fichero, buffer)
     print(f"Subido a minIO: {nombre_fichero} \n")
 
-def identificar_tipo_ocio(row: pd.Series) -> str:
-    """ Clasifica sitios de ocio según tags de OSM. """
-
-    if pd.notna(row.get('shop')): return 'comercio'
-    if pd.notna(row.get('leisure')): return 'deporte'
-    if pd.notna(row.get('amenity')):
-        if row['amenity'] in ['cinema', 'theatre', 'arts_centre', 'library']: return 'cultural'
-        return 'vida_nocturna'
-    return 'otros'
-
-def identificar_tipo_negativo(row: pd.Series) -> str:
-    """ Clasifica sitios negativos según tags de OSM. """
-
-    if pd.notna(row.get('landuse')): return row['landuse']
-    if pd.notna(row.get('amenity')): return row['amenity']
-    if pd.notna(row.get('power')): return 'power_station'
-    return 'otros'
-
 if __name__ == "__main__":
-    procesar_y_subir_osm(TAGS_OCIO, OBJ_OCIO, MINIO_OCIO)
+    procesar_y_subir_osm(TAGS_COMERCIO, OBJ_COMERCIO, MINIO_COMERCIO)
     procesar_y_subir_osm(TAGS_NEGATIVOS, OBJ_NEGATIVOS, MINIO_NEGATIVOS)
+    procesar_y_subir_osm(TAGS_ALIMENTACION, OBJ_ALIMENTACION, MINIO_ALIMENTACION)

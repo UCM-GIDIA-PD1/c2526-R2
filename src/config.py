@@ -21,9 +21,10 @@ MINIO_INTERIM_SECUNDARIOS = "interim/secundarios"
 # --- Datos secundarios temáticos ---
 MINIO_CATASTRO = "datos_secundarios/catastro"
 MINIO_INE = "datos_secundarios/ine"
-MINIO_OCIO = "datos_secundarios/ocio"
+MINIO_COMERCIO = "datos_secundarios/comercio"
 MINIO_NEGATIVOS = "datos_secundarios/negativos"
 MINIO_SECCIONES = "datos_secundarios/secciones_censales"
+MINIO_ALIMENTACION = "datos_secundarios/alimentacion"
 
 
 # ╔══════════════════════════════════════════════════════════════════════╗
@@ -135,7 +136,7 @@ OBJ_METRO = "estaciones_metro.parquet"
 
 
 # ╔══════════════════════════════════════════════════════════════════════╗
-# ║  D — Catastro                                                      ║
+# ║  D — Catastro                                                        ║
 # ╚══════════════════════════════════════════════════════════════════════╝
 
 URL_CATASTRO = "https://www.catastro.hacienda.gob.es/INSPIRE/Buildings/28/28900-MADRID/A.ES.SDGC.BU.28900.zip"
@@ -143,7 +144,7 @@ OBJ_CATASTRO = "edificios_madrid.parquet"
 
 
 # ╔══════════════════════════════════════════════════════════════════════╗
-# ║  E — INE (renta media por hogar)                                   ║
+# ║  E — INE (renta media por hogar)                                     ║
 # ╚══════════════════════════════════════════════════════════════════════╝
 
 URL_INE = "https://servicios.ine.es/wstempus/js/es/DATOS_TABLA/30824?tip=AM"
@@ -151,15 +152,14 @@ OBJ_INE = "renta_hogar_secciones_madrid.parquet"
 
 
 # ╔══════════════════════════════════════════════════════════════════════╗
-# ║  F — OpenStreetMap (ocio y negativos)                               ║
+# ║  F — OpenStreetMap (ocio, negativos y supermercados y comercios)     ║
 # ╚══════════════════════════════════════════════════════════════════════╝
 
 PLACE_OSM = "Madrid, Spain"
 
-TAGS_OCIO = {
-    "shop": ["mall", "department_store"],
-    "leisure": ["fitness_centre", "sports_centre"],
-    "amenity": ["cinema", "bar", "pub"],
+TAGS_COMERCIO = {
+    "shop": ["mall", "department_store", "clothes", "electronics", "hairdresser", "beauty", "shoes", "hardware"],
+    "amenity": ["restaurant", "cafe", "bar", "pub", "cinema", "pharmacy", "veterinary"]
 }
 
 TAGS_NEGATIVOS = {
@@ -168,12 +168,18 @@ TAGS_NEGATIVOS = {
     "power": ["substation"],
 }
 
-OBJ_OCIO = "indicadores_ocio_madrid.parquet"
+TAGS_ALIMENTACION = {
+    "shop": ["supermarket", "convenience", "bakery", "butcher", "greengrocer", "seafood"],
+    "amenity": ["marketplace", "market"]
+}
+
+OBJ_COMERCIO = "indicadores_comercio_madrid.parquet"
 OBJ_NEGATIVOS = "indicadores_negativos_madrid.parquet"
+OBJ_ALIMENTACION = "indicadores_alimentacion_madrid.parquet"
 
 
 # ╔══════════════════════════════════════════════════════════════════════╗
-# ║  G — Secciones censales (Geoportal Ayto. Madrid)                   ║
+# ║  G — Secciones censales (Geoportal Ayto. Madrid)                     ║
 # ╚══════════════════════════════════════════════════════════════════════╝
 
 URL_SECCIONES = "https://geoportal.madrid.es/fsdescargas/IDEAM_WBGEOPORTAL/LIMITES_ADMINISTRATIVOS/Seccionado/TopoJSON/Secciones_Censales.json"

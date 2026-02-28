@@ -208,68 +208,8 @@ def limpiar_memoria_raw():
 
     print("Limpieza de datasets de viviendas completada.") 
 
-def visualizar_imagenes_seguro(datos):
-    """
-    Función a prueba de balas para visualizar imágenes. 
-    Acepta Series, DataFrames de una celda, Numpy Arrays o Listas.
-    """
-    # ==========================================
-    # 1. ESCUDOS DE DEPURACIÓN (Anti-Series y Anti-Arrays)
-    # ==========================================
-    
-    # Si le pasas una columna entera o una Serie, sacamos el primer elemento a la fuerza
-    if isinstance(datos, pd.Series):
-        print("⚠️ Has pasado una Serie. Extrayendo el primer elemento automáticamente...")
-        if datos.empty: return
-        datos = datos.iloc[0]
 
-    # Si le pasas un mini-DataFrame por error
-    if isinstance(datos, pd.DataFrame):
-        print("⚠️ Has pasado un DataFrame. Extrayendo la primera celda...")
-        if datos.empty: return
-        datos = datos.iloc[0, 0]
-        
-    # PyArrow al cargar Parquets a veces convierte las listas en Numpy Arrays.
-    # Los Numpy Arrays también dan error de "ambigüedad" con los if.
-    if isinstance(datos, np.ndarray):
-        datos = datos.tolist()
-
-    # Comprobación segura de nulos (sin usar 'if not' directo)
-    if datos is None or (isinstance(datos, float) and pd.isna(datos)):
-        print("❌ La celda está vacía (NaN o None).")
-        return
-        
-    if not isinstance(datos, list):
-        print(f"❌ Formato inesperado. Esperaba una lista, pero llegó: {type(datos)}")
-        print(f"Contenido: {datos}")
-        return
-        
-    if len(datos) == 0:
-        print("❌ La lista de imágenes está vacía.")
-        return
-
-    # ==========================================
-    # 2. PROCESAMIENTO DE LAS IMÁGENES
-    # ==========================================
-    print(f"✅ Datos limpios listos para procesar. Contiene {len(datos)} diccionarios.")
-    
-    for diccionario in datos:
-        for habitacion, bytes_img in diccionario.items():
-            
-            # Filtramos los None que mete el formato Parquet
-            if bytes_img is not None:
-                print(f"📸 Abriendo: {habitacion}...")
-                
-                try:
-                    buffer = io.BytesIO(bytes_img)
-                    imagen = Image.open(buffer)
-                    print(f"   Formato: {imagen.format} | Tamaño: {imagen.size}")
-                    imagen.show() 
-                    time.sleep(10)
-                except Exception as e:
-                    print(f"   ❌ Error al abrir {habitacion}: {e}")
 
 if __name__=="__main__":
     cliente = crear_cliente_minio()
     df = descargar_imagenes(cliente,f"{path_raw}alquiler","batch_moratalaz_n_1.parquet")
-    visualizar_imagenes_seguro(df["Imagenes"].iloc[0])
