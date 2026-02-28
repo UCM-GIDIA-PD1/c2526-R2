@@ -154,6 +154,7 @@ def extraer_imagenes(page:ChromiumPage,contenedor)->list:
                     buffer_webp = io.BytesIO()
                     im.save(buffer_webp, format="WebP", quality=80, method=6)
                     lista.append({titulo.text:buffer_webp.getvalue()})
+                    cont[titulo.text] += 1
                     total+=1
         elif total >= 8:
             break
@@ -664,7 +665,7 @@ def obtener_ids_existentes(client: Minio, modo: str) -> set:
     bucket = os.getenv("MINIO_BUCKET")
     group_path = os.getenv("MINIO_GROUP_PATH")
     prefix = f"{group_path}/raw/datos_primarios/{modo}/"
-    
+
     ids_totales = set()
     objetos = client.list_objects(bucket, prefix=prefix, recursive=True)
     progreso = tqdm(objetos,desc = "Extrayendo ids de anuncios ya descargados")
@@ -992,9 +993,7 @@ def inicio():
             modo = "alquiler"
 
         anuncios_unicos = escanear_y_corregir_duplicados(cliente, modo)
-        
-        actualizar_ids(cliente, modo, anuncios_unicos)
-        
+                
         print(f" Memoria reconstruida con {len(anuncios_unicos)} IDs. Lista para scrapear.")
 
     return modo, url, anuncios_unicos,cliente

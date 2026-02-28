@@ -8,6 +8,7 @@ dependencies = [
     "dotenv>=0.9.9",
     "drissionpage>=4.1.1.2",
     "geopandas>=1.1.2",
+    "geopy>=2.4.1",
     "minio>=7.2.20",
     "osmnx>=2.0.7",
     "pandas>=3.0.0",

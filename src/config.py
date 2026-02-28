@@ -33,6 +33,8 @@ MINIO_SECCIONES = "datos_secundarios/secciones_censales"
 URL_ALQUILER = "https://www.idealista.com/alquiler-viviendas/madrid-madrid/mapa"
 URL_VENTA = "https://www.idealista.com/venta-viviendas/madrid-madrid/mapa"
 IDEALISTA_UMBRAL_ANUNCIOS = 1200
+CIUDAD = "Madrid"
+PAIS = "Spain"
 
 
 # ╔══════════════════════════════════════════════════════════════════════╗

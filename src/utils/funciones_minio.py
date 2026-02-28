@@ -132,3 +132,63 @@ def bajar_minio(client: Minio, path: str, minio_object: str) -> pd.DataFrame:
     response.close()
     response.release_conn()
     return df
+
+
+def bajar_minio_especifico(client: Minio, path: str, minio_object: str,columnas:list) -> pd.DataFrame:
+    """ 
+    Descarga desde MinIO un dataframe
+
+    Args:
+        client (Minio): Cliente de MinIO ya inicializado
+        path: Ruta dentro del bucket donde se encuentra el objeto
+        minio_object (str): Nombre del objeto de origen en el bucket
+
+    Returns:
+        pd.DataFrame: Dataframe solicitado
+    """
+
+    load_dotenv()
+    minio_bucket=os.getenv("MINIO_BUCKET")
+    minio_groupPath=os.getenv("MINIO_GROUP_PATH")
+    assert minio_bucket, "Falta MINIO_BUCKET en el entorno/.env"
+    assert minio_groupPath, "Falta MINIO_GROUP_PATH en el entorno/.env"
+    assert client.bucket_exists(minio_bucket), (
+        f"El bucket {minio_bucket} no existe o no tienes permisos."
+    )
+    response = client.get_object(
+        bucket_name=minio_bucket,
+        object_name=f'{minio_groupPath}/{path}/{minio_object}'
+    )
+
+    # Leer en memoria
+    data = io.BytesIO(response.read())
+    df = pd.read_parquet(data,columns=columnas)
+
+    response.close()
+    response.release_conn()
+    return df
+
+
+def buscar_todos_los_archivos(client: Minio, path: str)->list:
+    """
+    Devuelve una lista con las rutas completas de todos los archivos .parquet 
+    que existen dentro de una carpeta específica en MinIO.
+    
+    Args:
+        client: El cliente de MinIO inicializado.
+        ruta_busqueda (str): La ruta dentro del bucket (ej: 'maiday/datos_primarios/venta/')
+    """
+    bucket = os.getenv("MINIO_BUCKET")
+    minio_groupPath=os.getenv("MINIO_GROUP_PATH")
+
+    ruta_busqueda = f"{minio_groupPath}/{path}/"
+        
+    lista_archivos = []
+
+    objetos = client.list_objects(bucket, prefix=ruta_busqueda, recursive=True)
+    for obj in objetos:
+        nombre_archivo = obj.object_name
+        if nombre_archivo.endswith('.parquet'):
+            lista_archivos.append(nombre_archivo.removeprefix(ruta_busqueda))
+                
+    return lista_archivos
