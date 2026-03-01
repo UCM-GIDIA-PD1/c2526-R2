@@ -2,7 +2,7 @@ import requests
 import pandas as pd
 import io
 from src.utils.funciones_minio import crear_cliente_minio, minio_subir_memoria
-from src.config import URL_INE, MINIO_INE, OBJ_INE
+from src.config import MINIO_RAW_SECUNDARIOS, URL_INE, OBJ_INE
 
 '''
 Script para la extracción de datos de renta media por hogar del INE, filtrado por Madrid Capital,
@@ -49,7 +49,7 @@ def descargar_ine():
     buffer.seek(0)
     
     client = crear_cliente_minio()
-    minio_subir_memoria(client, MINIO_INE, OBJ_INE, buffer)
+    minio_subir_memoria(client, MINIO_RAW_SECUNDARIOS, OBJ_INE, buffer)
     print("Renta INE subida a MinIO. \n")
 
 if __name__ == "__main__":
