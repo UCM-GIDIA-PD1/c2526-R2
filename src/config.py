@@ -120,7 +120,7 @@ DATASETS_AYTO_LIMPIEZA = {k: v["object"] for k, v in DATASETS_AYTO.items() if k 
 URL_BUS = (
     "https://services5.arcgis.com/UxADft6QPcvFyDU1/arcgis/rest/services/"
     "M6_Red/FeatureServer/0/query?where=1%3D1"
-    "&outFields=DENOMINACION,X,Y,GRADOACCESIBILIDAD&outSR=4326&f=json"
+    "&outFields=DENOMINACION,LINEAS,X,Y,GRADOACCESIBILIDAD&outSR=4326&f=json"
 )
 
 URL_METRO_BASE = (
@@ -129,7 +129,13 @@ URL_METRO_BASE = (
 )
 
 # IDs de las capas de ESTACION (sentido 1 = S1, una por línea de metro)
+# y nombre de línea asociado a cada capa
 METRO_LAYER_IDS = [2, 11, 20, 29, 38, 47, 56, 59, 71, 80, 83, 95, 98, 110, 119, 128]
+METRO_LAYER_LINEAS = {
+    2: "1", 11: "2", 20: "3", 29: "4", 38: "5", 47: "6",
+    56: "7a", 59: "7b", 71: "8", 80: "9A", 83: "9B",
+    95: "10a", 98: "10b", 110: "11", 119: "12", 128: "R",
+}
 
 OBJ_BUS = "paradas_bus.parquet"
 OBJ_METRO = "estaciones_metro.parquet"

@@ -26,7 +26,7 @@ from dotenv import load_dotenv
 from src.utils.funciones_minio import crear_cliente_minio, minio_subir_memoria
 from src.config import (
     MINIO_RAW_SECUNDARIOS, URL_BUS, URL_METRO_BASE, METRO_LAYER_IDS,
-    OBJ_BUS, OBJ_METRO,
+    METRO_LAYER_LINEAS, OBJ_BUS, OBJ_METRO,
 )
 
 
@@ -96,6 +96,7 @@ def descargar_metro() -> io.BytesIO:
         response.raise_for_status()
         gdf_linea = _parsear_arcgis_json(response.json())
         if len(gdf_linea) > 0:
+            gdf_linea["LINEAS"] = METRO_LAYER_LINEAS.get(layer_id, "")
             todos.append(gdf_linea)
 
     # Combinar todas las líneas y eliminar estaciones duplicadas (transbordos)
