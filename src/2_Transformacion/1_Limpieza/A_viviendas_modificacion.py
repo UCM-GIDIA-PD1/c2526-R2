@@ -5,9 +5,7 @@ from src.config import PAIS,CIUDAD
 import re
 from src.utils.funciones_minio import *
 from tqdm import tqdm
-from PIL import Image
-import numpy as np
-import time
+
 
 columnas_características = ['id','Nombre','Barrio','Distrito','Calle','Precio','Superficie','Num_habitaciones','Banyos','Planta',
                       'Ventanas','Ascensor','Terraza','Balcon','Equipamiento','Cocina','Orientacion','Consumo','Descripcion','Anuncia','Url']
@@ -119,7 +117,41 @@ def subir_coordenadas(client:Minio,df_coordenadas:pd.DataFrame)->None:
 
 def descargar_imagenes(cliente:Minio,path:str,nombre_archivo:str)->pd.DataFrame:
     df = bajar_minio_especifico(cliente,path,nombre_archivo,columnas_imagenes)
+    df = aplanar_columnas_imagenes(df)
     return df
+
+def aplanar_columnas_imagenes(df):
+    """
+    Transforma la columna de diccionarios de imágenes en 5 columnas independientes.
+    Cada columna contendrá una lista de bytes (las imágenes de esa habitación).
+    """    
+    nuevas_filas = []
+    
+    for datos in df["Imagenes"]:
+        fila_habitaciones = {
+            'Dormitorio': [],
+            'Cocina': [],
+            'Salón': [],
+            'Comedor': [],
+            'Baño': []
+        }
+        
+        if isinstance(datos, list):
+            for diccionario in datos:
+                for habitacion, bytes_img in diccionario.items():
+                    nombre_columna = habitacion
+                    if habitacion == "Baño":
+                        nombre_columna = "Banyo"
+                    if bytes_img is not None and habitacion in fila_habitaciones:
+                        fila_habitaciones[nombre_columna].append(bytes_img)
+                        
+        nuevas_filas.append(fila_habitaciones)
+        
+    df_expandido = pd.DataFrame(nuevas_filas, index=df.index)
+    
+    df_final = pd.concat([df.drop(columns=["Imagenes"]), df_expandido], axis=1)
+    
+    return df_final
 
 def separar_imagenes(cliente:Minio):
     for modo in modos:
@@ -205,11 +237,9 @@ def limpiar_memoria_raw():
     df_alquiler = sustituir_valores_nulos(df_alquiler)
     subir_viviendas_limpio(df_alquiler,cliente,"alquiler")
     subir_viviendas_limpio(df_venta,cliente,"venta")
-
+    separar_imagenes(cliente)
     print("Limpieza de datasets de viviendas completada.") 
 
 
-
 if __name__=="__main__":
-    cliente = crear_cliente_minio()
-    df = descargar_imagenes(cliente,f"{path_raw}alquiler","batch_moratalaz_n_1.parquet")
+    limpiar_memoria_raw()

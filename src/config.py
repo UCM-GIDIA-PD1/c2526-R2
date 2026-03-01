@@ -23,7 +23,7 @@ MINIO_CATASTRO = "datos_secundarios/catastro"
 MINIO_INE = "datos_secundarios/ine"
 MINIO_COMERCIO = "datos_secundarios/comercio"
 MINIO_NEGATIVOS = "datos_secundarios/negativos"
-MINIO_SECCIONES = "datos_secundarios/secciones_censales"
+MINIO_REGIAS_SUCIO = "raw/regias"
 MINIO_ALIMENTACION = "datos_secundarios/alimentacion"
 
 
@@ -182,5 +182,7 @@ OBJ_ALIMENTACION = "indicadores_alimentacion_madrid.parquet"
 # ║  G — Secciones censales (Geoportal Ayto. Madrid)                     ║
 # ╚══════════════════════════════════════════════════════════════════════╝
 
-URL_SECCIONES = "https://geoportal.madrid.es/fsdescargas/IDEAM_WBGEOPORTAL/LIMITES_ADMINISTRATIVOS/Seccionado/TopoJSON/Secciones_Censales.json"
+URL_BARRIOS = "https://geoportal.madrid.es/fsdescargas/IDEAM_WBGEOPORTAL/LIMITES_ADMINISTRATIVOS/Barrios/Barrios.zip"
+URL_SECCIONES = "https://geoportal.madrid.es/fsdescargas/IDEAM_WBGEOPORTAL/LIMITES_ADMINISTRATIVOS/Seccionado/Secciones_Censales.zip"
 OBJ_SECCIONES = "secciones_censales_madrid.parquet"
+OBJ_BARRIOS = "barrios_madrid.parquet"

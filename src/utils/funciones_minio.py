@@ -11,6 +11,7 @@ import os
 from dotenv import load_dotenv
 import io
 import pandas as pd
+import geopandas as gpd
 
 
 def crear_cliente_minio() -> Minio:
@@ -98,6 +99,33 @@ def subir_minio(df: pd.DataFrame, client:Minio, path: str, minio_object: str) ->
         content_type="application/octet-stream"
     )
 
+def subir_mapa_minio(client:Minio, gdf_mapa:gpd.GeoDataFrame,path:str, nombre_mapa:str):
+    """
+    Sube un GeoDataFrame a MinIO en formato GeoParquet.
+    Mantiene intacta la columna 'geometry' y el CRS (Sistema de coordenadas).
+    """
+    minio_bucket=os.getenv("MINIO_BUCKET")
+    minio_groupPath=os.getenv("MINIO_GROUP_PATH")
+    assert minio_bucket, "Falta MINIO_BUCKET en el entorno/.env"
+    assert minio_groupPath, "Falta MINIO_GROUP_PATH en el entorno/.env"
+    assert client.bucket_exists(minio_bucket), (
+        f"El bucket {minio_bucket} no existe o no tienes permisos."
+    )
+    ruta_guardado = f"{minio_groupPath}/capas_geograficas/{nombre_mapa}.parquet"
+        
+    buffer = io.BytesIO()
+    gdf_mapa.to_parquet(buffer, index=False)
+    buffer.seek(0)
+    
+    client.put_object(
+        bucket_name=minio_bucket,
+        object_name=ruta_guardado,
+        data=buffer,
+        length=buffer.getbuffer().nbytes,
+        content_type="application/octet-stream"
+    )
+
+
 def bajar_minio(client: Minio, path: str, minio_object: str) -> pd.DataFrame:
     """ 
     Descarga desde MinIO un dataframe
@@ -178,17 +206,50 @@ def buscar_todos_los_archivos(client: Minio, path: str)->list:
         client: El cliente de MinIO inicializado.
         ruta_busqueda (str): La ruta dentro del bucket (ej: 'maiday/datos_primarios/venta/')
     """
-    bucket = os.getenv("MINIO_BUCKET")
+    minio_bucket=os.getenv("MINIO_BUCKET")
     minio_groupPath=os.getenv("MINIO_GROUP_PATH")
+    assert minio_bucket, "Falta MINIO_BUCKET en el entorno/.env"
+    assert minio_groupPath, "Falta MINIO_GROUP_PATH en el entorno/.env"
+    assert client.bucket_exists(minio_bucket), (
+        f"El bucket {minio_bucket} no existe o no tienes permisos."
+    )
 
     ruta_busqueda = f"{minio_groupPath}/{path}/"
         
     lista_archivos = []
 
-    objetos = client.list_objects(bucket, prefix=ruta_busqueda, recursive=True)
+    objetos = client.list_objects(minio_bucket, prefix=ruta_busqueda, recursive=True)
     for obj in objetos:
         nombre_archivo = obj.object_name
         if nombre_archivo.endswith('.parquet'):
             lista_archivos.append(nombre_archivo.removeprefix(ruta_busqueda))
                 
     return lista_archivos
+
+
+def bajar_mapa_minio(client:Minio, path:str,nombre_capa:str):
+    """
+    Descarga un GeoParquet desde MinIO y lo devuelve como un GeoDataFrame 
+    listo para hacer cruces espaciales (sjoin) o pintarlo en pantalla.
+    """
+    minio_bucket=os.getenv("MINIO_BUCKET")
+    minio_groupPath=os.getenv("MINIO_GROUP_PATH")
+    assert minio_bucket, "Falta MINIO_BUCKET en el entorno/.env"
+    assert minio_groupPath, "Falta MINIO_GROUP_PATH en el entorno/.env"
+    assert client.bucket_exists(minio_bucket), (
+        f"El bucket {minio_bucket} no existe o no tienes permisos."
+    )
+    
+    ruta_archivo = f"{minio_groupPath}/{path}/{nombre_capa}.parquet"
+
+    respuesta = client.get_object(minio_bucket, ruta_archivo)
+    buffer = io.BytesIO(respuesta.read())
+        
+    gdf = gpd.read_parquet(buffer)
+
+    respuesta.close()
+    respuesta.release_conn() 
+
+    return gdf
+        
+    

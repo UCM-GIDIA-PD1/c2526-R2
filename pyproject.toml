@@ -7,8 +7,12 @@ requires-python = ">=3.12"
 dependencies = [
     "dotenv>=0.9.9",
     "drissionpage>=4.1.1.2",
+    "folium>=0.20.0",
     "geopandas>=1.1.2",
     "geopy>=2.4.1",
+    "httplib2>=0.31.2",
+    "mapclassify>=2.10.0",
+    "matplotlib>=3.10.8",
     "minio>=7.2.20",
     "osmnx>=2.0.7",
     "pandas>=3.0.0",
