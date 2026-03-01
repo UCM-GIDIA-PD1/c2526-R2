@@ -23,7 +23,7 @@ MINIO_CATASTRO = "datos_secundarios/catastro"
 MINIO_INE = "datos_secundarios/ine"
 MINIO_COMERCIO = "datos_secundarios/comercio"
 MINIO_NEGATIVOS = "datos_secundarios/negativos"
-MINIO_REGIAS_SUCIO = "raw/regias"
+MINIO_REJILLAS_SUCIO = "raw/rejillas"
 MINIO_ALIMENTACION = "datos_secundarios/alimentacion"
 
 
@@ -36,6 +36,17 @@ URL_VENTA = "https://www.idealista.com/venta-viviendas/madrid-madrid/mapa"
 IDEALISTA_UMBRAL_ANUNCIOS = 1200
 CIUDAD = "Madrid"
 PAIS = "Spain"
+COLUMNAS_CARACTERISTICAS = ['id','Nombre','Barrio','Distrito','Calle','Precio','Superficie','Num_habitaciones','Banyos','Planta',
+                      'Ventanas','Ascensor','Terraza','Balcon','Equipamiento','Cocina','Orientacion','Consumo','Descripcion','Anuncia','Url']
+
+COLUMNAS_IMAGENES = ['id','Imagenes']
+MODOS = ['venta','alquiler']
+PATH_PRIMARIOS_LIMPIO = "datos_primarios"
+PATH_PRIMARIOS_RAW = "raw/datos_primarios/"
+ARCHIVOS_COORDENADAS = "coordenadas.parquet"
+ARCHIVOS_VIVIENDAS = "viviendas"
+ARCHIVOS_IMAGENES = "imagenes"
+
 
 
 # ╔══════════════════════════════════════════════════════════════════════╗
@@ -186,3 +197,4 @@ URL_BARRIOS = "https://geoportal.madrid.es/fsdescargas/IDEAM_WBGEOPORTAL/LIMITES
 URL_SECCIONES = "https://geoportal.madrid.es/fsdescargas/IDEAM_WBGEOPORTAL/LIMITES_ADMINISTRATIVOS/Seccionado/Secciones_Censales.zip"
 OBJ_SECCIONES = "secciones_censales_madrid.parquet"
 OBJ_BARRIOS = "barrios_madrid.parquet"
+TIPOS_REJILLAS = ["barrios","secciones censales","hexágonos"]

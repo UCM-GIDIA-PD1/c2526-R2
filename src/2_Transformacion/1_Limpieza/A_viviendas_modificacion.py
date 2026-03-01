@@ -5,18 +5,7 @@ from src.config import PAIS,CIUDAD
 import re
 from src.utils.funciones_minio import *
 from tqdm import tqdm
-
-
-columnas_características = ['id','Nombre','Barrio','Distrito','Calle','Precio','Superficie','Num_habitaciones','Banyos','Planta',
-                      'Ventanas','Ascensor','Terraza','Balcon','Equipamiento','Cocina','Orientacion','Consumo','Descripcion','Anuncia','Url']
-
-columnas_imagenes = ['id','Imagenes']
-modos = ['venta','alquiler']
-path_limpio = "datos_primarios"
-path_raw = "raw/datos_primarios/"
-archivo_coordenadas = "coordenadas.parquet"
-archivos_viviendas = "viviendas"
-archivo_imagenes = "imagenes"
+from src.config import COLUMNAS_CARACTERISTICAS,COLUMNAS_IMAGENES,PATH_PRIMARIOS_LIMPIO,PATH_PRIMARIOS_RAW,ARCHIVOS_COORDENADAS,ARHCIVOS_VIVIENDAS,ARCHIVOS_IMAGENES
 
 def limpia_direccion(direccion:str):
     pais = PAIS
@@ -163,7 +152,7 @@ def separar_imagenes(cliente:Minio):
             df_buffer = pd.concat([df_buffer,descargar_imagenes(cliente,path_sucio,parquet)])
             if len(df_buffer)>600:
                 df_subir = df_buffer.iloc[:600].copy()
-                subir_minio(df_subir,cliente,f"{path_limpio}/imagenes",f"{archivo_imagenes}_n_{num_archivo}")
+                subir_minio(df_subir,cliente,f"{path_limpio}/{modo}/imagenes",f"{archivo_imagenes}_n_{num_archivo}")
                 num_archivo+=1
             
 
@@ -218,7 +207,7 @@ def aportar_coordenadas(df_venta,df_alquiler,cliente:Minio):
         df_unicas = df_unicas[~df_unicas["Direccion"].isin(calles_conocidas)].copy()
 
     print(f" Iniciando geocodificación de {len(df_unicas)} anuncios...")
-    df_unicas[['Latitud', 'Longitud', 'Tipo_OSM', 'Tipo_Via']] = df_unicas["Direccion"].progress_apply(procesar_fila)
+    df_unicas[['lat', 'lon', 'Tipo_OSM', 'Tipo_Via']] = df_unicas["Direccion"].progress_apply(procesar_fila)
     
     df_res = pd.concat([df_unicas,df_coordenadas],ignore_index=True)
     subir_coordenadas(cliente,df_res)
