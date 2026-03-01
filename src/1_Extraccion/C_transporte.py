@@ -25,8 +25,8 @@ from shapely.geometry import Point
 from dotenv import load_dotenv
 from src.utils.funciones_minio import crear_cliente_minio, minio_subir_memoria
 from src.config import (
-    URL_BUS, URL_METRO_BASE, METRO_LAYER_IDS,
-    MINIO_RAW, OBJ_BUS, OBJ_METRO,
+    MINIO_RAW_SECUNDARIOS, URL_BUS, URL_METRO_BASE, METRO_LAYER_IDS,
+    OBJ_BUS, OBJ_METRO,
 )
 
 
@@ -117,7 +117,7 @@ if __name__ == "__main__":
     print("Procesando: bus")
     try:
         buffer = descargar_bus()
-        minio_subir_memoria(client, MINIO_RAW, OBJ_BUS, buffer)
+        minio_subir_memoria(client, MINIO_RAW_SECUNDARIOS, OBJ_BUS, buffer)
         print(f"  bus subido a MinIO -> {OBJ_BUS}")
     except requests.exceptions.RequestException as e:
         # Error de red: la API de ArcGIS no responde o devuelve error HTTP
@@ -130,7 +130,7 @@ if __name__ == "__main__":
     print("Procesando: metro")
     try:
         buffer = descargar_metro()
-        minio_subir_memoria(client, MINIO_RAW, OBJ_METRO, buffer)
+        minio_subir_memoria(client, MINIO_RAW_SECUNDARIOS, OBJ_METRO, buffer)
         print(f"  metro subido a MinIO -> {OBJ_METRO}")
     except requests.exceptions.RequestException as e:
         # Error de red: alguna de las 16 capas de ArcGIS no responde
