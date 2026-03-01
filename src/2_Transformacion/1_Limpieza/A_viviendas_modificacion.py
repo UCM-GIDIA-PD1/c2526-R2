@@ -163,7 +163,7 @@ def separar_imagenes(cliente:Minio):
             df_buffer = pd.concat([df_buffer,descargar_imagenes(cliente,path_sucio,parquet)])
             if len(df_buffer)>600:
                 df_subir = df_buffer.iloc[:600].copy()
-                subir_minio(df_subir,cliente,path_limpio,f"{archivo_imagenes}_n_{num_archivo}")
+                subir_minio(df_subir,cliente,f"{path_limpio}/imagenes",f"{archivo_imagenes}_n_{num_archivo}")
                 num_archivo+=1
             
 
