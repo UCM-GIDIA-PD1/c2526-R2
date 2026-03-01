@@ -149,7 +149,7 @@ OBJ_CATASTRO = "edificios_madrid.parquet"
 
 URL_INE = "https://servicios.ine.es/wstempus/js/es/DATOS_TABLA/30824?tip=AM"
 OBJ_INE = "renta_hogar_secciones_madrid.parquet"
-
+OBJ_INE_JUNTO = "renta_hogar_secciones_censales_madrid.parquet"
 
 # ╔══════════════════════════════════════════════════════════════════════╗
 # ║  F — OpenStreetMap (ocio, negativos y supermercados y comercios)     ║
