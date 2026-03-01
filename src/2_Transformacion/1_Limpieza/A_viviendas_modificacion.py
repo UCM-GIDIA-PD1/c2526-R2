@@ -5,7 +5,7 @@ from src.config import PAIS,CIUDAD
 import re
 from src.utils.funciones_minio import *
 from tqdm import tqdm
-from src.config import COLUMNAS_CARACTERISTICAS,COLUMNAS_IMAGENES,PATH_PRIMARIOS_LIMPIO,PATH_PRIMARIOS_RAW,ARCHIVOS_COORDENADAS,ARHCIVOS_VIVIENDAS,ARCHIVOS_IMAGENES
+from src.config import COLUMNAS_CARACTERISTICAS,COLUMNAS_IMAGENES,PATH_PRIMARIOS_LIMPIO,PATH_PRIMARIOS_RAW,ARCHIVOS_COORDENADAS,ARCHIVOS_VIVIENDAS,ARCHIVOS_IMAGENES,MODOS
 
 def limpia_direccion(direccion:str):
     pais = PAIS
@@ -48,20 +48,20 @@ def limpia_direccion(direccion:str):
 
 
 def descargar_anuncios(client:Minio,modo:str)->pd.DataFrame:
-    path = f'{path_raw}{modo}'
+    path = f'{PATH_PRIMARIOS_RAW}{modo}'
     parquets = buscar_todos_los_archivos(client,path)
     ignorar = {'ids.parquet'}
     df_res = pd.DataFrame()
     for parquet in tqdm(parquets,desc = "Descargando totalidad de anuncios"):
         if parquet not in ignorar:
-            df = bajar_minio_especifico(client,path,parquet.replace(path,''),columnas=columnas_características)
+            df = bajar_minio_especifico(client,path,parquet.replace(path,''),columnas=COLUMNAS_CARACTERISTICAS)
             df_res = pd.concat([df_res,df],ignore_index=True)
     
     return df_res
 
 def subir_viviendas_limpio(df:pd.DataFrame,cliente:Minio,modo:str):
-    path = path_limpio
-    archivo = f"{archivos_viviendas}_{modo}.parquet"   
+    path = PATH_PRIMARIOS_LIMPIO
+    archivo = f"{ARCHIVOS_VIVIENDAS}_{modo}.parquet"   
     subir_minio(df,cliente,path,archivo)
 
 def sustituir_valores_nulos(df:pd.DataFrame)->pd.DataFrame:
@@ -88,11 +88,11 @@ def sustituir_valores_nulos(df:pd.DataFrame)->pd.DataFrame:
 
 
 def obtener_coordenadas_procesadas(client:Minio)->pd.DataFrame:
-    path = path_limpio
-    archivo = archivo_coordenadas
+    path = PATH_PRIMARIOS_LIMPIO
+    archivo = ARCHIVOS_COORDENADAS
     try:
         print(f" Buscando memoria de coordenadas en: {path}/¨{archivo}")
-        df_coordenadas = bajar_minio(client,path_limpio,archivo)
+        df_coordenadas = bajar_minio(client,path,archivo)
         print(f" Cargadas {len(df_coordenadas)} calles conocidas.")
         return df_coordenadas
     except Exception as e:
@@ -100,12 +100,12 @@ def obtener_coordenadas_procesadas(client:Minio)->pd.DataFrame:
         return pd.DataFrame()
 
 def subir_coordenadas(client:Minio,df_coordenadas:pd.DataFrame)->None:
-    path = path_limpio
-    archivo = archivo_coordenadas
+    path = PATH_PRIMARIOS_LIMPIO
+    archivo = ARCHIVOS_COORDENADAS
     subir_minio(df_coordenadas,client,path,archivo)
 
 def descargar_imagenes(cliente:Minio,path:str,nombre_archivo:str)->pd.DataFrame:
-    df = bajar_minio_especifico(cliente,path,nombre_archivo,columnas_imagenes)
+    df = bajar_minio_especifico(cliente,path,nombre_archivo,COLUMNAS_IMAGENES)
     df = aplanar_columnas_imagenes(df)
     return df
 
@@ -143,16 +143,16 @@ def aplanar_columnas_imagenes(df):
     return df_final
 
 def separar_imagenes(cliente:Minio):
-    for modo in modos:
+    for modo in MODOS:
         num_archivo = 1
-        path_sucio = f"{path_raw}{modo}"
+        path_sucio = f"{PATH_PRIMARIOS_RAW}{modo}"
         parquets = buscar_todos_los_archivos(cliente,path_sucio)
         df_buffer = pd.DataFrame()
         for parquet in tqdm(parquets,desc="Transfiriendo imagenes a limpio..."):
             df_buffer = pd.concat([df_buffer,descargar_imagenes(cliente,path_sucio,parquet)])
             if len(df_buffer)>600:
                 df_subir = df_buffer.iloc[:600].copy()
-                subir_minio(df_subir,cliente,f"{path_limpio}/{modo}/imagenes",f"{archivo_imagenes}_n_{num_archivo}")
+                subir_minio(df_subir,cliente,f"{PATH_PRIMARIOS_LIMPIO}/{modo}/imagenes",f"{ARCHIVOS_IMAGENES}_n_{num_archivo}")
                 num_archivo+=1
             
 

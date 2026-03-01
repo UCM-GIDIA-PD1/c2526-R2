@@ -65,7 +65,7 @@ def descargar_secciones_censales(cliente:Minio):
     gdf_final.to_parquet(buffer, index=False)
     buffer.seek(0)
 
-    minio_subir_memoria(cliente, MINIO_REGIAS_SUCIO, OBJ_SECCIONES, buffer)
+    minio_subir_memoria(cliente, MINIO_REJILLAS_SUCIO, OBJ_SECCIONES, buffer)
     print("Archivo de secciones censales subido a MinIO \n")
 
 def descargar_mapas():

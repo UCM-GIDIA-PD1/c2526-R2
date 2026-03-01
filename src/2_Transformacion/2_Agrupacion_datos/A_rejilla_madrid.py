@@ -25,10 +25,13 @@ def obtener_coordenadas_procesadas(client:Minio)->pd.DataFrame:
         print(f" Error al procesar la memoria: {e}")
         return pd.DataFrame()
 
+
+
 def inicio_rejillas():
     print("Agrupar datos a las rejillas:")
     cliente = crear_cliente_minio()
     df_coorenadas = obtener_coordenadas_procesadas(cliente)
     for rejilla in TIPOS_REJILLAS:
         gdf_rejilla = descarga_rejilla(rejilla,cliente)
+
 
