@@ -6,10 +6,9 @@ from src.utils.funciones_minio import crear_cliente_minio, minio_subir_memoria
 from src.config import URL_SECCIONES,URL_BARRIOS, MINIO_REGIAS_SUCIO, OBJ_SECCIONES, OBJ_BARRIOS
 
 '''
-Script para la extracción de la cartografía de secciones censales del Ayuntamiento de Madrid.
+Script para la extracción de la cartografía de secciones censales y barrios del Ayuntamiento de Madrid.
 Permite obtener las geometrías necesarias para representar datos estadísticos por zonas.
 '''
-
 
 def descargar_barrios(cliente:Minio):
     print("Iniciando proceso de extracción del mapa de barrios del Ayuntamiento de Madrid... \n")
@@ -53,11 +52,12 @@ def descargar_secciones_censales(cliente:Minio):
     
     print("Procesando datos de las secciones censales... \n")
     gdf = gdp.read_file(io.BytesIO(response.content))
-    
+
     # Nos quedamos solo con el código de sección y la geometría
     # Se utiliza COD_SECCIO para construir el CUSEC (Madrid 28 + Municipio 079 + Código Sección)
     gdf['CUSEC'] = "28079" + gdf['COD_SECCIO'].astype(str).str.zfill(5)
     gdf_final = gdf[['geometry', 'CUSEC','COD_BAR']].copy()
+
     # Guardamos en Parquet
     buffer = io.BytesIO()
     gdf_final.to_parquet(buffer, index=False)
