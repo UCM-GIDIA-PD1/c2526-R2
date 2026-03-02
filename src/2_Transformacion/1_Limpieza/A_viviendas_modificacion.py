@@ -71,7 +71,7 @@ def sustituir_valores_nulos(df:pd.DataFrame)->pd.DataFrame:
     df_limpiado['Planta'] = df_limpiado['Planta'].fillna(0)
 
     df_limpiado["Precio"] = df_limpiado["Precio"].astype(str).str.replace('.','')
-    df_limpiado["Precio"] = pd.to_numeric(df_limpiado["Precio"],error='coerce')
+    df_limpiado["Precio"] = pd.to_numeric(df_limpiado["Precio"],errors='coerce')
 
     df_limpiado["Orientacion"] = (df_limpiado["Orientacion"].astype(str).str.replace(',','',regex = False).str.strip().str.capitalize())
 
@@ -206,8 +206,9 @@ def aportar_coordenadas(df_venta,df_alquiler,cliente:Minio):
         calles_conocidas = df_coordenadas["Direccion"].tolist()
         df_unicas = df_unicas[~df_unicas["Direccion"].isin(calles_conocidas)].copy()
 
-    print(f" Iniciando geocodificación de {len(df_unicas)} anuncios...")
-    df_unicas[['lat', 'lon', 'Tipo_OSM', 'Tipo_Via']] = df_unicas["Direccion"].progress_apply(procesar_fila)
+    if not df_unicas.empty:
+        print(f" Iniciando geocodificación de {len(df_unicas)} anuncios...")
+        df_unicas[['lat', 'lon', 'Tipo_OSM', 'Tipo_Via']] = df_unicas["Direccion"].progress_apply(procesar_fila)
     
     df_res = pd.concat([df_unicas,df_coordenadas],ignore_index=True)
     subir_coordenadas(cliente,df_res)
