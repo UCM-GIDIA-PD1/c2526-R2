@@ -148,7 +148,7 @@ DATASETS_AYTO_LIMPIEZA = {k: v["object"] for k, v in DATASETS_AYTO.items() if k 
 URL_BUS = (
     "https://services5.arcgis.com/UxADft6QPcvFyDU1/arcgis/rest/services/"
     "M6_Red/FeatureServer/0/query?where=1%3D1"
-    "&outFields=DENOMINACION,LINEAS,X,Y,GRADOACCESIBILIDAD&outSR=4326&f=json"
+    "&outFields=*&outSR=4326&f=json"
 )
 
 URL_METRO_BASE = (
