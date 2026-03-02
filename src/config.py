@@ -28,6 +28,7 @@ MINIO_COMERCIO = "datos_secundarios/comercio"
 MINIO_NEGATIVOS = "datos_secundarios/negativos"
 MINIO_REJILLAS_SUCIO = "raw/rejillas"
 MINIO_ALIMENTACION = "datos_secundarios/alimentacion"
+MINIO_PADRON = "datos_secundarios/padron"
 
 
 # ╔══════════════════════════════════════════════════════════════════════╗
@@ -213,11 +214,13 @@ OBJ_ALIMENTACION = "indicadores_alimentacion_madrid.parquet"
 
 
 # ╔══════════════════════════════════════════════════════════════════════╗
-# ║  G — Secciones censales (Geoportal Ayto. Madrid)                     ║
+# ║  G — Capas (Secciones censales, Barrios, Padron)                     ║
 # ╚══════════════════════════════════════════════════════════════════════╝
-
+URL_PADRON = "https://datos.madrid.es/dataset/200076-0-padron/resource/200076-1-padron-json/download/200076-1-padron-json.json"
 URL_BARRIOS = "https://geoportal.madrid.es/fsdescargas/IDEAM_WBGEOPORTAL/LIMITES_ADMINISTRATIVOS/Barrios/Barrios.zip"
 URL_SECCIONES = "https://geoportal.madrid.es/fsdescargas/IDEAM_WBGEOPORTAL/LIMITES_ADMINISTRATIVOS/Seccionado/Secciones_Censales.zip"
+OBJ_PADRON_BAR = "padron_barrio_madrid.parquet"
+OBJ_PADRON_SEC = "padron_seccion_madrid.parquet"
 OBJ_SECCIONES = "secciones_censales_madrid.parquet"
 OBJ_BARRIOS = "barrios_madrid.parquet"
 TIPOS_REJILLAS = [{"tipo":"barrios","columna_id":"COD_BAR"},{"tipo":"secciones censales","columna_id":"CUSEC"},{"tipo":"hexágonos","columna_id":"id_hex"}]
