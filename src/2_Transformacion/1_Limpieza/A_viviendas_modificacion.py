@@ -1,5 +1,5 @@
 import base64
-
+import googlemaps
 import pandas as pd
 from geopy.geocoders import Nominatim
 from geopy.extra.rate_limiter import RateLimiter
@@ -8,6 +8,7 @@ import re
 from src.utils.funciones_minio import *
 from tqdm import tqdm
 from PIL import Image
+import os
 from src.config import COLUMNAS_CARACTERISTICAS,COLUMNAS_IMAGENES,PATH_PRIMARIOS_LIMPIO,PATH_PRIMARIOS_RAW,ARCHIVOS_COORDENADAS,ARCHIVOS_VIVIENDAS,ARCHIVOS_IMAGENES,MODOS
 
 def limpia_direccion(direccion:str):
@@ -149,12 +150,13 @@ def separar_imagenes(cliente:Minio):
         path_sucio = f"{PATH_PRIMARIOS_RAW}{modo}"
         parquets = buscar_todos_los_archivos(cliente,path_sucio)
         df_buffer = pd.DataFrame()
-        for parquet in tqdm(parquets,desc="Transfiriendo imagenes a limpio..."):
+        for parquet in tqdm(parquets,desc=f"Transfiriendo imagenes de {modo} a limpio..."):
             df_buffer = pd.concat([df_buffer,descargar_imagenes(cliente,path_sucio,parquet)])
             if len(df_buffer)>500:
-                df_subir = df_buffer.iloc[:600].copy()
-                subir_minio(df_subir,cliente,f"{PATH_PRIMARIOS_LIMPIO}/imagenes/{modo}",f"{ARCHIVOS_IMAGENES}_n_{num_archivo}")
+                df_subir = df_buffer.iloc[:500].copy()
+                subir_minio(df_subir,cliente,f"{PATH_PRIMARIOS_LIMPIO}/imagenes/{modo}",f"{ARCHIVOS_IMAGENES}_n_{num_archivo}.parquet")
                 num_archivo+=1
+                df_buffer = df_buffer.iloc[500:].reset_index(drop=True)
             
 
 
@@ -168,8 +170,29 @@ def aportar_coordenadas(df_venta,df_alquiler,cliente:Minio):
     geolocator = Nominatim(user_agent="maiday_bot_v1")
     
     geocode = RateLimiter(geolocator.geocode, min_delay_seconds=1.1)
+    load_dotenv()
+    api_key = os.getenv("API_GOOGLE")
+    gmaps = googlemaps.Client(key=api_key)
 
-    def procesar_fila(direccion_sucia):
+    def buscar_en_google(direccion):
+        direccion_limpia = limpia_direccion(direccion)
+        try:
+                
+            resultado = gmaps.geocode(direccion_limpia)
+            
+            if resultado: # Si Google encuentra algo
+                lat = resultado[0]['geometry']['location']['lat']
+                lon = resultado[0]['geometry']['location']['lng']
+                tipos_lista = resultado[0].get('types', [])
+                tipo_str = ", ".join(tipos_lista) if tipos_lista else "Desconocido"
+                tipo_espanol = direccion_limpia.split(' ')[0]
+                return pd.Series([lat, lon,tipo_str,tipo_espanol])
+        except Exception as e:
+            pass # Si falla por red o límite de API, devolvemos nulo
+            
+        return pd.Series([ None, None,"No Encontrado",tipo_espanol])
+    
+    def procesar_fila_osm(direccion_sucia):
         dir_limpia = limpia_direccion(direccion_sucia)
             
         if not dir_limpia:
@@ -189,14 +212,18 @@ def aportar_coordenadas(df_venta,df_alquiler,cliente:Minio):
                 tipo_espanol = dir_limpia.split(' ')[0]
                 return pd.Series([lat, lon, tipo_nominatim, tipo_espanol])
             else:
-                return pd.Series([None, None, "No Encontrado", None])
+                return pd.Series([None, None, "No Encontrado", tipo_espanol])
                     
         except Exception as e:
-            return pd.Series([None, None, "Error API", None])
+            return pd.Series([None, None, "Error API", tipo_espanol])
 
     df_alquiler['Direccion'] = df_alquiler['Calle'].apply(lambda x: limpia_direccion(x))
     df_venta['Direccion'] = df_venta['Calle'].apply(lambda x: limpia_direccion(x))
     df_coordenadas = obtener_coordenadas_procesadas(cliente)
+
+    if not df_coordenadas.empty:
+        mask_validas = df_coordenadas['lat'].notna() & (~df_coordenadas['Tipo_OSM'].isin(["No Encontrado", "Error API"]))
+        df_coordenadas = df_coordenadas[mask_validas].copy()
 
     direcciones_alquiler = df_alquiler[["Direccion"]].dropna()
     direcciones_venta = df_venta[["Direccion"]].dropna()
@@ -209,7 +236,14 @@ def aportar_coordenadas(df_venta,df_alquiler,cliente:Minio):
 
     if not df_unicas.empty:
         print(f" Iniciando geocodificación de {len(df_unicas)} anuncios...")
-        df_unicas[['lat', 'lon', 'Tipo_OSM', 'Tipo_Via']] = df_unicas["Direccion"].progress_apply(procesar_fila)
+        df_unicas[['lat', 'lon', 'Tipo_OSM', 'Tipo_Via']] = df_unicas["Direccion"].progress_apply(procesar_fila_osm)
+        mask_fallos = df_unicas['lat'].isna() | df_unicas['Tipo_OSM'].isin(["No Encontrado", "Error API"])
+        df_fallos = df_unicas[mask_fallos].copy()
+        if not df_fallos.empty:
+            df_fallos[['lat', 'lon', 'Tipo_OSM', 'Tipo_Via']] = df_fallos['Direccion'].progress_apply(buscar_en_google)
+            df_unicas.update(df_fallos)
+        mask_final_validas = df_unicas['lat'].notna() & (~df_unicas['Tipo_OSM'].isin(["No Encontrado", "Error API"]))
+        df_unicas = df_unicas[mask_final_validas].copy()
     
     df_res = pd.concat([df_unicas,df_coordenadas],ignore_index=True)
     subir_coordenadas(cliente,df_res)
@@ -219,7 +253,6 @@ def aportar_coordenadas(df_venta,df_alquiler,cliente:Minio):
 
 def limpiar_memoria_raw():
     cliente = crear_cliente_minio()
-    """
     df_alquiler = descargar_anuncios(cliente,"alquiler")
     df_venta = descargar_anuncios(cliente,"venta")
     df_coordenadas = aportar_coordenadas(df_venta,df_alquiler,cliente)
@@ -228,7 +261,7 @@ def limpiar_memoria_raw():
     df_venta = sustituir_valores_nulos(df_venta)
     df_alquiler = sustituir_valores_nulos(df_alquiler)
     subir_viviendas_limpio(df_alquiler,cliente,"alquiler")
-    subir_viviendas_limpio(df_venta,cliente,"venta")"""
+    subir_viviendas_limpio(df_venta,cliente,"venta")
     separar_imagenes(cliente)
     print("Limpieza de datasets de viviendas completada.") 
 
