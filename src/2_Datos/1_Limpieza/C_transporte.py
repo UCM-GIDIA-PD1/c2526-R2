@@ -10,18 +10,24 @@ def limpiar_lineas(linea_str: str) -> str:
     Reglas:
     - Convierte a string si es necesario
     - Elimina espacios en blanco
-    - Extrae solo el número (elimina letras A, B, etc.)
-    - Devuelve string del número
+    - Extrae solo la parte numérica (elimina letras A, B, etc.)
+    - Excepción: la línea "R" (Ramal) se preserva tal cual
+    - Devuelve string del número o "R"
 
     Ejemplos:
-        "10A" → "10"
-        "1" → "1"
-        "9B" → "9"
+        "10A" → "10"    "9B" → "9"
+        "1"   → "1"     "R"  → "R"
+        "6a"  → "6"     "a"  → ""
     """
     if pd.isna(linea_str):
         return ""
 
-    linea_str = str(linea_str).strip()
+    linea_str = str(linea_str).strip().upper()
+
+    # Excepción: Línea R (Ramal)
+    if linea_str == "R":
+        return "R"
+
     # Extrae solo los dígitos del inicio de la línea
     numero = ""
     for char in linea_str:
@@ -52,8 +58,12 @@ def agrupar_estaciones_metro(df: pd.DataFrame) -> pd.DataFrame:
     """
     df = df.copy()
 
+    # Eliminar filas sin nombre (no puede haber nulos en nombre)
+    df = df.dropna(subset=["nombre"])
+
     # Normalizar nombre: eliminar espacios y estandarizar capitalización
     df["nombre"] = df["nombre"].str.strip().str.title()
+    df = df[df["nombre"] != ""]
 
     # Limpiar líneas: convertir formato de línea
     df["lin_limpia"] = df["lin"].apply(limpiar_lineas)
@@ -75,10 +85,13 @@ def agrupar_estaciones_metro(df: pd.DataFrame) -> pd.DataFrame:
         )
     )
 
-    # Combinar las listas en cadenas únicas, ordenadas numéricamente
+    # Combinar las listas en cadenas únicas, ordenadas (R al final)
+    def _sort_key(x: str) -> float:
+        return float("inf") if x == "R" else int(x)
+
     grouped["lin"] = (
         grouped["lin_list"]
-        .apply(lambda lst: sorted(set(lst), key=lambda x: int(x)))
+        .apply(lambda lst: sorted(set(lst), key=_sort_key))
         .apply(lambda lst: ",".join(lst))
     )
 
@@ -97,38 +110,32 @@ def limpiar_transporte(df: pd.DataFrame, nombre: str) -> pd.DataFrame:
 
     Para METRO:
         Columnas resultantes: nombre, lin, lat, lon
-        Aplica deduplicación y limpieza de líneas.
+        Aplica normalización, deduplicación y limpieza de líneas.
 
     - DENOMINACION → nombre (nombre de la estación de metro / parada de bus)
     - LINEAS  → lin  (líneas que pasan por la parada / estación)
     - Latitud → lat  (Y en bus, geometry.y en metro)
     - Longitud → lon (X en bus, geometry.x en metro)
     """
-    # Si el dataset tiene columnas X / Y explícitas (bus), usarlas directamente
-    if "X" in df.columns and "Y" in df.columns:
+    if nombre == "BUS":
         out = df[["LINEAS", "Y", "X"]].copy()
         out.columns = ["lin", "lat", "lon"]
         print(f"  {nombre}: {len(out)} registros → columnas {list(out.columns)}")
         return out
 
-    # Si solo tiene geometría (metro), extraer coordenadas de la columna geometry
-    elif "geometry" in df.columns:
+    elif nombre == "METRO":
         out = pd.DataFrame({
             "nombre": df["DENOMINACION"],
             "lin": df["LINEAS"],
             "lat": df["geometry"].apply(lambda geom: wkb.loads(geom).y),
             "lon": df["geometry"].apply(lambda geom: wkb.loads(geom).x),
         })
-
-        # Aplicar deduplicación y limpieza solo a metro
-        if nombre == "METRO":
-            out = agrupar_estaciones_metro(out)
-
-        print(f"  {nombre}: {len(out)} registros → columnas {list(out.columns)}")
+        out = agrupar_estaciones_metro(out)
+        print(f"  {nombre}: {len(out)} estaciones únicas → columnas {list(out.columns)}")
         return out
 
     else:
-        raise ValueError(f"No se encontraron columnas de coordenadas en {nombre}")
+        raise ValueError(f"Tipo de transporte desconocido: {nombre}")
 
 
 if __name__ == "__main__":
