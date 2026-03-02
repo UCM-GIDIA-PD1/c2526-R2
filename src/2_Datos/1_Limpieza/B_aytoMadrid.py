@@ -15,33 +15,30 @@ def limpiar_dataframe(df: pd.DataFrame) -> pd.DataFrame:
 
     Returns:
         pd.DataFrame: DataFrame limpio con el siguiente esquema:
-            - PK (int64)
-            - LATITUD (float64)
-            - LONGITUD (float64)
-            - NUM_DISTRITO (int64)
+            - nombre (string)
+            - lat (float64)
+            - lon (float64)
     """
     # Nos quedamos solo con las columnas necesarias
-    df = df[["PK", "LATITUD", "LONGITUD", "DISTRITO"]].copy()
+    df = df[["NOMBRE", "LATITUD", "LONGITUD", "DISTRITO"]].copy()
 
     # Métricas antes de limpiar
-    mask_nulos = df[["PK", "LATITUD", "LONGITUD", "DISTRITO"]].isna().any(axis=1)
+    mask_nulos = df[["NOMBRE", "LATITUD", "LONGITUD", "DISTRITO"]].isna().any(axis=1)
     mask_inval = df["DISTRITO"].notna() & ~df["DISTRITO"].isin(DISTRITOS)
 
     # Filtro: eliminamos filas con nulos O con distrito inválido
     df = df.loc[~mask_nulos & ~mask_inval].copy()
-
-    # Guardamos los distritos con su numeración oficial
-    map_distritos = {d.upper(): i + 1 for i, d in enumerate(DISTRITOS)}
-    df["NUM_DISTRITO"] = df["DISTRITO"].map(map_distritos).astype("int64")
     df = df.drop(columns=["DISTRITO"])
 
     # Cast seguro después de filtrar
     df = df.astype({
-        "PK": "int64",
+        "NOMBRE": "string",
         "LATITUD": "float64",
         "LONGITUD": "float64"
     })
-    
+
+    # Cambiar nombre columnas
+    df.columns = ["nombre", "lat", "lon"]
     return df
 
 if __name__ == "__main__":

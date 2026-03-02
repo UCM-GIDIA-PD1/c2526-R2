@@ -71,15 +71,15 @@ ARCHIVOS_IMAGENES = "imagenes"
 # ╚══════════════════════════════════════════════════════════════════════╝
 
 DATASETS_AYTO = {
-    "EDUCACION": {
+    "CENTROS_EDUCATIVOS": {
         "url": "https://datos.madrid.es/dataset/300614-0-centros-educativos/resource/300614-1-centros-educativos-csv/download/300614-1-centros-educativos-csv.csv",
         "object": "centros_educativos.parquet",
     },
-    "UNIVERSIDAD": {
+    "UNIVERSIDADES": {
         "url": "https://datos.madrid.es/dataset/203166-0-universidades-educacion/resource/203166-0-universidades-educacion-csv/download/203166-0-universidades-educacion-csv.csv",
         "object": "universidades.parquet",
     },
-    "SANIDAD": {
+    "HOSPITALES": {
         "url": "https://datos.madrid.es/dataset/212769-0-atencion-medica/resource/212769-0-atencion-medica-csv/download/212769-0-atencion-medica-csv.csv",
         "object": "hospitales.parquet",
     },
@@ -97,7 +97,7 @@ DATASETS_AYTO = {
     },
     "PARQUES_BOMBEROS": {
         "url": "https://datos.madrid.es/egob/catalogo/211642-0-bomberos-parques.csv",
-        "object": "bomberos.parquet",
+        "object": "parques_bomberos.parquet",
     },
     "CEMENTERIOS": {
         "url": "https://datos.madrid.es/egob/catalogo/205026-0-cementerios.csv",
@@ -119,19 +119,19 @@ DATASETS_AYTO = {
         "url": "https://datos.madrid.es/egob/catalogo/200284-0-puntos-limpios-fijos.csv",
         "object": "puntos_limpios.parquet",
     },
-    "IGLESIAS_CATOLICAS": {
+    "IGLESIAS": {
         "url": "https://datos.madrid.es/egob/catalogo/209426-0-templos-catolicas.csv",
         "object": "iglesias.parquet",
     },
-    "CENTROS_SERVICIOS_SOCIALES": {
+    "SERVICIOS_SOCIALES": {
         "url": "https://datos.madrid.es/egob/catalogo/209094-0-centros-servicios-sociales.csv",
-        "object": "centros_sociales.parquet",
+        "object": "servicios_sociales.parquet",
     },
-    "CENTROS_MUNICIPALES_MAYORES": {
+    "CENTROS_MAYORES": {
         "url": "https://datos.madrid.es/egob/catalogo/200337-0-centros-mayores.csv",
         "object": "centros_mayores.parquet",
     },
-    "PISCINAS_MUNICIPALES": {
+    "PISCINAS": {
         "url": "https://datos.madrid.es/egob/catalogo/210227-0-piscinas-publicas.csv",
         "object": "piscinas.parquet",
     },
