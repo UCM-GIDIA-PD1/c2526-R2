@@ -75,6 +75,7 @@ dependencies = [
     { name = "folium" },
     { name = "geopandas" },
     { name = "geopy" },
+    { name = "googlemaps" },
     { name = "httplib2" },
     { name = "mapclassify" },
     { name = "matplotlib" },
@@ -95,6 +96,7 @@ requires-dist = [
     { name = "folium", specifier = ">=0.20.0" },
     { name = "geopandas", specifier = ">=1.1.2" },
     { name = "geopy", specifier = ">=2.4.1" },
+    { name = "googlemaps", specifier = ">=4.10.0" },
     { name = "httplib2", specifier = ">=0.31.2" },
     { name = "mapclassify", specifier = ">=2.10.0" },
     { name = "matplotlib", specifier = ">=3.10.8" },
@@ -503,6 +505,15 @@ sdist = { url = "https://files.pythonhosted.org/packages/0e/fd/ef6d53875ceab72c1
 wheels = [
     { url = "https://files.pythonhosted.org/packages/e5/15/cf2a69ade4b194aa524ac75112d5caac37414b20a3a03e6865dfe0bd1539/geopy-2.4.1-py3-none-any.whl", hash = "sha256:ae8b4bc5c1131820f4d75fce9d4aaaca0c85189b3aa5d64c3dcaf5e3b7b882a7", size = 125437, upload-time = "2023-11-23T21:49:30.421Z" },
 ]
+
+[[package]]
+name = "googlemaps"
+version = "4.10.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "requests" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/fe/26/bca4d737a9acea25e94c19940a780bbf0be64a691f7caf3a68467d3a5838/googlemaps-4.10.0.tar.gz", hash = "sha256:3055fcbb1aa262a9159b589b5e6af762b10e80634ae11c59495bd44867e47d88", size = 33056, upload-time = "2023-01-26T16:45:02.501Z" }
 
 [[package]]
 name = "httplib2"

@@ -10,6 +10,7 @@ dependencies = [
     "folium>=0.20.0",
     "geopandas>=1.1.2",
     "geopy>=2.4.1",
+    "googlemaps>=4.10.0",
     "httplib2>=0.31.2",
     "mapclassify>=2.10.0",
     "matplotlib>=3.10.8",
