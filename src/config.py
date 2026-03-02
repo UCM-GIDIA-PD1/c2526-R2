@@ -203,4 +203,4 @@ URL_BARRIOS = "https://geoportal.madrid.es/fsdescargas/IDEAM_WBGEOPORTAL/LIMITES
 URL_SECCIONES = "https://geoportal.madrid.es/fsdescargas/IDEAM_WBGEOPORTAL/LIMITES_ADMINISTRATIVOS/Seccionado/Secciones_Censales.zip"
 OBJ_SECCIONES = "secciones_censales_madrid.parquet"
 OBJ_BARRIOS = "barrios_madrid.parquet"
-TIPOS_REJILLAS = ["barrios","secciones censales","hexágonos"]
+TIPOS_REJILLAS = [{"tipo":"barrios","columna_id":"COD_BAR"},{"tipo":"secciones censales","columna_id":"CUSEC"},{"tipo":"hexágonos","columna_id":"id_hex"}]
