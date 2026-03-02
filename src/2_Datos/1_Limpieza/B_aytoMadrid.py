@@ -1,6 +1,6 @@
 import pandas as pd
 from src.utils.funciones_minio import crear_cliente_minio, bajar_minio, subir_minio
-from src.config import DATASETS_AYTO_LIMPIEZA, DISTRITOS,  MINIO_RAW_SECUNDARIOS, MINIO_INTERIM_SECUNDARIOS
+from src.config import DATASETS_AYTO_LIMPIEZA, DISTRITOS,  MINIO_RAW_SECUNDARIOS, MINIO_CLEANED_SECUNDARIOS
 
 
 import pandas as pd
