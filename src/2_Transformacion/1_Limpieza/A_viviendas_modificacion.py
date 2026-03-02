@@ -1,3 +1,5 @@
+import base64
+
 import pandas as pd
 from geopy.geocoders import Nominatim
 from geopy.extra.rate_limiter import RateLimiter
@@ -5,6 +7,7 @@ from src.config import PAIS,CIUDAD
 import re
 from src.utils.funciones_minio import *
 from tqdm import tqdm
+from PIL import Image
 from src.config import COLUMNAS_CARACTERISTICAS,COLUMNAS_IMAGENES,PATH_PRIMARIOS_LIMPIO,PATH_PRIMARIOS_RAW,ARCHIVOS_COORDENADAS,ARCHIVOS_VIVIENDAS,ARCHIVOS_IMAGENES,MODOS
 
 def limpia_direccion(direccion:str):
@@ -115,24 +118,22 @@ def aplanar_columnas_imagenes(df):
     Cada columna contendrá una lista de bytes (las imágenes de esa habitación).
     """    
     nuevas_filas = []
-    
     for datos in df["Imagenes"]:
         fila_habitaciones = {
             'Dormitorio': [],
             'Cocina': [],
             'Salón': [],
             'Comedor': [],
-            'Baño': []
+            'Banyo': []
         }
         
-        if isinstance(datos, list):
-            for diccionario in datos:
-                for habitacion, bytes_img in diccionario.items():
-                    nombre_columna = habitacion
-                    if habitacion == "Baño":
-                        nombre_columna = "Banyo"
-                    if bytes_img is not None and habitacion in fila_habitaciones:
-                        fila_habitaciones[nombre_columna].append(bytes_img)
+        for diccionario in datos:
+            for habitacion, bytes_img in diccionario.items():
+                nombre_columna = habitacion
+                if habitacion == "Baño":
+                    nombre_columna = "Banyo"
+                if bytes_img is not None and nombre_columna in fila_habitaciones and isinstance(bytes_img, bytes):
+                    fila_habitaciones[nombre_columna].append(bytes_img)
                         
         nuevas_filas.append(fila_habitaciones)
         
@@ -150,9 +151,9 @@ def separar_imagenes(cliente:Minio):
         df_buffer = pd.DataFrame()
         for parquet in tqdm(parquets,desc="Transfiriendo imagenes a limpio..."):
             df_buffer = pd.concat([df_buffer,descargar_imagenes(cliente,path_sucio,parquet)])
-            if len(df_buffer)>600:
+            if len(df_buffer)>500:
                 df_subir = df_buffer.iloc[:600].copy()
-                subir_minio(df_subir,cliente,f"{PATH_PRIMARIOS_LIMPIO}/{modo}/imagenes",f"{ARCHIVOS_IMAGENES}_n_{num_archivo}")
+                subir_minio(df_subir,cliente,f"{PATH_PRIMARIOS_LIMPIO}/imagenes/{modo}",f"{ARCHIVOS_IMAGENES}_n_{num_archivo}")
                 num_archivo+=1
             
 
@@ -218,6 +219,7 @@ def aportar_coordenadas(df_venta,df_alquiler,cliente:Minio):
 
 def limpiar_memoria_raw():
     cliente = crear_cliente_minio()
+    """
     df_alquiler = descargar_anuncios(cliente,"alquiler")
     df_venta = descargar_anuncios(cliente,"venta")
     df_coordenadas = aportar_coordenadas(df_venta,df_alquiler,cliente)
@@ -226,7 +228,7 @@ def limpiar_memoria_raw():
     df_venta = sustituir_valores_nulos(df_venta)
     df_alquiler = sustituir_valores_nulos(df_alquiler)
     subir_viviendas_limpio(df_alquiler,cliente,"alquiler")
-    subir_viviendas_limpio(df_venta,cliente,"venta")
+    subir_viviendas_limpio(df_venta,cliente,"venta")"""
     separar_imagenes(cliente)
     print("Limpieza de datasets de viviendas completada.") 
 
