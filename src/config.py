@@ -7,7 +7,7 @@ que antes estaban dispersas en los scripts de extracción y transformación.
 """
 
 # ╔══════════════════════════════════════════════════════════════════════╗
-# ║  RUTAS MinIO                                                       ║
+# ║  RUTAS MinIO                                                         ║
 # ╚══════════════════════════════════════════════════════════════════════╝
 
 # --- Extracción (raw) ---
@@ -28,7 +28,21 @@ MINIO_ALIMENTACION = "datos_secundarios/alimentacion"
 
 
 # ╔══════════════════════════════════════════════════════════════════════╗
-# ║  A — Idealista (Anuncios de viviendas)                             ║
+# ║  DISTRITOS DE MADRID                                                 ║
+# ╚══════════════════════════════════════════════════════════════════════╝
+
+
+DISTRITOS = [
+"CENTRO","ARGANZUELA","RETIRO","SALAMANCA","CHAMARTIN",
+"TETUAN","CHAMBERI","FUENCARRAL-EL PARDO","MONCLOA-ARAVACA",
+"LATINA","CARABANCHEL","USERA","PUENTE DE VALLECAS",
+"MORATALAZ","CIUDAD LINEAL","HORTALEZA","VILLAVERDE",
+"VILLA DE VALLECAS","VICALVARO","SAN BLAS-CANILLEJAS","BARAJAS"
+]
+
+
+# ╔══════════════════════════════════════════════════════════════════════╗
+# ║  A — Idealista (Anuncios de viviendas)                               ║
 # ╚══════════════════════════════════════════════════════════════════════╝
 
 URL_ALQUILER = "https://www.idealista.com/alquiler-viviendas/madrid-madrid/mapa"
@@ -50,7 +64,7 @@ ARCHIVOS_IMAGENES = "imagenes"
 
 
 # ╔══════════════════════════════════════════════════════════════════════╗
-# ║  B — Ayuntamiento de Madrid (datos abiertos)                       ║
+# ║  B — Ayuntamiento de Madrid (datos abiertos)                         ║
 # ╚══════════════════════════════════════════════════════════════════════╝
 
 DATASETS_AYTO = {
@@ -125,7 +139,7 @@ DATASETS_AYTO_LIMPIEZA = {k: v["object"] for k, v in DATASETS_AYTO.items() if k 
 
 
 # ╔══════════════════════════════════════════════════════════════════════╗
-# ║  C — Transporte público (ArcGIS / CRTM)                           ║
+# ║  C — Transporte público (ArcGIS / CRTM)                              ║
 # ╚══════════════════════════════════════════════════════════════════════╝
 
 URL_BUS = (
