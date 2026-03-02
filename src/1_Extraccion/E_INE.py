@@ -21,7 +21,9 @@ def descargar_ine():
 
     print("Descargando datos del INE... \n")
     response = requests.get(URL_INE)
-    if response.status_code != 200: return
+    if response.status_code != 200: 
+        print(f"ERROR: {response.status_code}")
+        return
 
     print("Procesando datos del INE... \n")
     df = pd.DataFrame(response.json())
