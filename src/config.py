@@ -18,7 +18,7 @@ MINIO_RAW_PRIMARIOS = "raw/datos_primarios"
 # --- Limpieza (cleaned) ---
 MINIO_CLEANED_SECUNDARIOS = "cleaned/secundarios"
 
-# --- Agrupacion (cleaned) ---
+# --- Agrupacion (grouped) ---
 MINIO_GROUPED_SECUNDARIOS = "grouped/secudarios"
 
 # --- Datos secundarios temáticos ---
