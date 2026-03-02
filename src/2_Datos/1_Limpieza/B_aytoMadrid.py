@@ -2,10 +2,6 @@ import pandas as pd
 from src.utils.funciones_minio import crear_cliente_minio, bajar_minio, subir_minio
 from src.config import DATASETS_AYTO_LIMPIEZA, DISTRITOS,  MINIO_RAW_SECUNDARIOS, MINIO_CLEANED_SECUNDARIOS
 
-
-import pandas as pd
-from src.config import DISTRITOS
-
 def limpiar_dataframe(df: pd.DataFrame) -> pd.DataFrame:
     """
     Limpia y normaliza un DataFrame del Ayuntamiento de Madrid.
@@ -53,5 +49,5 @@ if __name__ == "__main__":
     for nombre, obj in DATASETS_AYTO_LIMPIEZA.items():
         df = bajar_minio(client=cliente, path=MINIO_RAW_SECUNDARIOS, minio_object=obj)        
         df = limpiar_dataframe(df)
-        subir_minio(df=df, client=cliente, path=MINIO_INTERIM_SECUNDARIOS, minio_object=obj)
+        subir_minio(df=df, client=cliente, path=MINIO_CLEANED_SECUNDARIOS, minio_object=obj)
         print(f"OK: {nombre}")

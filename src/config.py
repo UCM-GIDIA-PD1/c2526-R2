@@ -15,11 +15,11 @@ MINIO_RAW = "raw"
 MINIO_RAW_SECUNDARIOS = "raw/secundarios"
 MINIO_RAW_PRIMARIOS = "raw/datos_primarios"
 
-# --- Transformación (interim) ---
-MINIO_INTERIM_SECUNDARIOS = "interim/secundarios"
+# --- Limpieza (cleaned) ---
+MINIO_CLEANED_SECUNDARIOS = "cleaned/secundarios"
 
 # --- Agrupacion (cleaned) ---
-MINIO_PROCESSED_SECUNDARIOS = "cleaned/secudarios"
+MINIO_GROUPED_SECUNDARIOS = "grouped/secudarios"
 
 # --- Datos secundarios temáticos ---
 MINIO_CATASTRO = "datos_secundarios/catastro"
