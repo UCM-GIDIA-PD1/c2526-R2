@@ -7,6 +7,23 @@ import pandas as pd
 from src.config import DISTRITOS
 
 def limpiar_dataframe(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Limpia y normaliza un DataFrame del Ayuntamiento de Madrid.
+
+    Selecciona columnas relevantes, elimina registros inválidos y
+    genera la codificación numérica oficial del distrito.
+
+    Args:
+        df (pd.DataFrame): DataFrame original con al menos las columnas
+            ["PK", "LATITUD", "LONGITUD", "DISTRITO"].
+
+    Returns:
+        pd.DataFrame: DataFrame limpio con el siguiente esquema:
+            - PK (int64)
+            - LATITUD (float64)
+            - LONGITUD (float64)
+            - NUM_DISTRITO (int64)
+    """
     # Nos quedamos solo con las columnas necesarias
     df = df[["PK", "LATITUD", "LONGITUD", "DISTRITO"]].copy()
 
