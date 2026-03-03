@@ -11,6 +11,8 @@ from PIL import Image
 import os
 from src.config import COLUMNAS_CARACTERISTICAS,COLUMNAS_IMAGENES,PATH_PRIMARIOS_LIMPIO,PATH_PRIMARIOS_RAW,ARCHIVOS_COORDENADAS,ARCHIVOS_VIVIENDAS,ARCHIVOS_IMAGENES,MODOS
 
+COLUMNAS_SELECCION_DUPLICADOS = ["Superficie","Precio","Num_habitaciones","Ventanas","Planta","Anuncia","Direccion","lat","lon"]
+
 def limpia_direccion(direccion:str):
     pais = PAIS
     ciudad = CIUDAD
@@ -76,7 +78,8 @@ def sustituir_valores_nulos(df:pd.DataFrame)->pd.DataFrame:
 
     df_limpiado["Precio"] = df_limpiado["Precio"].astype(str).str.replace('.','')
     df_limpiado["Precio"] = pd.to_numeric(df_limpiado["Precio"],errors='coerce')
-
+    df_limpiado["Superficie"] = df_limpiado["Superficie"].astype(str).str.replace('.','')
+    df_limpiado["Superficie"] = pd.to_numeric(df_limpiado["Superficie"],errors='coerce')
     df_limpiado["Orientacion"] = (df_limpiado["Orientacion"].astype(str).str.replace(',','',regex = False).str.strip().str.capitalize())
 
     columnas_nulas = ['ventanas', 'orientacion']
@@ -88,14 +91,20 @@ def sustituir_valores_nulos(df:pd.DataFrame)->pd.DataFrame:
             df_limpiado[col] = df_limpiado[col].replace('nan', 'No determinado')
             df_limpiado[col] = df_limpiado[col].replace('Nan', 'No determinado')
 
-    return df_limpiado
+    cantidad_duplicados = df.duplicated(subset = COLUMNAS_SELECCION_DUPLICADOS).sum()
+
+    print(f"Detectando y borrando {cantidad_duplicados} anuncios muy similares ")
+
+    df_res = df_limpiado.drop_duplicates(subset = COLUMNAS_SELECCION_DUPLICADOS,keep = 'first').copy()
+
+    return df_res
 
 
 def obtener_coordenadas_procesadas(client:Minio)->pd.DataFrame:
     path = PATH_PRIMARIOS_LIMPIO
     archivo = ARCHIVOS_COORDENADAS
     try:
-        print(f" Buscando memoria de coordenadas en: {path}/¨{archivo}")
+        print(f" Buscando memoria de coordenadas en: {path}/{archivo}")
         df_coordenadas = bajar_minio(client,path,archivo)
         print(f" Cargadas {len(df_coordenadas)} calles conocidas.")
         return df_coordenadas
@@ -151,12 +160,13 @@ def separar_imagenes(cliente:Minio):
         parquets = buscar_todos_los_archivos(cliente,path_sucio)
         df_buffer = pd.DataFrame()
         for parquet in tqdm(parquets,desc=f"Transfiriendo imagenes de {modo} a limpio..."):
-            df_buffer = pd.concat([df_buffer,descargar_imagenes(cliente,path_sucio,parquet)])
-            if len(df_buffer)>500:
-                df_subir = df_buffer.iloc[:500].copy()
-                subir_minio(df_subir,cliente,f"{PATH_PRIMARIOS_LIMPIO}/imagenes/{modo}",f"{ARCHIVOS_IMAGENES}_n_{num_archivo}.parquet")
-                num_archivo+=1
-                df_buffer = df_buffer.iloc[500:].reset_index(drop=True)
+            if parquet != "ids.parquets":
+                df_buffer = pd.concat([df_buffer,descargar_imagenes(cliente,path_sucio,parquet)])
+                if len(df_buffer)>500:
+                    df_subir = df_buffer.iloc[:500].copy()
+                    subir_minio(df_subir,cliente,f"{PATH_PRIMARIOS_LIMPIO}/imagenes/{modo}",f"{ARCHIVOS_IMAGENES}_n_{num_archivo}.parquet")
+                    num_archivo+=1
+                    df_buffer = df_buffer.iloc[500:].reset_index(drop=True)
             
 
 
@@ -176,6 +186,7 @@ def aportar_coordenadas(df_venta,df_alquiler,cliente:Minio):
 
     def buscar_en_google(direccion):
         direccion_limpia = limpia_direccion(direccion)
+        tipo_espanol = direccion_limpia.split(' ')[0]
         try:
                 
             resultado = gmaps.geocode(direccion_limpia)
@@ -185,7 +196,7 @@ def aportar_coordenadas(df_venta,df_alquiler,cliente:Minio):
                 lon = resultado[0]['geometry']['location']['lng']
                 tipos_lista = resultado[0].get('types', [])
                 tipo_str = ", ".join(tipos_lista) if tipos_lista else "Desconocido"
-                tipo_espanol = direccion_limpia.split(' ')[0]
+                
                 return pd.Series([lat, lon,tipo_str,tipo_espanol])
         except Exception as e:
             pass # Si falla por red o límite de API, devolvemos nulo
@@ -194,7 +205,7 @@ def aportar_coordenadas(df_venta,df_alquiler,cliente:Minio):
     
     def procesar_fila_osm(direccion_sucia):
         dir_limpia = limpia_direccion(direccion_sucia)
-            
+        tipo_espanol = dir_limpia.split(' ')[0]
         if not dir_limpia:
             return pd.Series([None, None, None, None])
                 
@@ -209,7 +220,7 @@ def aportar_coordenadas(df_venta,df_alquiler,cliente:Minio):
                 tipo_nominatim = loc.raw.get('type', 'desconocido')
                     
                 # Opción B: El tipo real español que limpiamos (ej: 'CALLE', 'PASEO')
-                tipo_espanol = dir_limpia.split(' ')[0]
+                
                 return pd.Series([lat, lon, tipo_nominatim, tipo_espanol])
             else:
                 return pd.Series([None, None, "No Encontrado", tipo_espanol])
@@ -228,7 +239,7 @@ def aportar_coordenadas(df_venta,df_alquiler,cliente:Minio):
     direcciones_alquiler = df_alquiler[["Direccion"]].dropna()
     direcciones_venta = df_venta[["Direccion"]].dropna()
 
-    df_unicas = pd.concat([direcciones_alquiler,direcciones_venta]).drop_duplicates().copy()
+    df_unicas = pd.concat([direcciones_alquiler,direcciones_venta]).drop_duplicates().reset_index(drop=True)
 
     if not df_coordenadas.empty:
         calles_conocidas = df_coordenadas["Direccion"].tolist()

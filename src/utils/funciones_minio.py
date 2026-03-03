@@ -10,6 +10,7 @@ from minio import Minio
 import os
 from dotenv import load_dotenv
 import io
+import urllib3
 import pandas as pd
 import geopandas as gpd
 
@@ -30,11 +31,23 @@ def crear_cliente_minio() -> Minio:
     assert minio_secret_key, "Falta MINIO_SECRET_KEY en el entorno/.env"
     assert minio_endpoint, "Falta MINIO_ENDPOINT en el entorno/.env"
 
+    cliente_http = urllib3.PoolManager(
+    
+        timeout=urllib3.Timeout(connect=10.0, read=600.0), 
+        
+        retries=urllib3.Retry(
+            total=5, 
+            backoff_factor=0.5, 
+            status_forcelist=[500, 502, 503, 504]
+        )
+    )
+
     return Minio(
         endpoint=minio_endpoint,
         access_key=minio_access_key,
         secret_key=minio_secret_key,
-        secure=True
+        secure=True,
+        http_client = cliente_http
     )
 
 
@@ -111,7 +124,7 @@ def subir_mapa_minio(client:Minio, gdf_mapa:gpd.GeoDataFrame,path:str, nombre_ma
     assert client.bucket_exists(minio_bucket), (
         f"El bucket {minio_bucket} no existe o no tienes permisos."
     )
-    ruta_guardado = f"{minio_groupPath}/capas_geograficas/{nombre_mapa}.parquet"
+    ruta_guardado = f"{minio_groupPath}/{path}/{nombre_mapa}.parquet"
         
     buffer = io.BytesIO()
     gdf_mapa.to_parquet(buffer, index=False)
@@ -156,7 +169,6 @@ def bajar_minio(client: Minio, path: str, minio_object: str) -> pd.DataFrame:
     # Leer en memoria
     data = io.BytesIO(response.read())
     df = pd.read_parquet(data)
-
     response.close()
     response.release_conn()
     return df

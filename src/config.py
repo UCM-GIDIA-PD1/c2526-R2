@@ -19,7 +19,8 @@ MINIO_RAW_PRIMARIOS = "raw/datos_primarios"
 MINIO_INTERIM_SECUNDARIOS = "interim/secundarios"
 
 # --- Agrupacion (cleaned) ---
-MINIO_PROCESSED_SECUNDARIOS = "cleaned/secudarios"
+MINIO_PROCESSED_SECUNDARIOS = "cleaned/secundarios"
+MINIO_PROCESSED_TRANSPORTE = "cleaned/transporte"
 
 # --- Datos secundarios temáticos ---
 MINIO_CATASTRO = "datos_secundarios/catastro"
@@ -207,9 +208,9 @@ TAGS_ALIMENTACION = {
     "amenity": ["marketplace", "market"]
 }
 
-OBJ_COMERCIO = "indicadores_comercio_madrid.parquet"
-OBJ_NEGATIVOS = "indicadores_negativos_madrid.parquet"
-OBJ_ALIMENTACION = "indicadores_alimentacion_madrid.parquet"
+OBJ_COMERCIO = "comercios.parquet"
+OBJ_NEGATIVOS = "negativos.parquet"
+OBJ_ALIMENTACION = "alimentacion.parquet"
 
 
 # ╔══════════════════════════════════════════════════════════════════════╗
@@ -220,4 +221,6 @@ URL_BARRIOS = "https://geoportal.madrid.es/fsdescargas/IDEAM_WBGEOPORTAL/LIMITES
 URL_SECCIONES = "https://geoportal.madrid.es/fsdescargas/IDEAM_WBGEOPORTAL/LIMITES_ADMINISTRATIVOS/Seccionado/Secciones_Censales.zip"
 OBJ_SECCIONES = "secciones_censales_madrid.parquet"
 OBJ_BARRIOS = "barrios_madrid.parquet"
-TIPOS_REJILLAS = [{"tipo":"barrios","columna_id":"COD_BAR"},{"tipo":"secciones censales","columna_id":"CUSEC"},{"tipo":"hexágonos","columna_id":"id_hex"}]
+TIPOS_REJILLAS = [{"tipo":"barrios","columna_id":"COD_BAR"},{"tipo":"secciones censales","columna_id":"CUSEC"},{"tipo":"hexagonos_1","columna_id":"id_hex"},{"tipo":"hexagonos_2","columna_id":"id_hex"}]
+COD_REJILLA = {"barrios":"COD_BAR","secciones censales":"CUSEC","hexagonos_1":"id_hex","hexagonos_2":"id_hex"}
+COMPONENTES_TRANSPORTE = [{"tipo":"bus","fichero":"paradas_bus.parquet","calculo":"paradas"},{"tipo":"metro","fichero":"estaciones_metro.parquet","calculo":"estaciones"}]

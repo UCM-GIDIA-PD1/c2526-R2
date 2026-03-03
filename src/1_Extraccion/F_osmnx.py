@@ -3,7 +3,7 @@ import pandas as pd
 import io
 from src.utils.funciones_minio import crear_cliente_minio, minio_subir_memoria
 from src.config import (
-    PLACE_OSM, TAGS_COMERCIO, TAGS_NEGATIVOS, TAGS_ALIMENTACION,
+    MINIO_PROCESSED_SECUNDARIOS, PLACE_OSM, TAGS_COMERCIO, TAGS_NEGATIVOS, TAGS_ALIMENTACION,
     MINIO_COMERCIO, MINIO_NEGATIVOS, MINIO_ALIMENTACION,
     OBJ_COMERCIO, OBJ_NEGATIVOS, OBJ_ALIMENTACION,
 )
@@ -70,6 +70,6 @@ def procesar_y_subir_osm(tags: dict, nombre_fichero: str, subcarpeta: str):
     print(f"Subido a minIO: {nombre_fichero} \n")
 
 if __name__ == "__main__":
-    procesar_y_subir_osm(TAGS_COMERCIO, OBJ_COMERCIO, MINIO_COMERCIO)
-    procesar_y_subir_osm(TAGS_NEGATIVOS, OBJ_NEGATIVOS, MINIO_NEGATIVOS)
-    procesar_y_subir_osm(TAGS_ALIMENTACION, OBJ_ALIMENTACION, MINIO_ALIMENTACION)
+    procesar_y_subir_osm(TAGS_COMERCIO, OBJ_COMERCIO, MINIO_PROCESSED_SECUNDARIOS)
+    procesar_y_subir_osm(TAGS_NEGATIVOS, OBJ_NEGATIVOS, MINIO_PROCESSED_SECUNDARIOS)
+    procesar_y_subir_osm(TAGS_ALIMENTACION, OBJ_ALIMENTACION,MINIO_PROCESSED_SECUNDARIOS)
