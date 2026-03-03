@@ -1,7 +1,7 @@
 import io
 import pandas
 from src.utils.funciones_minio import crear_cliente_minio, minio_subir_memoria, bajar_minio
-from src.config import MINIO_INE, MINIO_RAW_SECUNDARIOS, MINIO_REGIAS_SUCIO, OBJ_INE, OBJ_INE_JUNTO, OBJ_SECCIONES
+from src.config import MINIO_INE, MINIO_RAW_SECUNDARIOS, MINIO_REJILLAS_SUCIO, OBJ_INE, OBJ_INE_JUNTO, OBJ_SECCIONES
 
 def unir_datos_ine_seccion_censal():
     """
@@ -13,7 +13,7 @@ def unir_datos_ine_seccion_censal():
     
     print("Descargando datos del INE y secciones censales desde MinIO... \n")
     df_ine = bajar_minio(client, MINIO_RAW_SECUNDARIOS, OBJ_INE)
-    df_secciones_censales = bajar_minio(client, MINIO_REGIAS_SUCIO, OBJ_SECCIONES)
+    df_secciones_censales = bajar_minio(client, MINIO_REJILLAS_SUCIO, OBJ_SECCIONES)
 
     print("Uniendo datos del INE con geometrías de secciones censales... \n")
 
@@ -28,9 +28,6 @@ def unir_datos_ine_seccion_censal():
     
     df_final = df_final.drop(columns=['DISTRITO'])
     df_final = df_final.drop_duplicates(subset=['CUSEC'], keep='first')
-
-    print(df_final.head())
-    print(df_final.info())
     
     print("Guardando datos unidos en formato Parquet y subiendo a MinIO... \n")
     buffer = io.BytesIO()

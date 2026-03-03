@@ -4,7 +4,6 @@ import io
 from src.utils.funciones_minio import crear_cliente_minio, minio_subir_memoria
 from src.config import (
     MINIO_PROCESSED_SECUNDARIOS, PLACE_OSM, TAGS_COMERCIO, TAGS_NEGATIVOS, TAGS_ALIMENTACION,
-    MINIO_COMERCIO, MINIO_NEGATIVOS, MINIO_ALIMENTACION,
     OBJ_COMERCIO, OBJ_NEGATIVOS, OBJ_ALIMENTACION,
 )
 

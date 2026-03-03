@@ -23,16 +23,13 @@ MINIO_PROCESSED_SECUNDARIOS = "processed/secundarios"
 MINIO_CLEANED_TRANSPORTE = "cleaned/transporte"
 
 # --- Agrupacion (grouped) ---
-MINIO_GROUPED_SECUNDARIOS = "grouped/secudarios"
+MINIO_GROUPED_SECUNDARIOS = "grouped/secundarios"
 
 # --- Datos secundarios temáticos ---
-MINIO_CATASTRO = "datos_secundarios/catastro"
-MINIO_INE = "datos_secundarios/ine"
-MINIO_COMERCIO = "datos_secundarios/comercio"
-MINIO_NEGATIVOS = "datos_secundarios/negativos"
+MINIO_CATASTRO = "cleaned/catastro"
+MINIO_INE = "cleaned/ine"
 MINIO_REJILLAS_SUCIO = "raw/rejillas"
-MINIO_ALIMENTACION = "datos_secundarios/alimentacion"
-MINIO_PADRON = "datos_secundarios/padron"
+MINIO_PADRON = "cleaned/padron"
 
 
 # ╔══════════════════════════════════════════════════════════════════════╗
@@ -179,7 +176,7 @@ OBJ_METRO = "estaciones_metro.parquet"
 # ╚══════════════════════════════════════════════════════════════════════╝
 
 URL_CATASTRO = "https://www.catastro.hacienda.gob.es/INSPIRE/Buildings/28/28900-MADRID/A.ES.SDGC.BU.28900.zip"
-OBJ_CATASTRO = "edificios_madrid.parquet"
+OBJ_CATASTRO = "anio_construccion.parquet"
 
 
 # ╔══════════════════════════════════════════════════════════════════════╗
@@ -188,7 +185,7 @@ OBJ_CATASTRO = "edificios_madrid.parquet"
 
 URL_INE = "https://servicios.ine.es/wstempus/js/es/DATOS_TABLA/30824?tip=AM"
 OBJ_INE = "renta_hogar_secciones_madrid.parquet"
-OBJ_INE_JUNTO = "renta_hogar_secciones_censales_madrid.parquet"
+OBJ_INE_JUNTO = "renta_media.parquet"
 
 # ╔══════════════════════════════════════════════════════════════════════╗
 # ║  F — OpenStreetMap (ocio, negativos y supermercados y comercios)     ║
