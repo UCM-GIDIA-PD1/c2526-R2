@@ -1,7 +1,11 @@
 import pandas as pd
 from shapely import wkb
 from src.utils.funciones_minio import crear_cliente_minio, bajar_minio, subir_minio
+<<<<<<< HEAD
 from src.config import MINIO_PROCESSED_SECUNDARIOS, MINIO_PROCESSED_TRANSPORTE, MINIO_RAW_SECUNDARIOS, OBJ_BUS, OBJ_METRO
+=======
+from src.config import MINIO_RAW_SECUNDARIOS, MINIO_CLEANED_SECUNDARIOS, OBJ_BUS, OBJ_METRO
+>>>>>>> 24454ff2acde402e940c6eb4aec3f67cfd4084c1
 
 
 def limpiar_lineas(linea_str: str) -> str:
@@ -62,6 +66,7 @@ def agrupar_estaciones_metro(df: pd.DataFrame) -> pd.DataFrame:
     df = df.dropna(subset=["nombre"])
 
     # Normalizar nombre: eliminar espacios y estandarizar capitalización
+<<<<<<< HEAD
     df["nombre"] = df["nombre"].astype(str).str.strip().str.upper()
     df = df[df["nombre"] != ""]
     # Limpiar líneas: convertir formato de línea
@@ -77,6 +82,43 @@ def agrupar_estaciones_metro(df: pd.DataFrame) -> pd.DataFrame:
     df_estaciones = df_estaciones.rename(columns={"linea": "lineas"})
     # Seleccionar columnas finales en orden
     result = df_estaciones[["nombre", "lat", "lon", "lineas"]]
+=======
+    df["nombre"] = df["nombre"].str.strip().str.title()
+    df = df[df["nombre"] != ""]
+
+    # Limpiar líneas: convertir formato de línea
+    df["lin_limpia"] = df["lin"].apply(limpiar_lineas)
+
+    # Convertir cada valor de línea en una lista para facilitar la agregación
+    df["lin_list"] = (
+        df["lin_limpia"]
+        .where(df["lin_limpia"] != "", pd.NA)
+        .apply(lambda v: [v] if pd.notna(v) else [])
+    )
+
+    # Agrupar por nombre normalizado
+    grouped = (
+        df.groupby("nombre", as_index=False)
+        .agg(
+            lat=("lat", "first"),
+            lon=("lon", "first"),
+            lin_list=("lin_list", lambda x: sum(x, [])),
+        )
+    )
+
+    # Combinar las listas en cadenas únicas, ordenadas (R al final)
+    def _sort_key(x: str) -> float:
+        return float("inf") if x == "R" else int(x)
+
+    grouped["lin"] = (
+        grouped["lin_list"]
+        .apply(lambda lst: sorted(set(lst), key=_sort_key))
+        .apply(lambda lst: ",".join(lst))
+    )
+
+    # Seleccionar columnas finales en orden
+    result = grouped[["nombre", "lat", "lon", "lin"]]
+>>>>>>> 24454ff2acde402e940c6eb4aec3f67cfd4084c1
 
     print(f"  METRO: {len(df)} registros iniciales → {len(result)} estaciones únicas")
     return result
@@ -98,6 +140,7 @@ def limpiar_transporte(df: pd.DataFrame, nombre: str) -> pd.DataFrame:
     - Longitud → lon (X en bus, geometry.x en metro)
     """
     if nombre == "BUS":
+<<<<<<< HEAD
         out = pd.DataFrame({
             "nombre": df["DENOMINACION"],
             "lat": df["geometry"].apply(lambda geom: wkb.loads(geom).y),
@@ -112,6 +155,16 @@ def limpiar_transporte(df: pd.DataFrame, nombre: str) -> pd.DataFrame:
     elif nombre == "METRO":
         out = pd.DataFrame({
             "nombre": df["DENOMINACION"],
+=======
+        out = df[["LINEAS", "Y", "X"]].copy()
+        out.columns = ["lin", "lat", "lon"]
+        print(f"  {nombre}: {len(out)} registros → columnas {list(out.columns)}")
+        return out
+
+    elif nombre == "METRO":
+        out = pd.DataFrame({
+            "nombre": df["DENOMINACION"],
+>>>>>>> 24454ff2acde402e940c6eb4aec3f67cfd4084c1
             "lin": df["LINEAS"],
             "lat": df["geometry"].apply(lambda geom: wkb.loads(geom).y),
             "lon": df["geometry"].apply(lambda geom: wkb.loads(geom).x),
@@ -130,5 +183,10 @@ if __name__ == "__main__":
     for nombre, obj in {"BUS": OBJ_BUS, "METRO": OBJ_METRO}.items():
         df = bajar_minio(client=cliente, path=MINIO_RAW_SECUNDARIOS, minio_object=obj)
         df = limpiar_transporte(df, nombre)
+<<<<<<< HEAD
         subir_minio(df=df, client=cliente, path=MINIO_PROCESSED_TRANSPORTE, minio_object=obj)
         print(f"OK: {nombre}")
+=======
+        subir_minio(df=df, client=cliente, path=MINIO_CLEANED_SECUNDARIOS, minio_object=obj)
+        print(f"OK: {nombre}")
+>>>>>>> 24454ff2acde402e940c6eb4aec3f67cfd4084c1

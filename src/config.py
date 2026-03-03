@@ -15,12 +15,17 @@ MINIO_RAW = "raw"
 MINIO_RAW_SECUNDARIOS = "raw/secundarios"
 MINIO_RAW_PRIMARIOS = "raw/datos_primarios"
 
-# --- Transformación (interim) ---
-MINIO_INTERIM_SECUNDARIOS = "interim/secundarios"
+# --- Limpieza (cleaned) ---
+MINIO_CLEANED_SECUNDARIOS = "cleaned/secundarios"
 
+<<<<<<< HEAD
 # --- Agrupacion (cleaned) ---
 MINIO_PROCESSED_SECUNDARIOS = "cleaned/secundarios"
 MINIO_PROCESSED_TRANSPORTE = "cleaned/transporte"
+=======
+# --- Agrupacion (grouped) ---
+MINIO_GROUPED_SECUNDARIOS = "grouped/secudarios"
+>>>>>>> 24454ff2acde402e940c6eb4aec3f67cfd4084c1
 
 # --- Datos secundarios temáticos ---
 MINIO_CATASTRO = "datos_secundarios/catastro"
@@ -29,6 +34,7 @@ MINIO_COMERCIO = "datos_secundarios/comercio"
 MINIO_NEGATIVOS = "datos_secundarios/negativos"
 MINIO_REJILLAS_SUCIO = "raw/rejillas"
 MINIO_ALIMENTACION = "datos_secundarios/alimentacion"
+MINIO_PADRON = "datos_secundarios/padron"
 
 
 # ╔══════════════════════════════════════════════════════════════════════╗
@@ -72,15 +78,15 @@ ARCHIVOS_IMAGENES = "imagenes"
 # ╚══════════════════════════════════════════════════════════════════════╝
 
 DATASETS_AYTO = {
-    "EDUCACION": {
+    "CENTROS_EDUCATIVOS": {
         "url": "https://datos.madrid.es/dataset/300614-0-centros-educativos/resource/300614-1-centros-educativos-csv/download/300614-1-centros-educativos-csv.csv",
         "object": "centros_educativos.parquet",
     },
-    "UNIVERSIDAD": {
+    "UNIVERSIDADES": {
         "url": "https://datos.madrid.es/dataset/203166-0-universidades-educacion/resource/203166-0-universidades-educacion-csv/download/203166-0-universidades-educacion-csv.csv",
         "object": "universidades.parquet",
     },
-    "SANIDAD": {
+    "HOSPITALES": {
         "url": "https://datos.madrid.es/dataset/212769-0-atencion-medica/resource/212769-0-atencion-medica-csv/download/212769-0-atencion-medica-csv.csv",
         "object": "hospitales.parquet",
     },
@@ -98,7 +104,7 @@ DATASETS_AYTO = {
     },
     "PARQUES_BOMBEROS": {
         "url": "https://datos.madrid.es/egob/catalogo/211642-0-bomberos-parques.csv",
-        "object": "bomberos.parquet",
+        "object": "parques_bomberos.parquet",
     },
     "CEMENTERIOS": {
         "url": "https://datos.madrid.es/egob/catalogo/205026-0-cementerios.csv",
@@ -120,19 +126,19 @@ DATASETS_AYTO = {
         "url": "https://datos.madrid.es/egob/catalogo/200284-0-puntos-limpios-fijos.csv",
         "object": "puntos_limpios.parquet",
     },
-    "IGLESIAS_CATOLICAS": {
+    "IGLESIAS": {
         "url": "https://datos.madrid.es/egob/catalogo/209426-0-templos-catolicas.csv",
         "object": "iglesias.parquet",
     },
-    "CENTROS_SERVICIOS_SOCIALES": {
+    "SERVICIOS_SOCIALES": {
         "url": "https://datos.madrid.es/egob/catalogo/209094-0-centros-servicios-sociales.csv",
-        "object": "centros_sociales.parquet",
+        "object": "servicios_sociales.parquet",
     },
-    "CENTROS_MUNICIPALES_MAYORES": {
+    "CENTROS_MAYORES": {
         "url": "https://datos.madrid.es/egob/catalogo/200337-0-centros-mayores.csv",
         "object": "centros_mayores.parquet",
     },
-    "PISCINAS_MUNICIPALES": {
+    "PISCINAS": {
         "url": "https://datos.madrid.es/egob/catalogo/210227-0-piscinas-publicas.csv",
         "object": "piscinas.parquet",
     },
@@ -149,7 +155,7 @@ DATASETS_AYTO_LIMPIEZA = {k: v["object"] for k, v in DATASETS_AYTO.items() if k 
 URL_BUS = (
     "https://services5.arcgis.com/UxADft6QPcvFyDU1/arcgis/rest/services/"
     "M6_Red/FeatureServer/0/query?where=1%3D1"
-    "&outFields=DENOMINACION,LINEAS,X,Y,GRADOACCESIBILIDAD&outSR=4326&f=json"
+    "&outFields=*&outSR=4326&f=json"
 )
 
 URL_METRO_BASE = (
@@ -214,11 +220,13 @@ OBJ_ALIMENTACION = "alimentacion.parquet"
 
 
 # ╔══════════════════════════════════════════════════════════════════════╗
-# ║  G — Secciones censales (Geoportal Ayto. Madrid)                     ║
+# ║  G — Capas (Secciones censales, Barrios, Padron)                     ║
 # ╚══════════════════════════════════════════════════════════════════════╝
-
+URL_PADRON = "https://datos.madrid.es/dataset/200076-0-padron/resource/200076-1-padron-json/download/200076-1-padron-json.json"
 URL_BARRIOS = "https://geoportal.madrid.es/fsdescargas/IDEAM_WBGEOPORTAL/LIMITES_ADMINISTRATIVOS/Barrios/Barrios.zip"
 URL_SECCIONES = "https://geoportal.madrid.es/fsdescargas/IDEAM_WBGEOPORTAL/LIMITES_ADMINISTRATIVOS/Seccionado/Secciones_Censales.zip"
+OBJ_PADRON_BAR = "padron_barrio_madrid.parquet"
+OBJ_PADRON_SEC = "padron_seccion_madrid.parquet"
 OBJ_SECCIONES = "secciones_censales_madrid.parquet"
 OBJ_BARRIOS = "barrios_madrid.parquet"
 TIPOS_REJILLAS = [{"tipo":"barrios","columna_id":"COD_BAR"},{"tipo":"secciones censales","columna_id":"CUSEC"},{"tipo":"hexagonos_1","columna_id":"id_hex"},{"tipo":"hexagonos_2","columna_id":"id_hex"}]
