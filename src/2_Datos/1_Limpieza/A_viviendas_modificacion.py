@@ -99,6 +99,10 @@ def sustituir_valores_nulos(df:pd.DataFrame)->pd.DataFrame:
 
     return df_res
 
+def calcular_precio_m2(df:pd.DataFrame)->None:
+    df["Precio_m2"] = round(df["Precio"] / df["Superficie"], 5)
+
+
 
 def obtener_coordenadas_procesadas(client:Minio)->pd.DataFrame:
     path = PATH_PRIMARIOS_LIMPIO
@@ -158,9 +162,10 @@ def separar_imagenes(cliente:Minio):
         num_archivo = 1
         path_sucio = f"{PATH_PRIMARIOS_RAW}{modo}"
         parquets = buscar_todos_los_archivos(cliente,path_sucio)
+        print(parquets)
         df_buffer = pd.DataFrame()
         for parquet in tqdm(parquets,desc=f"Transfiriendo imagenes de {modo} a limpio..."):
-            if parquet != "ids.parquets":
+            if parquet != "ids.parquet":
                 df_buffer = pd.concat([df_buffer,descargar_imagenes(cliente,path_sucio,parquet)])
                 if len(df_buffer)>500:
                     df_subir = df_buffer.iloc[:500].copy()
@@ -271,6 +276,8 @@ def limpiar_memoria_raw():
     df_alquiler = pd.merge(df_alquiler,df_coordenadas,on = "Direccion",how = 'left')
     df_venta = sustituir_valores_nulos(df_venta)
     df_alquiler = sustituir_valores_nulos(df_alquiler)
+    calcular_precio_m2(df_venta)
+    calcular_precio_m2(df_alquiler)
     subir_viviendas_limpio(df_alquiler,cliente,"alquiler")
     subir_viviendas_limpio(df_venta,cliente,"venta")
     separar_imagenes(cliente)

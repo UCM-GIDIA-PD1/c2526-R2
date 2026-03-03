@@ -1,7 +1,7 @@
 import pandas as pd
 from shapely import wkb
 from src.utils.funciones_minio import crear_cliente_minio, bajar_minio, subir_minio
-from src.config import MINIO_PROCESSED_SECUNDARIOS, MINIO_PROCESSED_TRANSPORTE, MINIO_RAW_SECUNDARIOS, OBJ_BUS, OBJ_METRO
+from src.config import MINIO_CLEANED_TRANSPORTE, MINIO_PROCESSED_SECUNDARIOS, MINIO_RAW_SECUNDARIOS, OBJ_BUS, OBJ_METRO
 
 
 def limpiar_lineas(linea_str: str) -> str:
@@ -129,5 +129,5 @@ if __name__ == "__main__":
     for nombre, obj in {"BUS": OBJ_BUS, "METRO": OBJ_METRO}.items():
         df = bajar_minio(client=cliente, path=MINIO_RAW_SECUNDARIOS, minio_object=obj)
         df = limpiar_transporte(df, nombre)
-        subir_minio(df=df, client=cliente, path=MINIO_PROCESSED_TRANSPORTE, minio_object=obj)
+        subir_minio(df=df, client=cliente, path=MINIO_CLEANED_TRANSPORTE, minio_object=obj)
         print(f"OK: {nombre}")
