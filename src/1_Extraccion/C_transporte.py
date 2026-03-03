@@ -98,18 +98,10 @@ def descargar_metro() -> io.BytesIO:
         if len(gdf_linea) > 0:
             gdf_linea["LINEAS"] = METRO_LAYER_LINEAS.get(layer_id, "")
             todos.append(gdf_linea)
-<<<<<<< HEAD
     # Combinar todas las líneas y eliminar estaciones duplicadas (transbordos)
     gdf = pd.concat(todos, ignore_index=True)
     gdf = gdf.drop_duplicates(subset = ["DENOMINACION","LINEAS"],keep = 'first')
     print(f"  Estaciones de metro únicas: {len(gdf)}")
-=======
-
-    # Combinar todas las líneas (sin deduplicar: se hará en la fase de limpieza)
-    gdf = pd.concat(todos, ignore_index=True)
-    print(f"  Estaciones de metro descargadas: {len(gdf)}")
-
->>>>>>> 24454ff2acde402e940c6eb4aec3f67cfd4084c1
     buffer = io.BytesIO()
     gdf.to_parquet(buffer, index=False)
     buffer.seek(0)

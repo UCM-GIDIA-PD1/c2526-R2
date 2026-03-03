@@ -18,6 +18,10 @@ MINIO_RAW_PRIMARIOS = "raw/datos_primarios"
 # --- Limpieza (cleaned) ---
 MINIO_CLEANED_SECUNDARIOS = "cleaned/secundarios"
 
+# --- Procesado (processed) ---
+MINIO_PROCESSED_SECUNDARIOS = "processed/secundarios"
+MINIO_PROCESSED_TRANSPORTE = "processed/transporte"
+
 # --- Agrupacion (grouped) ---
 MINIO_GROUPED_SECUNDARIOS = "grouped/secudarios"
 
