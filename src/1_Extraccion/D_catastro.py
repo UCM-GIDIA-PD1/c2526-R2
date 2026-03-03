@@ -40,8 +40,8 @@ def descargar_catastro():
         gdf['beginning'] = pd.to_datetime(gdf['beginning'], format='%Y-%m-%dT%H:%M:%S', errors='coerce').dt.year
         gdf = gdf[gdf['beginning'] > 0].copy()  # Filtramos años válidos
         gdf.rename(columns={'beginning': 'anio_construccion'}, inplace=True)
+        gdf['anio_construccion'] = gdf['anio_construccion'].astype(int)
         gdf.reset_index(drop=True, inplace=True)
-
 
     print("Guardando datos del catastro en formato Parquet... \n")
     buffer = io.BytesIO()
