@@ -62,8 +62,6 @@ def obtener_coordenadas_procesadas(client:Minio)->pd.DataFrame:
     return df_coordenadas
 
 
-
-
 def mete_datos_secundarios(gdf:gpd.GeoDataFrame,cod_rejilla:str,df_datos_sec:pd.DataFrame,nombre_cat:str)->gpd.GeoDataFrame:
 
     df_datos = df_datos_sec.copy()
@@ -81,6 +79,8 @@ def mete_datos_secundarios(gdf:gpd.GeoDataFrame,cod_rejilla:str,df_datos_sec:pd.
 
     gdf_res[f"Densidad_{nombre_cat}"] = round(gdf_res[f"Num_{nombre_cat}"]/gdf_res["AREA"],2)
 
+    gdf_res[f"Densidad_{nombre_cat}"] = gdf_res[f"Densidad_{nombre_cat}"].fillna(0)
+    gdf_res[f"Num_{nombre_cat}"] = gdf_res[f"Num_{nombre_cat}"].fillna(0)
 
     return gdf_res
 
@@ -204,6 +204,42 @@ def mete_datos_transporte(gdf_rejilla, df_transporte, col_id_rejilla, tipo_trans
 
     return gdf_res
 
+
+def mete_datos_catastro(gdf_rejilla:gpd.GeoDataFrame,gdf_edificios:gpd.GeoDataFrame,id_rejilla:str)->gpd.GeoDataFrame:
+
+    gdf_res = gdf_rejilla.copy()
+
+    if gdf_edificios.crs != gdf_res.crs:
+        gdf_edificios = gdf_edificios.to_crs(gdf_res.crs)
+    
+    gdf_edificios_puntos = gdf_edificios.copy()
+
+    gdf_edificios_puntos['geometry'] = gdf_edificios_puntos.geometry.representative_point()
+
+    cruce = gpd.sjoin(gdf_edificios_puntos, gdf_res[[id_rejilla, 'geometry']], how='inner', predicate='within')
+    
+    agrupado = cruce.groupby(id_rejilla).agg(
+        Anio_construccion=("anio_construccion", 'mean')
+    ).reset_index()
+
+    gdf_res = gdf_res.merge(agrupado, on=id_rejilla, how='left')
+
+    return gdf_res
+
+def mete_datos_ine(gdf_rejilla:gpd.GeoDataFrame,df_ine:pd.DataFrame,id_rejilla:str)->gpd.GeoDataFrame:
+    
+    gdf_res = gdf_rejilla.copy()
+
+    agrupado = df_ine.groupby(id_rejilla).agg(
+        Renta_media=("renta_media", 'mean')
+    ).reset_index()
+
+    agrupado['Renta_media'] = agrupado['Renta_media'].round(2)
+
+    gdf_res = gdf_res.merge(agrupado, on=id_rejilla, how='left')
+
+    return gdf_res   
+
 def mete_datos_viviendas(gdf:gpd.GeoDataFrame,cod_rejilla:str,df_viviendas:pd.DataFrame,tipo:str)->gpd.GeoDataFrame:
     """
     Toma una rejilla (barrios,seccion_censal, h3) y un df de viviendas.
@@ -266,7 +302,7 @@ def mete_datos_viviendas(gdf:gpd.GeoDataFrame,cod_rejilla:str,df_viviendas:pd.Da
     cols_a_limpiar = [f'Media_precio_m2_{tipo}']
     gdf_res.loc[mask_pocos_datos, cols_a_limpiar] = None
     gdf_res = rellenar_nulos_con_vecinos(gdf_res,cols_a_limpiar)
-    for c in gdf_res.columns:
+    for c in nuevos_nombres.values():
         gdf_res[c] = gdf_res[c].fillna(0)
 
     return gdf_res
@@ -311,7 +347,7 @@ def mete_datos_mapa(gdf:gpd.GeoDataFrame,cliente:Minio)->gpd.GeoDataFrame:
         df = descargar_viviendas(cliente,sector)
 
 def visualizar_rejilla(gdf:gpd.GeoDataFrame,tipo:str):
-    mapa_base = gdf.explore(column="Media_precio_m2_alquiler")
+    mapa_base = gdf.explore(column="Anio_construccion")
     folium.LayerControl().add_to(mapa_base)
     with tempfile.NamedTemporaryFile(delete=False, suffix=".html") as tmp:
         mapa_base.save(tmp.name)
@@ -332,6 +368,10 @@ def inicio_rejillas():
         "venta": df_viviendas_venta,
         "alquiler": df_viviendas_alquiler
     }
+    df_ine = bajar_minio(cliente,"cleaned/ine","renta_media.parquet")
+    gdf_padron_barrios = bajar_minio(cliente,"cleaned/padron","padron_barrio_madrid.parquet")
+    gdf_padron_secciones = bajar_minio(cliente,"cleaned/padron","padron_seccion_madrid.parquet")
+    gdf_catastro = bajar_mapa_minio(cliente,"cleaned/catastro","anio_construccion")
     datos_secundarios = buscar_todos_los_archivos(cliente,"cleaned/secundarios")
     diccionario_secundarios = {}
     for sec in datos_secundarios:
@@ -344,22 +384,22 @@ def inicio_rejillas():
             else:
                 resolucion = 9
             gdf_rejilla = generar_rejilla_h3(df_coorenadas,resolucion=resolucion)
-            calcula_area(gdf_rejilla)
-            for modo in MODOS:
-                gdf_rejilla = mete_datos_viviendas(gdf_rejilla,rejilla['columna_id'],diccionario_viviendas[modo],modo)
-            for tipo,df_s in diccionario_secundarios.items():
-                gdf_rejilla = mete_datos_secundarios(gdf_rejilla,rejilla["columna_id"],df_s,tipo)
-            for tipo,df_t in diccionario_transporte.items():
-                gdf_rejilla = mete_datos_transporte(gdf_rejilla,df_t,rejilla["columna_id"],tipo)
+
         else:
             gdf_rejilla = descarga_rejilla(rejilla["tipo"],cliente)
-            calcula_area(gdf_rejilla)
-            for modo in MODOS:
-                gdf_rejilla = mete_datos_viviendas(gdf_rejilla,rejilla['columna_id'],diccionario_viviendas[modo],modo)
-            for tipo,df_s in diccionario_secundarios.items():
-                gdf_rejilla = mete_datos_secundarios(gdf_rejilla,rejilla["columna_id"],df_s,tipo)
-            for tipo,df_t in diccionario_transporte.items():
-                gdf_rejilla = mete_datos_transporte(gdf_rejilla,df_t,rejilla["columna_id"],tipo)
+            if rejilla["tipo"] == "barrios":
+                gdf_rejilla = gdf_rejilla.merge(gdf_padron_barrios,on = rejilla["columna_id"],how = "left")
+            else:
+                gdf_rejilla = gdf_rejilla.merge(gdf_padron_secciones,on = rejilla["columna_id"],how = "left")
+            gdf_rejilla = mete_datos_catastro(gdf_rejilla,gdf_catastro,rejilla["columna_id"])
+            gdf_rejilla = mete_datos_ine(gdf_rejilla,df_ine,rejilla["columna_id"])
+        calcula_area(gdf_rejilla)
+        for modo in MODOS:
+            gdf_rejilla = mete_datos_viviendas(gdf_rejilla,rejilla['columna_id'],diccionario_viviendas[modo],modo)
+        for tipo,df_s in diccionario_secundarios.items():
+            gdf_rejilla = mete_datos_secundarios(gdf_rejilla,rejilla["columna_id"],df_s,tipo)
+        for tipo,df_t in diccionario_transporte.items():
+            gdf_rejilla = mete_datos_transporte(gdf_rejilla,df_t,rejilla["columna_id"],tipo)
         subir_rejilla_llena(cliente,gdf_rejilla,rejilla["tipo"])
         print(f"Mapa de {rejilla["tipo"]} subido con exito.")
 

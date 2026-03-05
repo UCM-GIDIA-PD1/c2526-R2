@@ -1,4 +1,3 @@
-import base64
 import googlemaps
 import pandas as pd
 from geopy.geocoders import Nominatim
@@ -7,13 +6,20 @@ from src.config import PAIS,CIUDAD
 import re
 from src.utils.funciones_minio import *
 from tqdm import tqdm
-from PIL import Image
 import os
 from src.config import COLUMNAS_CARACTERISTICAS,COLUMNAS_IMAGENES,PATH_PRIMARIOS_LIMPIO,PATH_PRIMARIOS_RAW,ARCHIVOS_COORDENADAS,ARCHIVOS_VIVIENDAS,ARCHIVOS_IMAGENES,MODOS
 
 COLUMNAS_SELECCION_DUPLICADOS = ["Superficie","Precio","Num_habitaciones","Ventanas","Planta","Anuncia","Direccion","lat","lon"]
 
-def limpia_direccion(direccion:str):
+def limpia_direccion(direccion:str)->str:
+    """
+        limpia la cadena de "Calle" de una vivienda y la normaliza para que pueda pasar a coordenadas
+    Args:
+        direccion (str): Calle donde se encuentra
+
+    Returns:
+        str: Direccion de la vivienda con ciudad y Pais
+    """
     pais = PAIS
     ciudad = CIUDAD
 
@@ -54,6 +60,15 @@ def limpia_direccion(direccion:str):
 
 
 def descargar_anuncios(client:Minio,modo:str)->pd.DataFrame:
+    """
+        Descarga los anuncios correspondientes a un tipo de mercado de la carpeta raw
+    Args:
+        client (Minio): Cliente de minio
+        modo (str): tipo de mercado que se quiere descargar
+
+    Returns:
+        pd.DataFrame: dataframe de las viviendas con solo las columnas interesantes para el modelo (todo menos imágenes)
+    """
     path = f'{PATH_PRIMARIOS_RAW}{modo}'
     parquets = buscar_todos_los_archivos(client,path)
     ignorar = {'ids.parquet'}
@@ -66,11 +81,28 @@ def descargar_anuncios(client:Minio,modo:str)->pd.DataFrame:
     return df_res
 
 def subir_viviendas_limpio(df:pd.DataFrame,cliente:Minio,modo:str):
+    """
+        Sube viviendas de un tipo de mercado (modo) en limpio al minio tras haber transformado y limpiado los datos
+    Args:
+        df (pd.DataFrame): df de viviendas
+        cliente (Minio): cliente minio
+        modo (str): Tipo de mercado (venta o alquiler)
+    """
     path = PATH_PRIMARIOS_LIMPIO
     archivo = f"{ARCHIVOS_VIVIENDAS}_{modo}.parquet"   
     subir_minio(df,cliente,path,archivo)
 
 def sustituir_valores_nulos(df:pd.DataFrame)->pd.DataFrame:
+    """
+        Hace la limpieza del datasets de viviendas :
+        - Paso a nmérico de todo lo que lo sea
+        - Quitar outliers (por ahora un solo parámetro (superficie > 10000m2))
+    Args:
+        df (pd.DataFrame): df de viviendas
+
+    Returns:
+        pd.DataFrame: df de viviendas limpio
+    """
 
     df_limpiado = df.copy()
 
@@ -94,17 +126,29 @@ def sustituir_valores_nulos(df:pd.DataFrame)->pd.DataFrame:
     cantidad_duplicados = df.duplicated(subset = COLUMNAS_SELECCION_DUPLICADOS).sum()
 
     print(f"Detectando y borrando {cantidad_duplicados} anuncios muy similares ")
-
+    df_limpiado = df_limpiado[df_limpiado["Superficie"]<=10000].copy()
     df_res = df_limpiado.drop_duplicates(subset = COLUMNAS_SELECCION_DUPLICADOS,keep = 'first').copy()
 
     return df_res
 
 def calcular_precio_m2(df:pd.DataFrame)->None:
+    """
+        Calcula el precio por metro cuadrático de cada vivienda
+    Args:
+        df (pd.DataFrame): df de viviendas
+    """
     df["Precio_m2"] = round(df["Precio"] / df["Superficie"], 5)
 
-
-
 def obtener_coordenadas_procesadas(client:Minio)->pd.DataFrame:
+    """
+        Obtiene las coordenadas de viviendas que ya se han procesado 
+        Hacemos esto para optimizar el proces y no Geocodificar cada vez que ejecutemos la limpieza
+    Args:
+        client (Minio): Cliente de minio
+
+    Returns:
+        pd.DataFrame: df de coordenadas
+    """
     path = PATH_PRIMARIOS_LIMPIO
     archivo = ARCHIVOS_COORDENADAS
     try:
@@ -117,19 +161,38 @@ def obtener_coordenadas_procesadas(client:Minio)->pd.DataFrame:
         return pd.DataFrame()
 
 def subir_coordenadas(client:Minio,df_coordenadas:pd.DataFrame)->None:
+    """
+        Sube las coordenadas de las que se ha encontrado la posición geográfica
+    Args:
+        client (Minio): Cliente de minio
+        df_coordenadas (pd.DataFrame): coordenadas en un dataframe
+    """
     path = PATH_PRIMARIOS_LIMPIO
     archivo = ARCHIVOS_COORDENADAS
     subir_minio(df_coordenadas,client,path,archivo)
 
 def descargar_imagenes(cliente:Minio,path:str,nombre_archivo:str)->pd.DataFrame:
+    """
+        Descrgar las imágenes (columas : [id,Imagenes])
+    Args:
+        cliente (Minio): cliente de minio
+        path (str): path de donde buscar el archivo
+        nombre_archivo (str): nombre del archivo del que queremos descargar las imágenes
+
+    Returns:
+        pd.DataFrame: df de imágenes
+    """
     df = bajar_minio_especifico(cliente,path,nombre_archivo,COLUMNAS_IMAGENES)
     df = aplanar_columnas_imagenes(df)
     return df
 
-def aplanar_columnas_imagenes(df):
+def aplanar_columnas_imagenes(df:pd.DataFrame):
     """
     Transforma la columna de diccionarios de imágenes en 5 columnas independientes.
     Cada columna contendrá una lista de bytes (las imágenes de esa habitación).
+    Args:
+        df (pd.DataFrame): df de imágenes
+
     """    
     nuevas_filas = []
     for datos in df["Imagenes"]:
@@ -158,11 +221,16 @@ def aplanar_columnas_imagenes(df):
     return df_final
 
 def separar_imagenes(cliente:Minio):
+    """
+        Recorre la totalidad de ficheros raw que tenemos de las viviendas y las descarga invocando a aplanar_columnas_imagenes
+        Sube al minio en la carpeta que correpsonde batchs de imagenes con tamaño controlado
+    Args:
+        cliente (Minio): Cliente de minio
+    """
     for modo in MODOS:
         num_archivo = 1
         path_sucio = f"{PATH_PRIMARIOS_RAW}{modo}"
         parquets = buscar_todos_los_archivos(cliente,path_sucio)
-        print(parquets)
         df_buffer = pd.DataFrame()
         for parquet in tqdm(parquets,desc=f"Transfiriendo imagenes de {modo} a limpio..."):
             if parquet != "ids.parquet":
@@ -175,9 +243,16 @@ def separar_imagenes(cliente:Minio):
             
 
 
-def aportar_coordenadas(df_venta,df_alquiler,cliente:Minio):
+def aportar_coordenadas(df_venta:pd.DataFrame,df_alquiler:pd.DataFrame,cliente:Minio):
     """
-    Toma un DataFrame, limpia la columna de direcciones y añade columnas de Latitud, Longitud y Tipo.
+        Toma un DataFrame, limpia la columna de direcciones y añade columnas de Latitud, Longitud y Tipo.
+    Args:
+        df_venta (pd.DataFrame): dataframe de viviendas de venta
+        df_alquiler (pd.DataFrame): dataframe de viviendas de alquiler
+        cliente (Minio): Cliente de minio
+
+    Returns:
+        pd.Dataframe: coordenadas procesadas con columnas [Direccion,lat,lon,tipo_osm,tipo_Vía]
     """
 
     tqdm.pandas(desc=" Geocodificando pisos")
@@ -268,6 +343,10 @@ def aportar_coordenadas(df_venta,df_alquiler,cliente:Minio):
     return df_res
 
 def limpiar_memoria_raw():
+    """
+        función principal de la limpieza de datos de viviendas. 
+        Su ejecución deja en limpio y separadas viviendas_alquiler,viviendas_venta y carpeta imágenes(separando tipos de mercado)
+    """
     cliente = crear_cliente_minio()
     df_alquiler = descargar_anuncios(cliente,"alquiler")
     df_venta = descargar_anuncios(cliente,"venta")

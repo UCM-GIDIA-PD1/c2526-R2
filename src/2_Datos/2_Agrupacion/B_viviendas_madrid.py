@@ -3,7 +3,7 @@ import geopandas as gpd
 from src.config import COMPONENTES_TRANSPORTE, MODOS
 from scipy.spatial import cKDTree
 import numpy as np
-from src.utils.funciones_minio import bajar_minio, buscar_todos_los_archivos, crear_cliente_minio, subir_mapa_minio
+from src.utils.funciones_minio import bajar_mapa_minio, bajar_minio, buscar_todos_los_archivos, crear_cliente_minio, subir_mapa_minio
 from minio import Minio
 import folium
 import tempfile
@@ -16,10 +16,9 @@ def meter_datos_transporte(gdf_viviendas, df_transporte, nombre_categoria, col_l
     """
     
     gdf_res = gdf_viviendas.copy()
-
     crs_activo = gdf_viviendas.crs
     if crs_activo is None or crs_activo.to_epsg() == 4326:
-        gdf_viviendas = gdf_viviendas.to_crs("EPSG:25830") 
+        gdf_res = gdf_res.to_crs("EPSG:25830") 
     
     gdf_transporte = gpd.GeoDataFrame(
         df_transporte, 
@@ -29,7 +28,6 @@ def meter_datos_transporte(gdf_viviendas, df_transporte, nombre_categoria, col_l
 
     coords_viviendas = list(zip(gdf_res.geometry.x, gdf_res.geometry.y))
     coords_transporte = list(zip(gdf_transporte.geometry.x, gdf_transporte.geometry.y))
-
     arbol_transporte = cKDTree(coords_transporte)
 
     distancias_minimas, _ = arbol_transporte.query(coords_viviendas, k=1)
@@ -95,7 +93,36 @@ def meter_datos_secundarios(gdf_viv, df_pois, nombre_categoria, radio_metros=500
 
     return gdf_final
 
-def limpiar_coordenadas_lejanas(df, lat_min=40.0, lat_max=41, lon_min=-3.95, lon_max=-3.35):
+def mete_datos_catastro(gdf_viviendas, gdf_catastro, col_anyo='anio_construccion'):
+    """
+    Cruza los puntos de las viviendas con los polígonos del catastro para 
+    asignar a cada vivienda el año de construcción del edificio en el que cae.
+    """
+    
+    gdf_res = gdf_viviendas.copy()
+    
+    if gdf_res.crs != gdf_catastro.crs:
+        gdf_catastro = gdf_catastro.to_crs(gdf_res.crs)
+        
+   
+    catastro_reducido = gdf_catastro[['geometry', col_anyo]]
+    
+    cruce = gpd.sjoin(
+        gdf_res, 
+        catastro_reducido, 
+        how='left', 
+        predicate='within' 
+    )
+    
+
+    if cruce.index.duplicated().any():
+        cruce = cruce[~cruce.index.duplicated(keep='first')]
+    if 'index_right' in cruce.columns:
+        cruce = cruce.drop(columns=['index_right'])
+        
+    return cruce
+
+def limpiar_coordenadas_lejanas(df, lat_min=40.28, lat_max=40.65, lon_min=-3.83, lon_max=-3.48):
     """
     Filtra los puntos que caen fuera de una 'caja' lógica.
     (Las coordenadas por defecto son un recuadro amplio alrededor de Madrid).
@@ -108,7 +135,6 @@ def limpiar_coordenadas_lejanas(df, lat_min=40.0, lat_max=41, lon_min=-3.95, lon
     ].copy()
         
     return df_limpio
-
 def descargar_datos(cliente:Minio,path:str,nombre_archivo:str)->pd.DataFrame:
     df = bajar_minio(cliente,path,nombre_archivo)
     return df
@@ -132,6 +158,7 @@ def inicio_viviendas():
         "venta": df_viviendas_venta,
         "alquiler": df_viviendas_alquiler
     }
+    gdf_catastro = bajar_mapa_minio(cliente,"cleaned/catastro","anio_construccion")
     diccionario_transporte = {}
     for transporte in COMPONENTES_TRANSPORTE:
         df = descargar_datos(cliente,"cleaned/transporte",transporte["fichero"])
@@ -151,6 +178,9 @@ def inicio_viviendas():
             gdf_viviendas = meter_datos_secundarios(gdf_viviendas,df_s,tipo)
         for tipo,df_t in diccionario_transporte.items():
             gdf_viviendas = meter_datos_transporte(gdf_viviendas,df_t,tipo)
+        gdf_viviendas = mete_datos_catastro(gdf_viviendas,gdf_catastro)
+        visualizar_rejilla(gdf_viviendas)
+        print(gdf_viviendas.columns)
         subir_viviendas_con_info(cliente,gdf_viviendas,f"viviendas_{modo}")
         print(f"Mapa de viviendas de {modo} subido con exito.")
 
