@@ -22,19 +22,44 @@ diccionarios_columnas_rejillas = {
 }
 
 
-def descarga_rejilla(tipo:str,cliente:Minio):
+def descarga_rejilla(tipo:str,cliente:Minio)->gpd.GeoDataFrame:
+    """
+        Descarga una rejilla de raw del tipo introducido
+    Args:
+        tipo (str): tipo de rejilla (barrio,seccion_censal,hex1,hex2)
+        cliente (Minio): Cliente de Minio
+
+    Returns:
+        gpd.GeoDataFrame: geodataframe de la rejilla del tipo
+    """
     gdf = bajar_mapa_minio(cliente,MINIO_REJILLAS_SUCIO,f"{tipo.replace(' ','_')}_madrid")
     return gdf
 
 def subir_rejilla_llena(cliente:Minio,gdf:gpd.GeoDataFrame,nombre_rejilla:str,path="rejillas"):
+    """
+        Sube la rejilla al minio una vez procesada
+    Args:
+        cliente (Minio): Cliente minio
+        gdf (gpd.GeoDataFrame): geodataframe de la rejilla
+        nombre_rejilla (str): nombre de la rejilla
+        path (str, optional): path de donde subir la rejilla agrupadas. Defaults to "rejillas".
+    """
     subir_mapa_minio(cliente,gdf,path,nombre_rejilla)
 
-def extraer_mapa_principal(df_puntos, gdf_mapa_completo, id_columna, lat_col='lat', lon_col='lon'):
+def extraer_mapa_principal(df_puntos:pd.DataFrame, gdf_mapa_completo:gpd.GeoDataFrame, id_columna:str, lat_col='lat', lon_col='lon')->gpd.GeoDataFrame:
     """
-    Toma tus puntos, mira qué polígonos del mapa oficial tocan, 
-    y te devuelve un GeoDataFrame limpio solo con esos polígonos.
-    Ideal para Barrios y Secciones Censales.
-    """    
+    Toma los puntos existentes, mira qué polígonos del mapa oficial tocan, 
+    y devuelve un GeoDataFrame limpio solo con esos polígonos. Solo para barrios y secciones
+    Args:
+        df_puntos (pd.DataFrame): coordenadas existentes
+        gdf_mapa_completo (gpd.GeoDataFrame): Mapa de rejilla completo
+        id_columna (str): id de la columna que identifica una rejilla
+        lat_col (str, optional):  Defaults to 'lat'.
+        lon_col (str, optional):  Defaults to 'lon'.
+
+    Returns:
+        gpd.GeoDataFrame: geoDataframe limpip con solamente las secciones de las que tenemos datos
+    """
     gdf_puntos = gpd.GeoDataFrame(
         df_puntos, 
         geometry=gpd.points_from_xy(df_puntos[lon_col], df_puntos[lat_col]),
@@ -55,6 +80,14 @@ def extraer_mapa_principal(df_puntos, gdf_mapa_completo, id_columna, lat_col='la
 
 
 def obtener_coordenadas_procesadas(client:Minio)->pd.DataFrame:
+    """
+        Obtiene de minio los puntos del mapa de madrid de los que tenemos datos
+    Args:
+        client (Minio): Cliente de minio
+
+    Returns:
+        pd.DataFrame: Dataframe de coordenadas que poseemos
+    """
     path = PATH_PRIMARIOS_LIMPIO
     archivo = ARCHIVOS_COORDENADAS
 
@@ -63,6 +96,18 @@ def obtener_coordenadas_procesadas(client:Minio)->pd.DataFrame:
 
 
 def mete_datos_secundarios(gdf:gpd.GeoDataFrame,cod_rejilla:str,df_datos_sec:pd.DataFrame,nombre_cat:str)->gpd.GeoDataFrame:
+    """
+        Metemos datos secundarios en la rejilla introducida.
+        Calcula para cada tipo de datos secundarios el número de puntos que se encuentran en cada sección de la rejilla, y la densidad (ese número penalizado por el área)
+    Args:
+        gdf (gpd.GeoDataFrame): gdf de la rejilla
+        cod_rejilla (str): columna de identificacion de las secciones de las rejillas
+        df_datos_sec (pd.DataFrame): dataframe de un tipo de datos secundarios
+        nombre_cat (str): el tipo de datos que metemos (comercios, tiendas de alimentación,parques...)
+
+    Returns:
+        gpd.GeoDataFrame: geodataframe con los datos extraídos
+    """
 
     df_datos = df_datos_sec.copy()
     gdf_res = gdf.copy()
@@ -84,10 +129,17 @@ def mete_datos_secundarios(gdf:gpd.GeoDataFrame,cod_rejilla:str,df_datos_sec:pd.
 
     return gdf_res
 
-def rellenar_nulos_con_vecinos(gdf_original, columnas_a_imputar):
+def rellenar_nulos_con_vecinos(gdf_original:gpd.GeoDataFrame, columnas_a_imputar:list)->gpd.GeoDataFrame:
     """
-    Rellena los valores nulos de un GeoDataFrame calculando la media 
-    de los polígonos vecinos que sí tienen datos.
+        Función de interpolación con vecinos cercanos
+        Rellena los valores nulos de un GeoDataFrame calculando la media de los polígonos vecinos que sí tienen datos.
+        Por ahora nos centramos sobre todo en el precio por metro cuadrático medio de cada sección
+    Args:
+        gdf_original (gpd.GeoDataFrame): geodataframe de la rejilla
+        columnas_a_imputar (list): columna a rellenar 
+
+    Returns:
+        gpd.GeoDataFrame: Devuelve un geodataframe con los precios por metro cuadrático calculado para todas
     """
     gdf = gdf_original.copy()
     
@@ -113,11 +165,19 @@ def rellenar_nulos_con_vecinos(gdf_original, columnas_a_imputar):
                 
     return gdf
 
-def generar_rejilla_h3(df, lat_col='lat', lon_col='lon', resolucion=8, anillos=3):
+def generar_rejilla_h3(df:gpd.GeoDataFrame, lat_col='lat', lon_col='lon', resolucion=8, anillos=3)->gpd.GeoDataFrame:
     """
-    Genera una malla H3 continua alrededor de tus datos reales.
-    Usa anillos de expansión para rellenar los huecos y poner los bordes a 0,
-    evitando dibujar hexágonos inútiles a kilómetros de distancia.
+        Genera rejilla de h2 a partir del df de coordenadas en función de la resolución. 
+        El sistema de anillos permite generar los hexágonos vecinos para que el mapa sea uniforme 
+    Args:
+        df (gpd.GeoDataFrame): Df de coordenadas de viviendas de las que tenemos información
+        lat_col (str, optional): columna de latitud. Defaults to 'lat'.
+        lon_col (str, optional): columna de longitud. Defaults to 'lon'.
+        resolucion (int, optional): controla el tamaño de los hexágonos. Defaults to 8.
+        anillos (int, optional): cantidad de hexágonos vecinos que se generan por defecto. Defaults to 3.
+
+    Returns:
+        gpd.GeoDataFrame: la rejilla de hexágonos h3 generada
     """
     df_temp = df.copy()
 
@@ -402,7 +462,6 @@ def inicio_rejillas():
             gdf_rejilla = mete_datos_transporte(gdf_rejilla,df_t,rejilla["columna_id"],tipo)
         subir_rejilla_llena(cliente,gdf_rejilla,rejilla["tipo"])
         print(f"Mapa de {rejilla["tipo"]} subido con exito.")
-
 
 if __name__ == "__main__":
     inicio_rejillas()
