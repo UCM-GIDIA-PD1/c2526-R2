@@ -71,8 +71,8 @@ def descargar_padron():
     df['pob_jovenes_30'] = np.where(df['EDAD'] < 30, df['poblacion_total'], 0)
 
     # 3. Crear identificadores de Barrio y Sección Censal
-    df['COD_BAR'] = df['COD_DISTRITO'].astype(str) + df['COD_BARRIO'].astype(str)
-    df['CUSEC'] = '28079' + df['COD_DIST_SECCION'].astype(str).str.zfill(5)
+    df['COD_BAR'] = df['COD_DISTRITO'].astype('Int64').astype(str).str.zfill(2) + df['COD_BARRIO'].astype('Int64').astype(str)
+    df['CUSEC'] = '28079' + df['COD_DIST_SECCION'].astype('Int64').astype(str).str.zfill(5)
 
     print("Agrupando por Barrios y Secciones Censales... \n")
     df_barrios = agrupar_y_calcular_metricas(df, 'COD_BAR')
