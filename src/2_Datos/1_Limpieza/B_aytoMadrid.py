@@ -1,6 +1,6 @@
 import pandas as pd
-from src.utils.funciones_minio import crear_cliente_minio, bajar_minio, subir_minio
-from src.config import DATASETS_AYTO_LIMPIEZA, DISTRITOS,  MINIO_RAW_SECUNDARIOS, MINIO_CLEANED_SECUNDARIOS
+from utils.funciones_minio import crear_cliente_minio, bajar_minio, subir_minio
+from utils.config import DATASETS_AYTO_LIMPIEZA, DISTRITOS,  MINIO_RAW_SECUNDARIOS, MINIO_CLEANED_SECUNDARIOS
 
 def limpiar_dataframe(df: pd.DataFrame) -> pd.DataFrame:
     """
