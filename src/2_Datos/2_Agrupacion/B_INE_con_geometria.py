@@ -1,7 +1,7 @@
 import io
 import pandas
-from src.utils.funciones_minio import crear_cliente_minio, minio_subir_memoria, bajar_minio
-from src.config import MINIO_INE, MINIO_RAW_SECUNDARIOS, MINIO_REJILLAS_SUCIO, OBJ_INE, OBJ_INE_JUNTO, OBJ_SECCIONES
+from utils.funciones_minio import crear_cliente_minio, minio_subir_memoria, bajar_minio
+from utils.config import MINIO_INE, MINIO_RAW_SECUNDARIOS, MINIO_REJILLAS_SUCIO, OBJ_INE, OBJ_INE_JUNTO, OBJ_SECCIONES
 
 def unir_datos_ine_seccion_censal():
     """

@@ -2,12 +2,12 @@ import googlemaps
 import pandas as pd
 from geopy.geocoders import Nominatim
 from geopy.extra.rate_limiter import RateLimiter
-from src.config import PAIS,CIUDAD
+from utils.config import PAIS,CIUDAD
 import re
-from src.utils.funciones_minio import *
+from utils.funciones_minio import *
 from tqdm import tqdm
 import os
-from src.config import COLUMNAS_CARACTERISTICAS,COLUMNAS_IMAGENES,PATH_PRIMARIOS_LIMPIO,PATH_PRIMARIOS_RAW,ARCHIVOS_COORDENADAS,ARCHIVOS_VIVIENDAS,ARCHIVOS_IMAGENES,MODOS
+from utils.config import COLUMNAS_CARACTERISTICAS,COLUMNAS_IMAGENES,PATH_PRIMARIOS_LIMPIO,PATH_PRIMARIOS_RAW,ARCHIVOS_COORDENADAS,ARCHIVOS_VIVIENDAS,ARCHIVOS_IMAGENES,MODOS
 
 COLUMNAS_SELECCION_DUPLICADOS = ["Superficie","Precio","Num_habitaciones","Ventanas","Planta","Anuncia","Direccion","lat","lon"]
 

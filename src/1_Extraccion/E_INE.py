@@ -1,8 +1,8 @@
 import requests
 import pandas as pd
 import io
-from src.utils.funciones_minio import crear_cliente_minio, minio_subir_memoria
-from src.config import MINIO_RAW_SECUNDARIOS, URL_INE, OBJ_INE
+from utils.funciones_minio import crear_cliente_minio, minio_subir_memoria
+from utils.config import MINIO_RAW_SECUNDARIOS, URL_INE, OBJ_INE
 
 '''
 Script para la extracción de datos de renta media por hogar del INE, filtrado por Madrid Capital,

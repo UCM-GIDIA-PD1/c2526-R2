@@ -23,8 +23,8 @@ import pandas as pd
 import geopandas as gpd
 from shapely.geometry import Point
 from dotenv import load_dotenv
-from src.utils.funciones_minio import crear_cliente_minio, minio_subir_memoria
-from src.config import (
+from utils.funciones_minio import crear_cliente_minio, minio_subir_memoria
+from utils.config import (
     MINIO_RAW_SECUNDARIOS, URL_BUS, URL_METRO_BASE, METRO_LAYER_IDS,
     METRO_LAYER_LINEAS, OBJ_BUS, OBJ_METRO,
 )

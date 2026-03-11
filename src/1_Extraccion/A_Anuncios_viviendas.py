@@ -1,8 +1,8 @@
 import pandas as pd
 from DrissionPage import ChromiumPage,WebPage
 from DrissionPage.errors import ElementNotFoundError
-from src.utils.funciones_minio import *
-from src.config import URL_ALQUILER, URL_VENTA, MINIO_RAW_PRIMARIOS, IDEALISTA_UMBRAL_ANUNCIOS
+from utils.funciones_minio import *
+from utils.config import URL_ALQUILER, URL_VENTA, MINIO_RAW_PRIMARIOS, IDEALISTA_UMBRAL_ANUNCIOS
 import requests
 from PIL import Image
 import re

@@ -2,8 +2,8 @@ import pandas as pd
 import numpy as np
 import requests
 import io
-from src.utils.funciones_minio import crear_cliente_minio, minio_subir_memoria
-from src.config import URL_PADRON, MINIO_PADRON, OBJ_PADRON_BAR, OBJ_PADRON_SEC
+from utils.funciones_minio import crear_cliente_minio, minio_subir_memoria
+from utils.config import URL_PADRON, MINIO_PADRON, OBJ_PADRON_BAR, OBJ_PADRON_SEC
 
 '''
 Script para la extracción de datos del padrón municipal de Madrid.

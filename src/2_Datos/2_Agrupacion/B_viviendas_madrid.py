@@ -1,9 +1,9 @@
 import pandas as pd
 import geopandas as gpd
-from src.config import COMPONENTES_TRANSPORTE, MODOS
+from utils.config import COMPONENTES_TRANSPORTE, MODOS
 from scipy.spatial import cKDTree
 import numpy as np
-from src.utils.funciones_minio import bajar_mapa_minio, bajar_minio, buscar_todos_los_archivos, crear_cliente_minio, subir_mapa_minio
+from utils.funciones_minio import bajar_mapa_minio, bajar_minio, buscar_todos_los_archivos, crear_cliente_minio, subir_mapa_minio
 from minio import Minio
 import folium
 import tempfile

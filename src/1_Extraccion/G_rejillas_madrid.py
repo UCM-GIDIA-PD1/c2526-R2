@@ -2,8 +2,8 @@ import requests
 import geopandas as gdp
 import io
 from minio import Minio
-from src.utils.funciones_minio import crear_cliente_minio, minio_subir_memoria
-from src.config import URL_SECCIONES,URL_BARRIOS, MINIO_REJILLAS_SUCIO, OBJ_SECCIONES, OBJ_BARRIOS
+from utils.funciones_minio import crear_cliente_minio, minio_subir_memoria
+from utils.config import URL_SECCIONES,URL_BARRIOS, MINIO_REJILLAS_SUCIO, OBJ_SECCIONES, OBJ_BARRIOS
 
 '''
 Script para la extracción de la cartografía de secciones censales y barrios del Ayuntamiento de Madrid.

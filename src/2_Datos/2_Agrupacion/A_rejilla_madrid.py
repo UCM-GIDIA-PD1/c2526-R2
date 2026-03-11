@@ -7,8 +7,8 @@ import time
 import folium
 import matplotlib
 import mapclassify
-from src.config import COMPONENTES_TRANSPORTE, TIPOS_REJILLAS,MINIO_REJILLAS_SUCIO,PATH_PRIMARIOS_LIMPIO,ARCHIVOS_COORDENADAS,MODOS,ARCHIVOS_VIVIENDAS
-from src.utils.funciones_minio import bajar_mapa_minio, buscar_todos_los_archivos,crear_cliente_minio,bajar_minio, subir_mapa_minio
+from utils.config import COMPONENTES_TRANSPORTE, TIPOS_REJILLAS,MINIO_REJILLAS_SUCIO,PATH_PRIMARIOS_LIMPIO,ARCHIVOS_COORDENADAS,MODOS,ARCHIVOS_VIVIENDAS
+from utils.funciones_minio import bajar_mapa_minio, buscar_todos_los_archivos,crear_cliente_minio,bajar_minio, subir_mapa_minio
 import pandas as pd
 import h3
 from minio import Minio

@@ -1,7 +1,7 @@
 import pandas as pd
 import io
-from src.utils.funciones_minio import crear_cliente_minio, minio_subir_memoria
-from src.config import DATASETS_AYTO, MINIO_RAW_SECUNDARIOS
+from utils.funciones_minio import crear_cliente_minio, minio_subir_memoria
+from utils.config import DATASETS_AYTO, MINIO_RAW_SECUNDARIOS
 
 
 def preparar_parquet(url: str) -> io.BytesIO:

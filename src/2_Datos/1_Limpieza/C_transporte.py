@@ -1,7 +1,7 @@
 import pandas as pd
 from shapely import wkb
-from src.utils.funciones_minio import crear_cliente_minio, bajar_minio, subir_minio
-from src.config import MINIO_CLEANED_TRANSPORTE, MINIO_PROCESSED_SECUNDARIOS, MINIO_RAW_SECUNDARIOS, OBJ_BUS, OBJ_METRO
+from utils.funciones_minio import crear_cliente_minio, bajar_minio, subir_minio
+from utils.config import MINIO_CLEANED_TRANSPORTE, MINIO_PROCESSED_SECUNDARIOS, MINIO_RAW_SECUNDARIOS, OBJ_BUS, OBJ_METRO
 
 
 def limpiar_lineas(linea_str: str) -> str:
