@@ -107,13 +107,13 @@ def mete_datos_catastro(gdf_viviendas, gdf_catastro, col_anyo='anio_construccion
    
     catastro_reducido = gdf_catastro[['geometry', col_anyo]]
     
-    cruce = gpd.sjoin(
+    cruce = gpd.sjoin_nearest(
         gdf_res, 
         catastro_reducido, 
         how='left', 
-        predicate='within' 
+        max_distance= 30,
+        distance_col='dist_al_edificio'
     )
-    
 
     if cruce.index.duplicated().any():
         cruce = cruce[~cruce.index.duplicated(keep='first')]
@@ -179,8 +179,6 @@ def inicio_viviendas():
         for tipo,df_t in diccionario_transporte.items():
             gdf_viviendas = meter_datos_transporte(gdf_viviendas,df_t,tipo)
         gdf_viviendas = mete_datos_catastro(gdf_viviendas,gdf_catastro)
-        visualizar_rejilla(gdf_viviendas)
-        print(gdf_viviendas.columns)
         subir_viviendas_con_info(cliente,gdf_viviendas,f"viviendas_{modo}")
         print(f"Mapa de viviendas de {modo} subido con exito.")
 
