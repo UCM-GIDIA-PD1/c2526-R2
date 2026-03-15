@@ -122,6 +122,37 @@ def mete_datos_catastro(gdf_viviendas, gdf_catastro, col_anyo='anio_construccion
         
     return cruce
 
+def mete_datos_padron(gdf_viviendas:gpd.GeoDataFrame, gdf_secciones_enriquecidas:gpd.GeoDataFrame)->gpd.GeoDataFrame:
+    """
+    Cruza espacialmente las viviendas con el mapa de secciones censales ya procesado,
+    transfiriendo directamente la demografía (población total) a cada piso.
+    """
+    gdf_res = gdf_viviendas.copy()
+    
+    if gdf_res.crs != gdf_secciones_enriquecidas.crs:
+        gdf_secciones_enriquecidas = gdf_secciones_enriquecidas.to_crs(gdf_res.crs)
+
+    columnas_a_transferir = [
+        'geometry', 'poblacion_total', 'pct_extranjeros', 
+        #pct_espanoles no lo pasamos pq tendria correacioon perfecta con pct_extranjeros, y el modelo no ganaria nada con esa info extra  
+        'pct_mayores_65', 'pct_jovenes_30'
+    ]
+    
+    cols_existentes = [c for c in columnas_a_transferir if c in gdf_secciones_enriquecidas.columns]
+    gdf_mapa_reducido = gdf_secciones_enriquecidas[cols_existentes]
+    
+    cruce = gpd.sjoin(
+        gdf_res, 
+        gdf_mapa_reducido, 
+        how='left', 
+        predicate='within'
+    )
+    
+    if 'index_right' in cruce.columns:
+        cruce = cruce.drop(columns=['index_right'])
+        
+    return cruce
+
 def limpiar_coordenadas_lejanas(df, lat_min=40.28, lat_max=40.65, lon_min=-3.83, lon_max=-3.48):
     """
     Filtra los puntos que caen fuera de una 'caja' lógica.
@@ -159,6 +190,7 @@ def inicio_viviendas():
         "alquiler": df_viviendas_alquiler
     }
     gdf_catastro = bajar_mapa_minio(cliente,"cleaned/catastro","anio_construccion")
+    gdf_padron_secciones = bajar_mapa_minio(cliente, "rejillas", "secciones censales")
     diccionario_transporte = {}
     for transporte in COMPONENTES_TRANSPORTE:
         df = descargar_datos(cliente,"cleaned/transporte",transporte["fichero"])
@@ -179,6 +211,7 @@ def inicio_viviendas():
         for tipo,df_t in diccionario_transporte.items():
             gdf_viviendas = meter_datos_transporte(gdf_viviendas,df_t,tipo)
         gdf_viviendas = mete_datos_catastro(gdf_viviendas,gdf_catastro)
+        gdf_viviendas = mete_datos_padron(gdf_viviendas, gdf_padron_secciones)
         subir_viviendas_con_info(cliente,gdf_viviendas,f"viviendas_{modo}")
         print(f"Mapa de viviendas de {modo} subido con exito.")
 
