@@ -15,6 +15,7 @@ import pandas as pd
 import geopandas as gpd
 
 
+
 def crear_cliente_minio() -> Minio:
     """ Inicializa un cliente MinIO a partir de las variables de entorno en .env
     (MINIO_ACCESS_KEY, MINIO_SECRET_KEY y MINIO_ENDPOINT).
