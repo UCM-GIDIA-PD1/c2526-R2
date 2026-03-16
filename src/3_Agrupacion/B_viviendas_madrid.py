@@ -57,8 +57,7 @@ def meter_datos_transporte(gdf_viviendas, df_transporte, nombre_categoria, col_l
 def meter_datos_secundarios(gdf_viv, df_pois, nombre_categoria, radio_metros=500):
     """
     Calcula para cada vivienda la distancia al POI (Punto de Interés) más cercano
-    y cuántos POIs hay en un radio determinado (ej: 500m).
-    Utiliza cKDTree para que el cálculo sea instantáneo.
+    y cuántos POIs hay en un radio determinado (500m).
     """    
     df_res = gdf_viv.copy()
     crs_activo = gdf_viv.crs
@@ -167,13 +166,36 @@ def limpiar_coordenadas_lejanas(df, lat_min=40.28, lat_max=40.65, lon_min=-3.83,
         
     return df_limpio
 def descargar_datos(cliente:Minio,path:str,nombre_archivo:str)->pd.DataFrame:
+    """
+        Descarga los datos que se desea completar
+    Args:
+        cliente (Minio): Cliente de Minio
+        path (str): Carpeta donde se encuentra el archivo 
+        nombre_archivo (str): Nombre del archivo que se descarga
+
+    Returns:
+        pd.DataFrame: Dataframe de los datos descargados
+    """
     df = bajar_minio(cliente,path,nombre_archivo)
     return df
 
 def subir_viviendas_con_info(cliente:Minio,gdf:gpd.GeoDataFrame,archivo:str,path="rejillas"):
+    """
+        Sube los datos completados a la carpeta rejillas
+    Args:
+        cliente (Minio): Cliente de minio
+        gdf (gpd.GeoDataFrame): datos completados
+        archivo (str): nombre del archivo
+        path (str, optional): Carpeta donde se almacena. Defaults to "rejillas".
+    """
     subir_mapa_minio(cliente,gdf,path,archivo)
 
 def visualizar_rejilla(gdf:gpd.GeoDataFrame):
+    """
+        Función auxiliar para visualizar rejillas en un html
+    Args:
+        gdf (gpd.GeoDataFrame): Rejilla que se desea visualizar
+    """
     mapa_base = gdf.explore()
     folium.LayerControl().add_to(mapa_base)
     with tempfile.NamedTemporaryFile(delete=False, suffix=".html") as tmp:
@@ -182,6 +204,10 @@ def visualizar_rejilla(gdf:gpd.GeoDataFrame):
     webbrowser.open('file://' + ruta_temporal)
 
 def inicio_viviendas():
+    """
+    Funcion main de esta parte del pipeline de ejecución 
+    Se encarga de descargar todos los datasets y subirlos a rejillas
+    """
     cliente = crear_cliente_minio()
     df_viviendas_venta = descargar_datos(cliente,"datos_primarios","viviendas_venta.parquet")
     df_viviendas_alquiler = descargar_datos(cliente,"datos_primarios","viviendas_alquiler.parquet")

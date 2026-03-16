@@ -103,7 +103,7 @@ def embeddings_imagenes(cliente, batch_size=32):
             })
     
     for clase in clases:
-        path = f"dataset_vision/{clase}"
+        path = f"cleaned/dataset_vision/{clase}"
         objetos = buscar_todos_los_archivos(cliente,path)
         
         for obj in tqdm(objetos,desc = f"Procesando imagenes de {clase}"):
@@ -134,5 +134,5 @@ def embeddings_imagenes(cliente, batch_size=32):
     
 if __name__ == "__main__":
     cliente = crear_cliente_minio()
-    df = bajar_minio(cliente,"dataset_ml","embeddings_imagenes.parquet")
-    print(df.head())
+    reorganizar_imagenes_por_clase(cliente)
+    embeddings_imagenes(cliente)

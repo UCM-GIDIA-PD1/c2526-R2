@@ -266,6 +266,16 @@ def mete_datos_transporte(gdf_rejilla, df_transporte, col_id_rejilla, tipo_trans
 
 
 def mete_datos_catastro(gdf_rejilla:gpd.GeoDataFrame,gdf_edificios:gpd.GeoDataFrame,id_rejilla:str)->gpd.GeoDataFrame:
+    """
+        Introduce los datos del catastro a las rejillas de barrios y secciones censales
+    Args:
+        gdf_rejilla (gpd.GeoDataFrame): rejilla base de la división de madrid
+        gdf_edificios (gpd.GeoDataFrame): datos de la construcción de los edificios
+        id_rejilla (str): id que se usa para identificar las distintas divisiones
+
+    Returns:
+        gpd.GeoDataFrame: Rejilla completada con los datos
+    """
 
     gdf_res = gdf_rejilla.copy()
 
@@ -287,6 +297,16 @@ def mete_datos_catastro(gdf_rejilla:gpd.GeoDataFrame,gdf_edificios:gpd.GeoDataFr
     return gdf_res
 
 def mete_datos_ine(gdf_rejilla:gpd.GeoDataFrame,df_ine:pd.DataFrame,id_rejilla:str)->gpd.GeoDataFrame:
+    """
+        Introduce datos de la renta media madrileña a la rejilla
+    Args:
+        gdf_rejilla (gpd.GeoDataFrame): rejilla de división de madrid
+        df_ine (pd.DataFrame): df de datos
+        id_rejilla (str): id que se usa para identificar las distintas divisiones
+
+    Returns:
+        gpd.GeoDataFrame: Rejilla completada con los datos de renta media
+    """
     
     gdf_res = gdf_rejilla.copy()
 
@@ -370,7 +390,7 @@ def mete_datos_viviendas(gdf:gpd.GeoDataFrame,cod_rejilla:str,df_viviendas:pd.Da
 def limpiar_coordenadas_lejanas(df, lat_min=40.35, lat_max=40.5, lon_min=-3.76, lon_max=-3.615):
     """
     Filtra los puntos que caen fuera de una 'caja' lógica.
-    (Las coordenadas por defecto son un recuadro amplio alrededor de Madrid).
+    (Las coordenadas por defecto son un recuadro relativamente amplio alrededor de Madrid).
     """
     total_antes = len(df)
     
@@ -378,9 +398,7 @@ def limpiar_coordenadas_lejanas(df, lat_min=40.35, lat_max=40.5, lon_min=-3.76, 
         (df['lat'] >= lat_min) & (df['lat'] <= lat_max) & 
         (df['lon'] >= lon_min) & (df['lon'] <= lon_max)
     ].copy()
-    
-    eliminados = total_antes - len(df_limpio)
-    
+        
     return df_limpio
 
 def descargar_viviendas(cliente:Minio,modo:str)->pd.DataFrame:
@@ -393,6 +411,11 @@ def descargar_datos(cliente:Minio,path:str,nombre_archivo:str)->pd.DataFrame:
 
 
 def calcula_area(gdf:gpd.GeoDataFrame):
+    """
+        Calcula el área en kilómetros cuadrados de las rejillas
+    Args:
+        gdf (gpd.GeoDataFrame): Geodataframe con el área de las divisiones calculadas
+    """
     crs_activo = gdf.crs
     if crs_activo is None or crs_activo.to_epsg() == 4326:
         gdf = gdf.to_crs("EPSG:25830") 
