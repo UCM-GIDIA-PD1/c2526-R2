@@ -45,7 +45,7 @@ def reorganizar_imagenes_por_clase(cliente:Minio, prefijo_destino="cleaned/datas
         nombre_path = f"datos_primarios/imagenes/{modo}"
         objetos_origen = buscar_todos_los_archivos(cliente,nombre_path)
     
-        for obj in tqdm(objetos_origen):
+        for obj in tqdm(objetos_origen,decs = f"Dividiendo y transfiriendo imágenes de anuncios de {modo}"):
             df_original = bajar_minio(cliente,nombre_path,obj)
             for _, fila in df_original.iterrows():
                 id_piso = fila['id']
@@ -67,9 +67,9 @@ def reorganizar_imagenes_por_clase(cliente:Minio, prefijo_destino="cleaned/datas
         vaciar_y_subir_buffer(clase)
 
 def embeddings_imagenes(cliente, batch_size=32):
-    
+    print("  Inicio del proceso de transofmración y vectorización de las imágenes con resnet50")
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    
+    print(f"  Usando {device}")
     pesos = models.ResNet50_Weights.DEFAULT
     modelo_resnet = models.resnet50(weights=pesos)
     modelo_resnet.fc = nn.Identity() 
