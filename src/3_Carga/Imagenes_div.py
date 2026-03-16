@@ -23,20 +23,13 @@ class LetterboxPad:
     def __call__(self, img):
         return ImageOps.pad(img, self.target_size, color=self.color)
 
-def reorganizar_imagenes_por_clase(cliente:Minio, prefijo_destino="dataset_vision"):
+def reorganizar_imagenes_por_clase(cliente:Minio, prefijo_destino="cleaned/dataset_vision"):
     
-    clases = ['Cocina', 'Dormitorio', 'Salón', 'Banyo', 'Comedor']
+    clases = ['Cocina', 'Dormitorio', 'Salón', 'Banyo']
     
     buffers = {clase: [] for clase in clases}
     tamaño_buffers = {clase: 0 for clase in clases}
     contadores_chunks = {clase: 1 for clase in clases}
-
-    mis_transforms = transforms.Compose([
-    LetterboxPad(target_size=224, color=(0, 0, 0)),
-    transforms.ToTensor(),                         
-    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]) 
-    ])
- 
 
     def vaciar_y_subir_buffer(clase_nombre):        
         df_chunk = pd.DataFrame(buffers[clase_nombre])
@@ -73,7 +66,6 @@ def reorganizar_imagenes_por_clase(cliente:Minio, prefijo_destino="dataset_visio
     for clase in clases:
         vaciar_y_subir_buffer(clase)
 
-
 def embeddings_imagenes(cliente, batch_size=32):
     
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -90,10 +82,12 @@ def embeddings_imagenes(cliente, batch_size=32):
         transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
     ])
     
-    clases = ['Cocina', 'Dormitorio', 'Salón', 'Banyo', 'Comedor']
+    clases = ['Cocina', 'Dormitorio', 'Salón', 'Banyo']
     resultados_finales = []
     
     def procesar_lote(tensores, ids, etiquetas):
+        if len(tensores) == 0: return
+
         batch_tensor = torch.stack(tensores).to(device)
         
         with torch.no_grad():
@@ -140,5 +134,5 @@ def embeddings_imagenes(cliente, batch_size=32):
     
 if __name__ == "__main__":
     cliente = crear_cliente_minio()
-    embeddings_imagenes(cliente)
-
+    df = bajar_minio(cliente,"dataset_ml","embeddings_imagenes.parquet")
+    print(df.head())
