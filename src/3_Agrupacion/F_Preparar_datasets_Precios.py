@@ -22,9 +22,8 @@ from utils.funciones_minio import crear_cliente_minio, subir_minio, bajar_minio
 #Parámetros del script
 OBJ_VIVIENDAS_VENTA = "viviendas_venta"
 OBJ_VIVIENDAS_ALQUILER = "viviendas_alquiler"
-
 PATH_REJILLAS = "rejillas"
-PATH_DATASET_PRECIOS = "dataset_precios"
+PATH_DATASET_PRECIOS = "dataset_ml"
 
 TARGET = "Precio"
 
