@@ -99,13 +99,13 @@ def limpiar_base(df: pd.DataFrame, mercado: str) -> pd.DataFrame:
     if criticas:
         df_limpio = df_limpio.dropna(subset=criticas)
 
-    subset_dup = [c for c in ["lat", "lon", TARGET, "Superficie"] if c in df_limpio.columns]
+    subset_dup = [c for c in ["lat", "lon", TARGET, "Superficie","Num_habitaciones","Planta","Banyos","Anuncia"] if c in df_limpio.columns]
     if subset_dup:
         df_limpio = df_limpio.drop_duplicates(subset=subset_dup, keep="first")
 
-    q01 = df_limpio[TARGET].quantile(0.01)
+    #q01 = df_limpio[TARGET].quantile(0.01)
     q99 = df_limpio[TARGET].quantile(0.99)
-    df_limpio = df_limpio[df_limpio[TARGET].between(q01, q99)].copy()
+    df_limpio = df_limpio[df_limpio[TARGET] <= q99].copy()
 
     df_limpio = drop_existing(df_limpio, COLS_FUGA)
     df_limpio = eliminar_columnas_por_nulos_y_varianza(df_limpio)
@@ -126,14 +126,14 @@ def limpiar_base(df: pd.DataFrame, mercado: str) -> pd.DataFrame:
 def filtrar_individuos_knn(df: pd.DataFrame) -> pd.DataFrame:
     df_knn = df.copy()
     columnas_clave = [
-        c for c in [TARGET, "Superficie", "Num_habitaciones", "Banyos", "lat", "lon"]
+        c for c in [TARGET, "Superficie", "Num_habitaciones", "Banyos", "lat", "lon","Planta","Anuncia"]
         if c in df_knn.columns
     ]
 
     for col in columnas_clave:
         if pd.api.types.is_numeric_dtype(df_knn[col]):
-            q01, q99 = df_knn[col].quantile([0.01, 0.99])
-            df_knn = df_knn[df_knn[col].between(q01, q99)]
+            q99 = df_knn[col].quantile([0.99])
+            df_knn = df_knn[df_knn[col] <= q99]
 
     df_knn = df_knn.reset_index(drop=True)
 
@@ -163,6 +163,8 @@ def _filtrar_categoricas_baja_cardinalidad(df: pd.DataFrame, max_unique: int) ->
     return cols_validas
 
 
+
+
 def _one_hot_dataframe(df: pd.DataFrame, cat_cols: List[str], dummy_na: bool = False) -> pd.DataFrame:
     base = df.copy()
     cat_cols_existentes = [c for c in cat_cols if c in base.columns]
@@ -180,7 +182,7 @@ def _one_hot_dataframe(df: pd.DataFrame, cat_cols: List[str], dummy_na: bool = F
 
     return base
 
-
+"""
 def _imputar_numericas(df: pd.DataFrame) -> pd.DataFrame:
     out = df.copy()
     if out.empty:
@@ -189,7 +191,7 @@ def _imputar_numericas(df: pd.DataFrame) -> pd.DataFrame:
     imp = SimpleImputer(strategy="median")
     out.loc[:, :] = imp.fit_transform(out)
     return out
-
+"""
 
 def _quitar_multicolinealidad_por_objetivo(
     X: pd.DataFrame,
@@ -234,7 +236,7 @@ def preparar_dataset_regresion(df: pd.DataFrame) -> pd.DataFrame:
     X = work.drop(columns=[TARGET])
     X = _one_hot_dataframe(X, [c for c in cat_cols if c in X.columns])
     X = X.apply(pd.to_numeric, errors="coerce")
-    X = _imputar_numericas(X)
+    #X = _imputar_numericas(X)
 
     if X.shape[1] == 0:
         raise ValueError("No hay variables válidas para construir el dataset de regresión.")
@@ -269,7 +271,7 @@ def preparar_dataset_knn(df: pd.DataFrame) -> pd.DataFrame:
             X[col] = X[col].astype(int)
 
     X = X.apply(pd.to_numeric, errors="coerce")
-    X = _imputar_numericas(X)
+    #X = _imputar_numericas(X)
 
     if X.shape[1] == 0:
         raise ValueError("No hay variables válidas para construir el dataset de kNN.")
@@ -302,10 +304,12 @@ def preparar_dataset_arboles(df: pd.DataFrame) -> pd.DataFrame:
     X = work.drop(columns=[TARGET])
     X = _one_hot_dataframe(X, [c for c in cat_cols if c in X.columns])
     X = X.apply(pd.to_numeric, errors="coerce")
+    """
     X = _imputar_numericas(X)
 
     if X.shape[1] == 0:
         raise ValueError("No hay variables válidas para construir el dataset de árboles.")
+        """
 
     mi = mutual_info_regression(X, y, random_state=42)
     ranking = pd.DataFrame({"feature": X.columns, "mi": mi}).sort_values("mi", ascending=False)
