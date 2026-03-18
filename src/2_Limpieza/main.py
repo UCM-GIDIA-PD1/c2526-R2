@@ -24,7 +24,7 @@ def menu_seleccion(lista_archivos):
     """
     while True:
         print("\n" + "="*40)
-        print("🏙️  MENÚ PIPELINE LIMPIEZA")
+        print("  MENÚ PIPELINE LIMPIEZA")
         print("="*40)
         
         for i, archivo in enumerate(lista_archivos):

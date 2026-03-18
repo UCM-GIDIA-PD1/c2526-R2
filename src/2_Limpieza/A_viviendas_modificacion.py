@@ -88,7 +88,7 @@ def subir_viviendas_limpio(df:pd.DataFrame,cliente:Minio,modo:str):
         cliente (Minio): cliente minio
         modo (str): Tipo de mercado (venta o alquiler)
     """
-    path = PATH_PRIMARIOS_LIMPIO
+    path = f"cleaned/{PATH_PRIMARIOS_LIMPIO}"
     archivo = f"{ARCHIVOS_VIVIENDAS}_{modo}.parquet"   
     subir_minio(df,cliente,path,archivo)
 
@@ -167,7 +167,7 @@ def subir_coordenadas(client:Minio,df_coordenadas:pd.DataFrame)->None:
         client (Minio): Cliente de minio
         df_coordenadas (pd.DataFrame): coordenadas en un dataframe
     """
-    path = PATH_PRIMARIOS_LIMPIO
+    path = f"cleaned/{PATH_PRIMARIOS_LIMPIO}"
     archivo = ARCHIVOS_COORDENADAS
     subir_minio(df_coordenadas,client,path,archivo)
 
@@ -237,7 +237,7 @@ def separar_imagenes(cliente:Minio):
                 df_buffer = pd.concat([df_buffer,descargar_imagenes(cliente,path_sucio,parquet)])
                 if len(df_buffer)>500:
                     df_subir = df_buffer.iloc[:500].copy()
-                    subir_minio(df_subir,cliente,f"{PATH_PRIMARIOS_LIMPIO}/imagenes/{modo}",f"{ARCHIVOS_IMAGENES}_n_{num_archivo}.parquet")
+                    subir_minio(df_subir,cliente,f"cleaned/{PATH_PRIMARIOS_LIMPIO}/imagenes/{modo}",f"{ARCHIVOS_IMAGENES}_n_{num_archivo}.parquet")
                     num_archivo+=1
                     df_buffer = df_buffer.iloc[500:].reset_index(drop=True)
             
