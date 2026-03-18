@@ -1,0 +1,37 @@
+2026-03-16 16:14:57,376 INFO    MainThread:14788 [wandb_setup.py:_flush():81] Current SDK version is 0.25.1
+2026-03-16 16:14:57,377 INFO    MainThread:14788 [wandb_setup.py:_flush():81] Configure stats pid to 14788
+2026-03-16 16:14:57,377 INFO    MainThread:14788 [wandb_setup.py:_flush():81] Loading settings from environment variables
+2026-03-16 16:14:57,377 INFO    MainThread:14788 [wandb_init.py:setup_run_log_directory():717] Logging user logs to C:\Users\ksouz\Desktop\c2526-R2\wandb\run-20260316_161457-3gkpyca6\logs\debug.log
+2026-03-16 16:14:57,377 INFO    MainThread:14788 [wandb_init.py:setup_run_log_directory():718] Logging internal logs to C:\Users\ksouz\Desktop\c2526-R2\wandb\run-20260316_161457-3gkpyca6\logs\debug-internal.log
+2026-03-16 16:14:57,378 INFO    MainThread:14788 [wandb_init.py:init():844] calling init triggers
+2026-03-16 16:14:57,378 INFO    MainThread:14788 [wandb_init.py:init():849] wandb.init called with sweep_config: {}
+config: {'learning_rate': 0.02, 'architecture': 'CNN', 'dataset': 'CIFAR-100', 'epochs': 10, '_wandb': {}}
+2026-03-16 16:14:57,378 INFO    MainThread:14788 [wandb_init.py:init():892] starting backend
+2026-03-16 16:15:00,015 WARNING MainThread:14788 [wandb_init.py:init():1587] [no run ID] interrupted
+Traceback (most recent call last):
+  File "C:\Users\ksouz\Desktop\c2526-R2\.venv\Lib\site-packages\wandb\sdk\wandb_init.py", line 1578, in init
+    run = wi.init(run_settings, run_config, run_printer)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\ksouz\Desktop\c2526-R2\.venv\Lib\site-packages\wandb\sdk\wandb_init.py", line 894, in init
+    service = self._wl.ensure_service()
+              ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\ksouz\Desktop\c2526-R2\.venv\Lib\site-packages\wandb\sdk\wandb_setup.py", line 387, in ensure_service
+    self._connection = service_connection.connect_to_service(
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\ksouz\Desktop\c2526-R2\.venv\Lib\site-packages\wandb\sdk\lib\service\service_connection.py", line 51, in connect_to_service
+    return _start_and_connect_service(asyncer, settings)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\ksouz\Desktop\c2526-R2\.venv\Lib\site-packages\wandb\sdk\lib\service\service_connection.py", line 66, in _start_and_connect_service
+    client = proc.token.connect(asyncer=asyncer)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\ksouz\Desktop\c2526-R2\.venv\Lib\site-packages\wandb\sdk\lib\service\service_token.py", line 151, in connect
+    reader, writer = asyncer.run(
+                     ^^^^^^^^^^^^
+  File "C:\Users\ksouz\Desktop\c2526-R2\.venv\Lib\site-packages\wandb\sdk\lib\asyncio_manager.py", line 137, in run
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "C:\Users\ksouz\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\concurrent\futures\_base.py", line 451, in result
+    self._condition.wait(timeout)
+  File "C:\Users\ksouz\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\threading.py", line 355, in wait
+    waiter.acquire()
+KeyboardInterrupt
