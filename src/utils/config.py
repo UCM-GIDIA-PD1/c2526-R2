@@ -10,6 +10,9 @@ que antes estaban dispersas en los scripts de extracción y transformación.
 # ║  RUTAS MinIO                                                         ║
 # ╚══════════════════════════════════════════════════════════════════════╝
 
+# --- embedings ---
+MINIO_EMBEDDINGS = "dataset_ml"
+
 # --- Extracción (raw) ---
 MINIO_RAW = "raw"
 MINIO_RAW_SECUNDARIOS = "raw/secundarios"
