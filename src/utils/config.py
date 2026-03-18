@@ -17,10 +17,11 @@ MINIO_RAW_PRIMARIOS = "raw/datos_primarios"
 
 # --- Limpieza (cleaned) ---
 MINIO_CLEANED_SECUNDARIOS = "cleaned/secundarios"
+MINIO_CLEANED_TRANSPORTE = "cleaned/transporte"
 
 # --- Procesado (processed) ---
 MINIO_PROCESSED_SECUNDARIOS = "processed/secundarios"
-MINIO_CLEANED_TRANSPORTE = "cleaned/transporte"
+PATH_DATASETS_MODELOS = "dataset_ml"
 
 # --- Agrupacion (grouped) ---
 MINIO_GROUPED_SECUNDARIOS = "grouped/secundarios"
