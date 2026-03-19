@@ -24,7 +24,6 @@ def preparar_dataset_texto(dfVenta: pd.DataFrame, dfAlquiler: pd.DataFrame) -> p
         "Agente Pro": "Intermediario",
         "Profesional": "Intermediario"
     })
-    df = pd.get_dummies(df, columns=["Anuncia"])
 
     return df
 
