@@ -191,7 +191,7 @@ def entrenar_random_forest(X_train, X_test, y_train, y_test, profundidad_optima=
 
 def basline_cat_max(X_train,X_test,y_train,y_test):
     run = wandb.init(entity = "pd1-c2526-team2",
-            project="clasificador-imagen",
+            project="clasificador-imagenes",
             job_type = "train",
             config={
             "algoritmo": "DummyClassifier",
