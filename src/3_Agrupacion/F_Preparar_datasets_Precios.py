@@ -34,7 +34,7 @@ print(f"Notebook path: {NOTEBOOK_PATH}")
 def ejecutar_notebook_y_extraer_dataframes(notebook_path: Path) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """
     Lee el notebook .ipynb como JSON, ejecuta sus celdas de código
-    y extrae df_venta_limpio y df_alquiler_limpio.
+    y extrae df_venta_limpio y df_alquiler_limpio para su uso posterior con los modelos de precios.
     """
     if not notebook_path.exists():
         raise FileNotFoundError(f"No existe el notebook: {notebook_path}")
@@ -65,7 +65,7 @@ def ejecutar_notebook_y_extraer_dataframes(notebook_path: Path) -> Tuple[pd.Data
         if not str(source).strip():
             continue
 
-        # Saltar magias de Jupyter si las hubiera
+        
         lineas = []
         for linea in source.splitlines():
             stripped = linea.strip()
@@ -85,17 +85,17 @@ def ejecutar_notebook_y_extraer_dataframes(notebook_path: Path) -> Tuple[pd.Data
             ) from e
 
     if "df_venta_limpio" not in namespace:
-        raise KeyError("No se encontró 'df_venta_limpio' en el notebook.")
+        raise KeyError("No se encontró 'df_venta_limpio' en el notebook")
     if "df_alquiler_limpio" not in namespace:
-        raise KeyError("No se encontró 'df_alquiler_limpio' en el notebook.")
+        raise KeyError("No se encontró 'df_alquiler_limpio' en el notebook")
 
     df_venta_limpio = namespace["df_venta_limpio"]
     df_alquiler_limpio = namespace["df_alquiler_limpio"]
 
     if not isinstance(df_venta_limpio, pd.DataFrame):
-        raise TypeError("'df_venta_limpio' no es un DataFrame.")
+        raise TypeError("'df_venta_limpio' no es un DataFrame")
     if not isinstance(df_alquiler_limpio, pd.DataFrame):
-        raise TypeError("'df_alquiler_limpio' no es un DataFrame.")
+        raise TypeError("'df_alquiler_limpio' no es un DataFrame")
 
     return df_venta_limpio.copy(), df_alquiler_limpio.copy()
 
@@ -135,7 +135,7 @@ def subir_datasets_a_minio(datasets: Dict[str, pd.DataFrame], client) -> None:
         elif nombre.startswith("df_alquiler"):
             path_destino = PATH_ALQUILER
         else:
-            raise ValueError(f"No se pudo inferir la ruta MinIO para '{nombre}'.")
+            raise ValueError(f"No se pudo inferir la ruta MinIO para '{nombre}'")
 
         subir_minio(
             df=df,
