@@ -1,50 +1,79 @@
 from __future__ import annotations
+
+import json
+import sys
 from pathlib import Path
 from typing import Dict, Tuple
-from utils.funciones_minio import crear_cliente_minio, subir_minio
 
-import sys
-import nbformat
+import matplotlib
+matplotlib.use("Agg")
+
 import pandas as pd
+
 
 # Configuración de imports del proyecto
 ROOT = Path(__file__).resolve().parents[2]
+print(f"ROOT detectado: {ROOT}")
+
 if str(ROOT) not in sys.path:
     sys.path.append(str(ROOT))
+    print(f"Añadido al path: {ROOT}")
+
+from utils.funciones_minio import crear_cliente_minio, subir_minio
 
 
 # Parámetros
-TARGET = "Precio"
 PATH_DATASET_PRECIOS = "dataset_ml/precios"
 PATH_VENTAS = f"{PATH_DATASET_PRECIOS}/ventas"
 PATH_ALQUILER = f"{PATH_DATASET_PRECIOS}/alquiler"
 
 NOTEBOOK_PATH = ROOT / "src" / "4_Analisis" / "analisis_estadistico_2.ipynb"
-
-
+print(f"Notebook path: {NOTEBOOK_PATH}")
 
 
 def ejecutar_notebook_y_extraer_dataframes(notebook_path: Path) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """
-    Ejecuta el notebook y extrae df_venta_limpio y df_alquiler_limpio
-    de su namespace final.
+    Lee el notebook .ipynb como JSON, ejecuta sus celdas de código
+    y extrae df_venta_limpio y df_alquiler_limpio.
     """
     if not notebook_path.exists():
         raise FileNotFoundError(f"No existe el notebook: {notebook_path}")
 
     with open(notebook_path, "r", encoding="utf-8") as f:
-        nb = nbformat.read(f, as_version=4)
+        notebook = json.load(f)
+
+    try:
+        from IPython.display import display
+    except Exception:
+        def display(*args, **kwargs):
+            return None
 
     namespace = {
         "__name__": "__notebook_exec__",
         "__file__": str(notebook_path),
+        "display": display,
     }
 
-    for i, cell in enumerate(nb.cells):
-        if cell.cell_type != "code":
+    for i, cell in enumerate(notebook.get("cells", [])):
+        if cell.get("cell_type") != "code":
             continue
 
-        source = cell.source
+        source = cell.get("source", [])
+        if isinstance(source, list):
+            source = "".join(source)
+
+        if not str(source).strip():
+            continue
+
+        # Saltar magias de Jupyter si las hubiera
+        lineas = []
+        for linea in source.splitlines():
+            stripped = linea.strip()
+            if stripped.startswith("%") or stripped.startswith("!"):
+                continue
+            lineas.append(linea)
+        source = "\n".join(lineas)
+
         if not source.strip():
             continue
 
@@ -60,15 +89,15 @@ def ejecutar_notebook_y_extraer_dataframes(notebook_path: Path) -> Tuple[pd.Data
     if "df_alquiler_limpio" not in namespace:
         raise KeyError("No se encontró 'df_alquiler_limpio' en el notebook.")
 
-    df_venta_limpio = namespace["df_venta_limpio"].copy()
-    df_alquiler_limpio = namespace["df_alquiler_limpio"].copy()
+    df_venta_limpio = namespace["df_venta_limpio"]
+    df_alquiler_limpio = namespace["df_alquiler_limpio"]
 
     if not isinstance(df_venta_limpio, pd.DataFrame):
         raise TypeError("'df_venta_limpio' no es un DataFrame.")
     if not isinstance(df_alquiler_limpio, pd.DataFrame):
         raise TypeError("'df_alquiler_limpio' no es un DataFrame.")
 
-    return df_venta_limpio, df_alquiler_limpio
+    return df_venta_limpio.copy(), df_alquiler_limpio.copy()
 
 
 def construir_datasets_modelos(
@@ -76,28 +105,22 @@ def construir_datasets_modelos(
     df_alquiler_limpio: pd.DataFrame,
 ) -> Dict[str, pd.DataFrame]:
     """
-    Crea los 8 datasets finales:
-    - 2 base: df_venta_limpio, df_alquiler_limpio
-    - 6 para modelos: 3 ventas + 3 alquiler
-
+    Crea 8 datasets:
+    - 2 base
+    - 6 datasets de modelos
     """
-    datasets = {
-        # Bases limpias
+    return {
         "df_venta_limpio": df_venta_limpio.copy(),
         "df_alquiler_limpio": df_alquiler_limpio.copy(),
 
-        # Ventas
         "df_ventas_regresion": df_venta_limpio.copy(),
         "df_ventas_arboles": df_venta_limpio.copy(),
         "df_ventas_knn": df_venta_limpio.copy(),
 
-        # Alquiler
         "df_alquiler_regresion": df_alquiler_limpio.copy(),
         "df_alquiler_arboles": df_alquiler_limpio.copy(),
         "df_alquiler_knn": df_alquiler_limpio.copy(),
     }
-
-    return datasets
 
 
 def subir_datasets_a_minio(datasets: Dict[str, pd.DataFrame], client) -> None:
@@ -109,20 +132,16 @@ def subir_datasets_a_minio(datasets: Dict[str, pd.DataFrame], client) -> None:
     for nombre, df in datasets.items():
         if nombre.startswith("df_venta"):
             path_destino = PATH_VENTAS
-        elif nombre.startswith("df_ventas_"):
-            path_destino = PATH_VENTAS
         elif nombre.startswith("df_alquiler"):
             path_destino = PATH_ALQUILER
         else:
             raise ValueError(f"No se pudo inferir la ruta MinIO para '{nombre}'.")
 
-        filename = f"{nombre}.parquet"
-
         subir_minio(
             df=df,
             client=client,
             path=path_destino,
-            minio_object=filename,
+            minio_object=f"{nombre}.parquet",
         )
 
 
