@@ -37,7 +37,7 @@ def calculo_medias_por_distrito(df, nombre_mercado):
     # 4. Registramos en W&B como UN SOLO experimento para poder compararlo luego con Lasso
     run = wandb.init(
         entity="pd1-c2526-team2",
-        project="modelo-precio-viviendas", 
+        project=f"modelo-precio-viviendas-{nombre_mercado}", 
         name=f"baseline-distrito-{nombre_mercado}",
         job_type="baseline-evaluation",
         group=nombre_mercado,
