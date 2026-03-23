@@ -425,11 +425,12 @@ def calcula_area(gdf:gpd.GeoDataFrame):
     if crs_activo is not None:
         gdf = gdf.to_crs(crs_activo)
 
-def mete_datos_mapa(gdf:gpd.GeoDataFrame,cliente:Minio)->gpd.GeoDataFrame:
-    for sector in MODOS:
-        df = descargar_viviendas(cliente,sector)
-
-def visualizar_rejilla(gdf:gpd.GeoDataFrame,tipo:str):
+def visualizar_rejilla(gdf:gpd.GeoDataFrame):
+    """
+        Función auxiliar que crea un html con el Mapa del geaodataframe que recibe para visualizarlo
+    Args:
+        gdf (gpd.GeoDataFrame): Mapa a visualizar
+    """
     mapa_base = gdf.explore(column="Anio_construccion")
     folium.LayerControl().add_to(mapa_base)
     with tempfile.NamedTemporaryFile(delete=False, suffix=".html") as tmp:
@@ -438,6 +439,9 @@ def visualizar_rejilla(gdf:gpd.GeoDataFrame,tipo:str):
     webbrowser.open('file://' + ruta_temporal)
 
 def inicio_rejillas():
+    """
+        Función que  ejecuta la totalidad de agrupación necesaria en el mapa de rejillas
+    """
     cliente = crear_cliente_minio()
     df_coorenadas = obtener_coordenadas_procesadas(cliente)
     df_coorenadas = limpiar_coordenadas_lejanas(df_coorenadas)

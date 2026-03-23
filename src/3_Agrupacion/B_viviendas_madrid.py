@@ -9,10 +9,19 @@ import folium
 import tempfile
 import webbrowser
 
-def meter_datos_transporte(gdf_viviendas, df_transporte, nombre_categoria, col_lineas='lineas', radio_metros=500):
+def meter_datos_transporte(gdf_viviendas, df_transporte, nombre_categoria, col_lineas='lineas', radio_metros=500)->gpd.GeoDataFrame:
     """
-    Calcula la distancia a la parada más cercana, cuántas paradas hay a menos de X metros,
-    y cuántas LÍNEAS DISTINTAS están accesibles en ese radio para cada vivienda.
+         Calcula la distancia a la parada más cercana, cuántas paradas hay a menos de X metros,
+        y cuántas lineas distintas están accesibles en ese radio para cada vivienda.
+    Args:
+        gdf_viviendas (_type_): los puntos de las viviendas 
+        df_transporte (_type_): Datos de transporte
+        nombre_categoria (_type_): Tipo de transporte
+        col_lineas (str, optional): Nombre de la columna que se  crea. Defaults to 'lineas'.
+        radio_metros (int, optional): Radio en el que se instaura el radio de cálculo de caraterísticas. Defaults to 500.
+
+    Returns:
+        gpd.GeoDataFrame: Mapa con los cálculos realizados
     """
     
     gdf_res = gdf_viviendas.copy()
@@ -54,11 +63,19 @@ def meter_datos_transporte(gdf_viviendas, df_transporte, nombre_categoria, col_l
 
     return gdf_res
 
-def meter_datos_secundarios(gdf_viv, df_pois, nombre_categoria, radio_metros=500):
+def meter_datos_secundarios(gdf_viv:gpd.GeoDataFrame, df_pois:pd.DataFrame, nombre_categoria:str, radio_metros=500)->gpd.GeoDataFrame:
     """
-    Calcula para cada vivienda la distancia al POI (Punto de Interés) más cercano
-    y cuántos POIs hay en un radio determinado (500m).
-    """    
+        Calcula para cada vivienda la distancia al POI (Punto de Interés) más cercano
+        y cuántos puntos hay en un radio determinado (500m).
+    Args:
+        gdf_viv (gpd.GeoDataFrame): mapa de las viviendas
+        df_pois (pd.DataFrame): dataframe de puntos de datos secundarios
+        nombre_categoria (str): nombre de la categoría de datos secundarios
+        radio_metros (int, optional): Radio en el que se instaura el radio de cálculo de caraterísticas. Defaults to 500.
+
+    Returns:
+        gpd.GeoDataFrame: Mapa con datos calculados 
+    """
     df_res = gdf_viv.copy()
     crs_activo = gdf_viv.crs
     if crs_activo is None or crs_activo.to_epsg() == 4326:
@@ -92,10 +109,17 @@ def meter_datos_secundarios(gdf_viv, df_pois, nombre_categoria, radio_metros=500
 
     return gdf_final
 
-def mete_datos_catastro(gdf_viviendas, gdf_catastro, col_anyo='anio_construccion'):
+def mete_datos_catastro(gdf_viviendas:gpd.GeoDataFrame, gdf_catastro:gpd.GeoDataFrame, col_anyo='anio_construccion')->gpd.GeoDataFrame:
     """
     Cruza los puntos de las viviendas con los polígonos del catastro para 
     asignar a cada vivienda el año de construcción del edificio en el que cae.
+    Args:
+        gdf_viviendas (gpd.GeoDataFrame): Mapa de viviendas
+        gdf_catastro (gpd.GeoDataFrame): Mapa de construcción de puntos
+        col_anyo (str, optional): Nombre que se le atribuye a la columna. Defaults to 'anio_construccion'.
+
+    Returns:
+        gpd.GeoDataFrame: Mapa con anios de contrucción calculados
     """
     
     gdf_res = gdf_viviendas.copy()
