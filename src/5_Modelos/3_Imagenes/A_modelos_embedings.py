@@ -27,7 +27,7 @@ def entrenar_arbol_decision(X_train, X_test, y_train, y_test, etiquetas_clases, 
     run = wandb.init(
         entity = "pd1-c2526-team2",
         project="clasificador-imagenes", 
-        name="busqueda-hiperparametros-arbol_PCA",
+        name="Decision_Tree_PCA",
         job_type="hyperparameter-tuning"
     )
 
@@ -261,7 +261,6 @@ if __name__ == "__main__":
     fichero = "embeddings_imagenes.parquet"
     df = bajar_minio(cliente,ruta_ml,fichero)
     X_train,X_test,y_train,y_test = preparar_dataset_PCA(df)
-    basline_cat_max(X_train,X_test,y_train,y_test)
     entrenar_arbol_decision(X_train,X_test,y_train,y_test,clases)
     entrenar_knn(X_train,X_test,y_train,y_test)
     entrenar_random_forest(X_train,X_test,y_train,y_test)
