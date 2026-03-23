@@ -10,6 +10,8 @@ from sklearn.metrics import accuracy_score, f1_score,recall_score
 from sklearn.model_selection import cross_validate, train_test_split, cross_val_score
 from utils.funciones_minio import crear_cliente_minio,bajar_minio
 from sklearn.neighbors import KNeighborsClassifier
+from sklearn.preprocessing import LabelEncoder
+from sklearn.decomposition import PCA
 from sklearn.ensemble import RandomForestClassifier
 from tqdm import tqdm
 
@@ -25,7 +27,7 @@ def entrenar_arbol_decision(X_train, X_test, y_train, y_test, etiquetas_clases, 
     run = wandb.init(
         entity = "pd1-c2526-team2",
         project="clasificador-imagenes", 
-        name="busqueda-hiperparametros-arbol",
+        name="Decision_Tree_PCA",
         job_type="hyperparameter-tuning"
     )
 
@@ -48,6 +50,8 @@ def entrenar_arbol_decision(X_train, X_test, y_train, y_test, etiquetas_clases, 
         f1 = f1_score(y_test, y_pred, average='macro')
         recall = recall_score(y_test, y_pred, average='macro')
         train_acc = accuracy_score(y_train, y_pred_train)
+
+        print(f"   Profundidad: {p} | Acc: {acc:.3f} | F1: {f1:.3f} | Recall: {recall:.3f} | Train Acc: {train_acc:.3f}")
         
         wandb.log({
             "profundidad_arbol": p,  
@@ -79,7 +83,7 @@ def entrenar_knn(X_train, X_test, y_train, y_test):
         run = wandb.init(
             entity="pd1-c2526-team2",
             project="clasificador-imagenes", 
-            name=f"knn-euclidean-{weight}",
+            name=f"knn-euclidean-{weight}_PCA",
             job_type="hyperparameter-tuning",
             config={
                 "algoritmo": "KNN",
@@ -134,7 +138,7 @@ def entrenar_random_forest(X_train, X_test, y_train, y_test, profundidad_optima=
     run = wandb.init(
         entity="pd1-c2526-team2",
         project="clasificador-imagenes", 
-        name="rf-n_estimators-curve",
+        name="rf-n_estimators-curve_PCA",
         job_type="hyperparameter-tuning",
         config={
             "algoritmo": "RandomForest",
@@ -229,9 +233,26 @@ def basline_cat_max(X_train,X_test,y_train,y_test):
 
 def preparar_dataset(df:pd.DataFrame):
     X = np.stack(df['embedding'].values)
-    y = df['clase'].values.to_numpy()
+    codificador = LabelEncoder()
+    y = codificador.fit_transform(df['clase'])  
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=101, stratify=y)
+    print(f"Formato datos de train: {X_train.shape}")
+    print(f"Formato datos de test: {X_test.shape}")
     return X_train,X_test,y_train,y_test
+
+def preparar_dataset_PCA(df:pd.DataFrame):
+    pca = PCA(n_components=512, random_state=42)
+    X = np.stack(df['embedding'].values)
+    codificador = LabelEncoder()
+    y = codificador.fit_transform(df['clase'])    
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=101, stratify=y)
+    X_train_pca = pca.fit_transform(X_train)
+    X_test_pca = pca.transform(X_test)
+    varianza_retenida = sum(pca.explained_variance_ratio_)
+    print(f"Formato datos de train: {X_train_pca.shape}")
+    print(f"Formato datos de test: {X_test_pca.shape}")
+    print(f"Información conservada: {varianza_retenida}")
+    return X_train_pca,X_test_pca,y_train,y_test
 
 if __name__ == "__main__":
     os.environ["WANDB_MODE"] = "online"
@@ -239,8 +260,7 @@ if __name__ == "__main__":
     ruta_ml = "dataset_ml"
     fichero = "embeddings_imagenes.parquet"
     df = bajar_minio(cliente,ruta_ml,fichero)
-    X_train,X_test,y_train,y_test = preparar_dataset(df)
-    basline_cat_max(X_train,X_test,y_train,y_test)
+    X_train,X_test,y_train,y_test = preparar_dataset_PCA(df)
     entrenar_arbol_decision(X_train,X_test,y_train,y_test,clases)
     entrenar_knn(X_train,X_test,y_train,y_test)
     entrenar_random_forest(X_train,X_test,y_train,y_test)
