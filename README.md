@@ -127,6 +127,8 @@ MINIO_GROUP_PATH=grupo2
 
 **MINIO_GROUP_PATH:** Carpeta base del grupo dentro del bucket
 
+---
+
 ## 🚀 Ejecución del proyecto
 
 Para poder ejecutar los scripts y notebooks, se puede con el siguiente comando en el terminal de visual studio code o por la consola:
@@ -159,7 +161,6 @@ Extracción → Limpieza → Agrupación → Modelos
 uv run -m src.1_Extraccion.main
 ```
 
----
 
 ### 2️⃣ Limpieza
 
@@ -167,7 +168,6 @@ uv run -m src.1_Extraccion.main
 uv run -m src.2_Limpieza.main
 ```
 
----
 
 ### 3️⃣ Agrupación
 
@@ -175,7 +175,6 @@ uv run -m src.2_Limpieza.main
 uv run -m src.3_Agrupacion.main
 ```
 
----
 
 ### 4️⃣ Análisis
 
@@ -183,7 +182,6 @@ uv run -m src.3_Agrupacion.main
 uv run -m src.4_Analisis
 ```
 
----
 
 ### 5️⃣ Modelos
 
