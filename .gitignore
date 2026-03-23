@@ -7,6 +7,12 @@ cache/
 
 # Weights & Biases run artifacts
 wandb/
-=======
-wandb
->>>>>>> Stashed changes
+
+# Model and ML artifacts
+*.keras
+*.joblib
+*.pkl
+*.parquet
+dataset_ml/
+*.h5
+*.hdf5
