@@ -35,6 +35,10 @@ MINIO_INE = "cleaned/ine"
 MINIO_REJILLAS_SUCIO = "raw/rejillas"
 MINIO_PADRON = "cleaned/padron"
 
+# --- Datos primarios ---
+MINIO_PRIMARIOS_IMAGENES = "datos_primarios/imagenes"
+MINIO_PRIMARIOS_IMAGENES_ALQUILER = "datos_primarios/imagenes/alquiler"
+MINIO_PRIMARIOS_IMAGENES_VENTA = "datos_primarios/imagenes/venta"
 
 # ╔══════════════════════════════════════════════════════════════════════╗
 # ║  DISTRITOS DE MADRID                                                 ║

@@ -240,6 +240,61 @@ def buscar_todos_los_archivos(client: Minio, path: str)->list:
     return lista_archivos
 
 
+def contar_imagenes_por_clase(df: pd.DataFrame, clases=None) -> dict:
+    """Cuenta imágenes por clase en un DataFrame con columnas listas de binarios."""
+    if clases is None:
+        clases = ["Dormitorio", "Cocina", "Salón", "Comedor", "Banyo"]
+
+    conteo = {clase: 0 for clase in clases}
+
+    for clase in clases:
+        if clase in df.columns:
+            serie = df[clase].dropna()
+            conteo[clase] = serie.apply(lambda x: len(x) if isinstance(x, (list, tuple)) else 0).sum()
+
+    return conteo
+
+
+def filtrar_filas_con_imagen(df: pd.DataFrame, clases=None) -> pd.DataFrame:
+    """Devuelve DataFrame con al menos una imagen en estas clases de habitación."""
+    if clases is None:
+        clases = ["Dormitorio", "Cocina", "Salón", "Comedor", "Banyo"]
+
+    clases_existentes = [c for c in clases if c in df.columns]
+    if not clases_existentes:
+        return df.copy()
+
+    mask = df[clases_existentes].apply(
+        lambda row: any(isinstance(v, (list, tuple)) and len(v) > 0 for v in row),
+        axis=1
+    )
+    return df[mask].reset_index(drop=True)
+
+
+def remover_filas_sin_imagen_minio(client: Minio, path: str, nombre_archivo: str, destino_archivo: str = None, clases=None) -> pd.DataFrame:
+    """Cargar parquet de MinIO, filtrar filas vacías y opcionalmente resubirlo."""
+    df = bajar_minio(client, path, nombre_archivo)
+    df_filtrado = filtrar_filas_con_imagen(df, clases)
+
+    if destino_archivo:
+        buffer = io.BytesIO()
+        df_filtrado.to_parquet(buffer, engine='pyarrow', index=False)
+        buffer.seek(0)
+
+        minio_bucket = os.getenv("MINIO_BUCKET")
+        minio_groupPath = os.getenv("MINIO_GROUP_PATH")
+
+        client.put_object(
+            bucket_name=minio_bucket,
+            object_name=f"{minio_groupPath}/{path}/{destino_archivo}",
+            data=buffer,
+            length=buffer.getbuffer().nbytes,
+            content_type="application/octet-stream"
+        )
+
+    return df_filtrado
+
+
 def bajar_mapa_minio(client:Minio, path:str,nombre_capa:str):
     """
     Descarga un GeoParquet desde MinIO y lo devuelve como un GeoDataFrame 
