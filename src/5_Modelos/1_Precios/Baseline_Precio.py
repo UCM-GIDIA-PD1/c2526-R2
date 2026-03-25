@@ -44,10 +44,11 @@ def calculo_medias_por_distrito(df, nombre_mercado):
     )
 
     wandb.log({
-        "mae": mae_base,
-        "rmse": rmse_base,
-        "r2": r2_base,
-        "mercado": nombre_mercado
+        "test_mae": mae_base,
+        "test_rmse": rmse_base,
+        "test_r2": r2_base,
+        "mercado": nombre_mercado,
+        "modelo": "Baseline (Distrito)"
     })
 
     run.finish()
