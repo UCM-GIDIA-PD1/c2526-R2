@@ -4,8 +4,10 @@ import joblib
 import wandb
 import os
 import tempfile
+import plotly.express as px
 from sklearn.dummy import DummyClassifier
 from sklearn.tree import DecisionTreeClassifier
+from sklearn.manifold import TSNE
 from sklearn.metrics import accuracy_score, f1_score,recall_score
 from sklearn.model_selection import cross_validate, train_test_split, cross_val_score
 from utils.funciones_minio import crear_cliente_minio,bajar_minio
@@ -13,10 +15,74 @@ from sklearn.neighbors import KNeighborsClassifier
 from sklearn.preprocessing import LabelEncoder
 from sklearn.decomposition import PCA
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.preprocessing import LabelEncoder
 from tqdm import tqdm
 
 clases = ['Cocina', 'Dormitorio', 'Salón', 'Banyo']
 
+
+def visualizar_tsne(df:pd.DataFrame, n_muestras_visualizar=50000): 
+    X = np.stack(df['embedding'].values)
+    y = df['clase']  
+    total_datos = len(X)
+    porcion_muestra = min(n_muestras_visualizar / total_datos, 1.0) 
+
+    codificador = LabelEncoder()
+
+    y_numerico = codificador.fit_transform(y)
+
+    _, X_muestra, _, y_muestra = train_test_split(
+        X, y_numerico, 
+        test_size=porcion_muestra, 
+        random_state=101, 
+        stratify=y_numerico
+    )
+    
+    nombres_clases = codificador.inverse_transform(y_muestra)
+    print(f" Muestra de {X_muestra.shape} extraída.")
+
+    pca = PCA(n_components=50, random_state=101)
+    X_muestra_pca = pca.fit_transform(X_muestra)
+
+    tsne = TSNE(
+        n_components=2, 
+        perplexity=30, 
+        n_jobs=-1, 
+        random_state=101, 
+        verbose=1
+    )
+    X_muestra_2d = tsne.fit_transform(X_muestra_pca)
+
+    
+    df_tsne = pd.DataFrame({
+        'Dimensión 1': X_muestra_2d[:, 0],
+        'Dimensión 2': X_muestra_2d[:, 1],
+        'Habitación': nombres_clases
+    })
+    
+    fig = px.scatter(
+        df_tsne,
+        x='Dimensión 1',
+        y='Dimensión 2',
+        color='Habitación',
+        title='Mapa Interactivo de Habitaciones',
+        opacity=0.6, 
+        color_discrete_sequence=px.colors.qualitative.Bold 
+    )
+    
+    fig.update_traces(marker=dict(size=5, line=dict(width=0))) 
+    fig.update_layout(
+        width=1000,
+        height=800,
+        template='plotly_white',
+        legend_title_text='Categorías',
+        legend=dict(
+            itemsizing='constant', 
+            font=dict(size=14)
+        )
+    )
+    
+    fig.show()
 
 def entrenar_arbol_decision(X_train, X_test, y_train, y_test, etiquetas_clases, max_profundidad=40):
     """
@@ -255,12 +321,8 @@ def preparar_dataset_PCA(df:pd.DataFrame):
     return X_train_pca,X_test_pca,y_train,y_test
 
 if __name__ == "__main__":
-    os.environ["WANDB_MODE"] = "online"
     cliente = crear_cliente_minio()
     ruta_ml = "dataset_ml"
     fichero = "embeddings_imagenes.parquet"
     df = bajar_minio(cliente,ruta_ml,fichero)
-    X_train,X_test,y_train,y_test = preparar_dataset_PCA(df)
-    entrenar_arbol_decision(X_train,X_test,y_train,y_test,clases)
-    entrenar_knn(X_train,X_test,y_train,y_test)
-    entrenar_random_forest(X_train,X_test,y_train,y_test)
+    visualizar_tsne(df)
