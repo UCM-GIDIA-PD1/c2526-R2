@@ -5,6 +5,9 @@ import wandb
 import os
 import tempfile
 import plotly.express as px
+import torch
+import torch.nn as nn
+from torch.utils.data import TensorDataset, DataLoader
 from sklearn.dummy import DummyClassifier
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.manifold import TSNE
@@ -20,6 +23,73 @@ from tqdm import tqdm
 
 clases = ['Cocina', 'Dormitorio', 'Salón', 'Banyo']
 
+
+class ClasificadorEmbeddings(nn.Module):
+    def __init__(self, num_clases=4):
+        super().__init__()
+        self.capa_final = nn.Linear(2048, num_clases)
+
+    def forward(self, x):
+        return self.capa_final(x)
+
+def entrenar_mini_red(X_train, y_train, X_test, y_test, num_clases=4, epochs=50, batch_size=256):
+    
+    X_train_tensor = torch.tensor(X_train.astype(np.float32))
+    y_train_tensor = torch.tensor(y_train, dtype=torch.long)
+    X_test_tensor = torch.tensor(X_test.astype(np.float32))
+    y_test_tensor = torch.tensor(y_test, dtype=torch.long)
+    
+    dataset_train = TensorDataset(X_train_tensor, y_train_tensor)
+    loader_train = DataLoader(dataset_train, batch_size=batch_size, shuffle=True)
+    
+    modelo = ClasificadorEmbeddings(num_clases=num_clases)
+    criterio = nn.CrossEntropyLoss() 
+    optimizador = torch.optim.Adam(modelo.parameters(), lr=0.001)
+
+    run = wandb.init(
+        entity="pd1-c2526-team2",
+        project="clasificador-imagenes",
+        name="pytorch-embeddings-nn_linear",
+        job_type="train",
+        config={"epochs": epochs, "batch_size": batch_size, "lr": 0.001}
+    )
+    
+    
+    for epoch in range(epochs):
+        modelo.train()
+        loss_total_train = 0
+        
+        for batch_X, batch_y in loader_train:
+            optimizador.zero_grad()          
+            predicciones = modelo(batch_X)  
+            loss = criterio(predicciones, batch_y) 
+            loss.backward()                   
+            optimizador.step()              
+            
+            loss_total_train += loss.item()
+            
+        loss_media_train = loss_total_train / len(loader_train)
+        
+        modelo.eval()
+        with torch.no_grad(): 
+            predicciones_test = modelo(X_test_tensor)
+            loss_test = criterio(predicciones_test, y_test_tensor).item()
+            
+            _, predicciones_clases = torch.max(predicciones_test, 1)
+            
+            acc_test = accuracy_score(y_test_tensor.numpy(), predicciones_clases.numpy())
+            
+        print(f"Epoch [{epoch+1}/{epochs}] | Loss Train: {loss_media_train:.4f} | Loss Test: {loss_test:.4f} | Acc Test: {acc_test*100:.2f}%")
+        
+        wandb.log({
+            "epoch": epoch + 1,
+            "train_loss": loss_media_train,
+            "test_loss": loss_test,
+            "accuracy": acc_test
+        })
+        
+    run.finish()
+    return modelo
 
 def visualizar_tsne(df:pd.DataFrame, n_muestras_visualizar=50000): 
     X = np.stack(df['embedding'].values)
@@ -65,7 +135,7 @@ def visualizar_tsne(df:pd.DataFrame, n_muestras_visualizar=50000):
         x='Dimensión 1',
         y='Dimensión 2',
         color='Habitación',
-        title='Mapa Interactivo de Habitaciones',
+        title='Mapa Habitaciones',
         opacity=0.6, 
         color_discrete_sequence=px.colors.qualitative.Bold 
     )
@@ -298,6 +368,7 @@ def basline_cat_max(X_train,X_test,y_train,y_test):
     run.finish()
 
 def preparar_dataset(df:pd.DataFrame):
+    df = df[df["clase"] != "Comedor"]
     X = np.stack(df['embedding'].values)
     codificador = LabelEncoder()
     y = codificador.fit_transform(df['clase'])  
@@ -307,6 +378,7 @@ def preparar_dataset(df:pd.DataFrame):
     return X_train,X_test,y_train,y_test
 
 def preparar_dataset_PCA(df:pd.DataFrame):
+    df = df[df["clase"] != "Comedor"]
     pca = PCA(n_components=512, random_state=42)
     X = np.stack(df['embedding'].values)
     codificador = LabelEncoder()
