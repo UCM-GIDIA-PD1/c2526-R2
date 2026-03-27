@@ -11,6 +11,7 @@ from torch.utils.data import TensorDataset, DataLoader
 from sklearn.dummy import DummyClassifier
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.manifold import TSNE
+import umap
 from sklearn.metrics import accuracy_score, f1_score,recall_score
 from sklearn.model_selection import cross_validate, train_test_split, cross_val_score
 from utils.funciones_minio import crear_cliente_minio,bajar_minio
@@ -22,7 +23,6 @@ from sklearn.preprocessing import LabelEncoder
 from tqdm import tqdm
 
 clases = ['Cocina', 'Dormitorio', 'Salón', 'Banyo']
-
 
 class ClasificadorEmbeddings(nn.Module):
     def __init__(self, num_clases=4):
@@ -49,7 +49,7 @@ def entrenar_mini_red(X_train, y_train, X_test, y_test, num_clases=4, epochs=50,
     run = wandb.init(
         entity="pd1-c2526-team2",
         project="clasificador-imagenes",
-        name="pytorch-embeddings-nn_linear",
+        name="SoftMax_lastlayer_embeddings",
         job_type="train",
         config={"epochs": epochs, "batch_size": batch_size, "lr": 0.001}
     )
@@ -78,6 +78,7 @@ def entrenar_mini_red(X_train, y_train, X_test, y_test, num_clases=4, epochs=50,
             _, predicciones_clases = torch.max(predicciones_test, 1)
             
             acc_test = accuracy_score(y_test_tensor.numpy(), predicciones_clases.numpy())
+            f1 = f1_score(y_test_tensor.numpy(),predicciones_clases.numpy(), average='macro')
             
         print(f"Epoch [{epoch+1}/{epochs}] | Loss Train: {loss_media_train:.4f} | Loss Test: {loss_test:.4f} | Acc Test: {acc_test*100:.2f}%")
         
@@ -85,11 +86,60 @@ def entrenar_mini_red(X_train, y_train, X_test, y_test, num_clases=4, epochs=50,
             "epoch": epoch + 1,
             "train_loss": loss_media_train,
             "test_loss": loss_test,
+            "f1_score":f1,
             "accuracy": acc_test
         })
         
     run.finish()
     return modelo
+
+def visualizar_umap(df:pd.DataFrame, n_muestras_visualizar=20000):
+    
+    X = np.stack(df['embedding'].values)
+    y = df['clase']  
+    codificador = LabelEncoder()
+
+    y_numerico = codificador.fit_transform(y)
+
+    total_datos = len(X)
+    porcion_muestrar = min(n_muestras_visualizar / total_datos, 1.0) 
+    
+    _, X_muestra, _, y_muestra = train_test_split(
+        X, y_numerico, test_size=porcion_muestrar, random_state=101, stratify=y_numerico
+    )
+    nombres_clases = codificador.inverse_transform(y_muestra)
+
+    
+    reductor_umap = umap.UMAP(
+        n_neighbors=15, 
+        min_dist=0.1, 
+        n_components=2, 
+        random_state=42,
+        n_jobs=-1
+    )
+    
+    X_muestra_2d = reductor_umap.fit_transform(X_muestra)
+
+    df_umap = pd.DataFrame({
+        'Dimensión 1': X_muestra_2d[:, 0],
+        'Dimensión 2': X_muestra_2d[:, 1],
+        'Habitación': nombres_clases
+    })
+    
+    fig = px.scatter(
+        df_umap, x='Dimensión 1', y='Dimensión 2', color='Habitación',
+        title='Mapa Topológico UMAP de Habitaciones',
+        opacity=0.6,
+        color_discrete_sequence=px.colors.qualitative.Vivid
+    )
+    
+    fig.update_traces(marker=dict(size=4, line=dict(width=0)))
+    fig.update_layout(
+        width=1000, height=800, template='plotly_white',
+        legend_title_text='Categorías (Click para aislar)'
+    )
+    
+    fig.show()
 
 def visualizar_tsne(df:pd.DataFrame, n_muestras_visualizar=50000): 
     X = np.stack(df['embedding'].values)
@@ -397,4 +447,4 @@ if __name__ == "__main__":
     ruta_ml = "dataset_ml"
     fichero = "embeddings_imagenes.parquet"
     df = bajar_minio(cliente,ruta_ml,fichero)
-    visualizar_tsne(df)
+    print(df.head())
