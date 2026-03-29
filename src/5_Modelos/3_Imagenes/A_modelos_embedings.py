@@ -12,6 +12,7 @@ from sklearn.dummy import DummyClassifier
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.manifold import TSNE
 import umap
+from sklearn.svm import LinearSVC
 from sklearn.metrics import accuracy_score, f1_score,recall_score
 from sklearn.model_selection import cross_validate, train_test_split, cross_val_score
 from utils.funciones_minio import crear_cliente_minio,bajar_minio
@@ -140,6 +141,45 @@ def visualizar_umap(df:pd.DataFrame, n_muestras_visualizar=20000):
     )
     
     fig.show()
+
+def entrenar_svm(X_train, y_train, X_test, y_test):
+    """
+    Entrena múltiples SVMs con diferentes valores de C.
+    """
+    
+    cs = [0.0001, 0.001, 0.01, 0.1, 1.0, 10.0]
+    
+    
+    for c in cs:
+        print(f"\n Entrenando SVC con C = {c}...")
+        
+        run = wandb.init(
+            entity="pd1-c2526-team2", 
+            project="clasificador-imagenes",
+            name=f"SVM_C_{c}",
+            job_type="hyperparameter_tuning",
+            config={"modelo": "LinearSVC", "C": c}
+        )
+        
+        svm = LinearSVC(C=c, random_state=42, max_iter=2000, dual="auto")
+        svm.fit(X_train, y_train)
+        
+        y_pred = svm.predict(X_test)
+        
+        acc = accuracy_score(y_test, y_pred)
+        f1 = f1_score(y_test, y_pred, average='macro')
+        recall = recall_score(y_test, y_pred, average='macro')
+        
+        print(f" Resultados -> Acc: {acc*100:.1f}% | F1: {f1:.3f} | Recall: {recall:.3f}")
+        
+        wandb.log({
+            "accuracy": acc,
+            "f1_score": f1,
+            "recall": recall
+        })
+        
+        run.finish()
+
 
 def visualizar_tsne(df:pd.DataFrame, n_muestras_visualizar=50000): 
     X = np.stack(df['embedding'].values)
@@ -447,4 +487,5 @@ if __name__ == "__main__":
     ruta_ml = "dataset_ml"
     fichero = "embeddings_imagenes.parquet"
     df = bajar_minio(cliente,ruta_ml,fichero)
-    print(df.head())
+    X_train,X_test,y_train,y_test = preparar_dataset(df)
+    entrenar_svm(X_train,y_train,X_test,y_test)
