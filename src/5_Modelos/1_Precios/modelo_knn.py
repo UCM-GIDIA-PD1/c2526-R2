@@ -27,6 +27,7 @@ def filtrar_columnas(X : pd.DataFrame) -> pd.DataFrame:
 
     cols_to_drop = ["id","Nombre","Calle","Descripcion","Url"]
     cols_to_drop = [col for col in cols_to_drop if col in X.columns]
+    X = X.drop(columns=cols_to_drop, errors="ignore")
 
     #quitar Anuncia si tiene mas de 30 ya que puede perjurdicar al modelo
     if "Anuncia" in X.columns:
@@ -86,11 +87,11 @@ def construir_modelos(num_cols,cat_cols):
         "regressor__regressor__algorithm": ["auto", "brute"]}]
         
         modelos.append({"nombre": f"knn_sin_selector_minfreq_{freq}","modelo": modelo_sin_selector,
-        "param_grid":grid_sin_selector,"min_freq": freq,"usa_selector": False})
+        "param_grid":grid_sin_selector,"min_frequency": freq,"usa_selector": False})
 
         #pipeline con selector
         pipeline_con_selector = Pipeline(steps=[("preprocessor", preprocessor),("selector",SelectKBest(score_func=mutual_info_regression, k=40)),("regressor", KNeighborsRegressor())])
-        modelo_con_selector = TransformedTargetRegressor(regressor=pipeline_sin_selector,func=np.log1p,inverse_func=np.expm1)
+        modelo_con_selector = TransformedTargetRegressor(regressor=pipeline_con_selector,func=np.log1p,inverse_func=np.expm1)
         grid_con_selector =  [{"regressor__selector__k": [15, 30, 50, 80, "all"],
         "regressor__regressor__n_neighbors": [3, 5, 8, 12, 20, 30],"regressor__regressor__weights": ["distance"],
         "regressor__regressor__metric": ["manhattan", "euclidean"],"regressor__regressor__algorithm": ["auto", "brute"]},
@@ -99,7 +100,7 @@ def construir_modelos(num_cols,cat_cols):
          "regressor__regressor__algorithm": ["auto", "brute"]}]
         
         modelos.append({"nombre": f"knn_con_selector_minfreq_{freq}","modelo": modelo_con_selector,
-        "param_grid":grid_con_selector,"min_freq": freq,"usa_selector": True})
+        "param_grid":grid_con_selector,"min_frequency": freq,"usa_selector": True})
     
     return modelos
 
@@ -143,7 +144,7 @@ def entrenar_knn(df, nombre_mercado):
     # 4.Tipos
     num_cols, cat_cols = preparar_columnas(X)
     for col in cat_cols:
-        X[col] = X[col].astype("string")
+        X[col] = X[col].replace({pd.NA: np.nan}).astype("object")
     
     # 5.Partición Estratificada (80/20)
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.20, random_state=42, stratify=X['Distrito'])
@@ -166,7 +167,7 @@ def entrenar_knn(df, nombre_mercado):
         job_type="model-training",
         group=nombre_mercado,
         config={
-            "model": "KNNRegressor",
+            "modelo": "KNNRegressor",
             "target_transform": "log1p",
             "scaler" : "RobustScaler",
             "feature_selection": "SelectKBest(mutual_info_regression)",
@@ -179,13 +180,13 @@ def entrenar_knn(df, nombre_mercado):
 
     for candidato in modelos:
         #elegimos por MAE mas negativo para que este mas alineado con la regresion de precios
-        grid_search = GridSearchCV(estimator=candidato["model"],param_grid=candidato["param_grid"],scoring="neg_mean_absolute_error",
+        grid_search = GridSearchCV(estimator=candidato["modelo"],param_grid=candidato["param_grid"],scoring="neg_mean_absolute_error",
         cv=cross_validation,n_jobs=-1,verbose=1,refit=True)
         grid_search.fit(X_train,y_train)
 
         best_model = grid_search.best_estimator_
         metricas_test, _ = evaluar_modelo(best_model,X_test,y_test)
-        best_cross_validation_mae = grid_search.best_score_
+        best_cross_validation_mae = -grid_search.best_score_
 
         resumen = {"pipeline": candidato["nombre"],"usa_selector": candidato["usa_selector"],
         "min_frequency": candidato["min_frequency"],"cv_mae": best_cross_validation_mae,
@@ -234,8 +235,8 @@ if __name__ == "__main__":
 
     cliente = crear_cliente_minio()
     
-    df_venta = bajar_minio(cliente, "dataset_ml/precios/ventas", "df_ventas_regresion.parquet")
-    df_alquiler = bajar_minio(cliente, "dataset_ml/precios/alquiler", "df_alquiler_regresion.parquet")
+    df_venta = bajar_minio(cliente, "dataset_ml/precios/ventas", "df_venta_limpio.parquet")
+    df_alquiler = bajar_minio(cliente, "dataset_ml/precios/alquiler", "df_alquiler_limpio.parquet")
 
-    entrenar_knn(df_venta, "venta")
+    #entrenar_knn(df_venta, "venta")
     entrenar_knn(df_alquiler, "alquiler")
