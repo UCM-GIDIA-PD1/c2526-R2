@@ -235,3 +235,13 @@ OBJ_BARRIOS = "barrios_madrid.parquet"
 TIPOS_REJILLAS = [{"tipo":"barrios","columna_id":"COD_BAR"},{"tipo":"secciones censales","columna_id":"CUSEC"},{"tipo":"hexagonos_1","columna_id":"id_hex"},{"tipo":"hexagonos_2","columna_id":"id_hex"}]
 COD_REJILLA = {"barrios":"COD_BAR","secciones censales":"CUSEC","hexagonos_1":"id_hex","hexagonos_2":"id_hex"}
 COMPONENTES_TRANSPORTE = [{"tipo":"bus","fichero":"paradas_bus.parquet","calculo":"paradas"},{"tipo":"metro","fichero":"estaciones_metro.parquet","calculo":"estaciones"}]
+
+
+# ╔══════════════════════════════════════════════════════════════════════╗
+# ║  H — Modelo CNN (Clasificación de imágenes)                         ║
+# ╚══════════════════════════════════════════════════════════════════════╝
+
+CLASES_IMAGENES = ['Cocina', 'Dormitorio', 'Salón', 'Banyo']
+MINIO_DATASET_VISION = "cleaned/dataset_vision"
+CNN_TARGET_SIZE = (150, 150)
+CNN_BATCH_SIZE = 32
