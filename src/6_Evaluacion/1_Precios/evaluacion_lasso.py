@@ -11,7 +11,7 @@ from sklearn.metrics import mean_absolute_error, root_mean_squared_error, r2_sco
 
 from utils.funciones_minio import crear_cliente_minio, bajar_minio
 
-# Mejores alphas según 
+# Mejores alphas según la fase de tuning (copiados manualmente desde los resultados de W&B)
 MEJORES_ALPHAS = {
     "venta": 157.02,
     "alquiler": 1
@@ -44,7 +44,7 @@ def evaluar_modelo_final(df, nombre_mercado):
 
     preprocessor = ColumnTransformer(transformers=[('num', num_transformer, num_cols),('cat', cat_transformer, cat_cols)])
 
-    # 4. Intanciamos el modelo con el mejor alpha encontrado en la fase de tuning 
+    # 4. Instanciamos el modelo con el mejor alpha encontrado en la fase de tuning 
     mejor_alpha = MEJORES_ALPHAS[nombre_mercado]
     modelo_final = Pipeline(steps=[('preprocessor', preprocessor),('regressor', Lasso(alpha=mejor_alpha, max_iter=50000, random_state=42))])
 
@@ -73,12 +73,13 @@ def evaluar_modelo_final(df, nombre_mercado):
     print(error_por_distrito.head(5).apply(lambda x: f"   {x:,.2f} €"))
 
     print("\n MAE POR DISTRITOS (Top 5 con MENOR error - Mejores predicciones):")
-    # Cogemos los últimos 5, los ordenamos de menor a mayor para que quede bonito y los imprimimos
+    # Cogemos los últimos 5, los ordenamos de menor a mayor y los imprimimos
     print(error_por_distrito.tail(5).sort_values().apply(lambda x: f"   {x:,.2f} €"))
 
     # -Influencia de las variables (coeficientes del Lasso)
     print("\n Variables que más influyen en el precio:")
     print("\n Top 5 que más SUMAN al precio:")
+
     # Extraemos los nombres de las columnas tras el OneHotEncoder
     nombres_cat = modelo_final.named_steps['preprocessor'].named_transformers_['cat'].named_steps['onehot'].get_feature_names_out(cat_cols)
     nombres_todas = num_cols + list(nombres_cat)
