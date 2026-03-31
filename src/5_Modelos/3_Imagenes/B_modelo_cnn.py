@@ -1,20 +1,19 @@
 """
 B_modelo_cnn.py
 
-Red Neuronal Convolucional (CNN) sencilla diseñada desde cero
-para clasificar imágenes de habitaciones en 4 clases:
-Cocina, Dormitorio, Salón y Baño.
+Red Neuronal Convolucional (CNN) que genera embeddings de 128 dimensiones
+a partir de imágenes de habitaciones (Cocina, Dormitorio, Salón, Baño).
+
+Estrategia:
+───────────
+ 1. Se entrena una CNN con clasificación normal (Softmax).
+ 2. Tras el entrenamiento, se extrae la capa Dense(128) como
+    vector de representación (embedding) de cada imagen.
+ 3. Se guardan los embeddings en embeddings_habitaciones.npy
+    y las etiquetas en etiquetas.npy.
 
 Las imágenes se cargan desde MinIO en formato Parquet.
 El entrenamiento se registra en Weights & Biases.
-
-Arquitectura simplificada:
-──────────────────────────
- • 3 bloques Conv2D + MaxPooling2D
- • 1 capa Dense + Dropout → Softmax
- • Sin data augmentation (tenemos suficientes datos)
- • Sin BatchNormalization (simplicidad)
- • Imágenes redimensionadas a 240×160
 """
 
 import gc
@@ -26,7 +25,7 @@ import tensorflow as tf
 from PIL import Image
 from tensorflow.keras import layers, models
 from tensorflow.keras.utils import Sequence
-from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint
+from tensorflow.keras.callbacks import EarlyStopping
 from sklearn.model_selection import train_test_split
 from sklearn.utils.class_weight import compute_class_weight
 
@@ -49,15 +48,15 @@ from utils.config import (
 
 class MinioParquetGenerator(Sequence):
     """
-    Generador Keras que entrega batches de tamaño constante.
+    Generador Keras que entrega batches de imágenes desde memoria.
 
-    Las imágenes se almacenan como bytes JPEG comprimidos en memoria
-    y se decodifican a numpy solo en el momento del batch (lazy decode).
+    Las imágenes se almacenan como bytes JPEG comprimidos y se
+    decodifican a numpy solo cuando se necesitan (lazy decode).
     """
 
     def __init__(self, imagenes_pool, indices, clases,
                  batch_size=CNN_BATCH_SIZE, target_size=CNN_TARGET_SIZE):
-        self.imagenes = imagenes_pool       # referencia compartida
+        self.imagenes = imagenes_pool
         self.indices = indices.copy()
         self.batch_size = batch_size
         self.target_size = target_size      # (alto, ancho) → (160, 240)
@@ -79,9 +78,8 @@ class MinioParquetGenerator(Sequence):
         for i, img_idx in enumerate(batch_indices):
             jpeg_bytes, clase_id = self.imagenes[img_idx]
 
-            # JPEG → PIL → resize → normalizar a [0, 1]
             img = Image.open(io.BytesIO(jpeg_bytes)).convert("RGB")
-            img = img.resize((self.target_size[1], self.target_size[0]))  # PIL usa (ancho, alto)
+            img = img.resize((self.target_size[1], self.target_size[0]))
             X[i] = np.array(img, dtype=np.float32) / 255.0
             y[i, clase_id] = 1.0
 
@@ -172,11 +170,11 @@ def crear_generadores(cliente, path_base, clases,
     print(f"  Batches   train: {len(train_gen):,} | val: {len(val_gen):,}")
     print(f"  Batch size: {batch_size}")
 
-    return train_gen, val_gen, total_por_clase
+    return train_gen, val_gen, imagenes, total_por_clase
 
 
 # ─────────────────────────────────────────────────────────────────────
-# Arquitectura CNN simplificada
+# Arquitectura CNN
 # ─────────────────────────────────────────────────────────────────────
 
 def construir_cnn(input_shape, num_clases=4):
@@ -185,7 +183,10 @@ def construir_cnn(input_shape, num_clases=4):
 
     Arquitectura:
         [Conv2D → ReLU → MaxPool] × 3
-        → Flatten → Dense(128) → Dropout(0.5) → Softmax
+        → Flatten → Dense(128, name='embedding') → Softmax
+
+    La capa Dense(128) actúa como embedding: tras entrenar, se
+    puede extraer su salida como vector de representación.
     """
     model = models.Sequential([
         # Bloque 1: 32 filtros
@@ -200,21 +201,17 @@ def construir_cnn(input_shape, num_clases=4):
         layers.Conv2D(128, (3, 3), activation='relu'),
         layers.MaxPooling2D((2, 2)),
 
-        # Clasificador
+        # Capa de embedding (128 dimensiones)
         layers.Flatten(),
-        layers.Dense(128, activation='relu'),
-        layers.Dropout(0.5),
+        layers.Dense(128, activation='relu', name='embedding'),
+
+        # Clasificador (se usará solo durante el entrenamiento)
         layers.Dense(num_clases, activation='softmax'),
     ])
 
     model.compile(
         optimizer='adam',
         loss='categorical_crossentropy',
-        metrics=[
-            'accuracy',
-            tf.keras.metrics.Recall(name='recall'),
-            tf.keras.metrics.Precision(name='precision'),
-        ]
     )
     return model
 
@@ -247,6 +244,28 @@ def calcular_pesos_clase(total_por_clase, clases):
 
 
 # ─────────────────────────────────────────────────────────────────────
+# Decodificar todas las imágenes a un array numpy
+# ─────────────────────────────────────────────────────────────────────
+
+def decodificar_todas(imagenes_pool, target_size=CNN_TARGET_SIZE):
+    """
+    Convierte el pool completo de JPEG bytes a un array (N, H, W, 3)
+    normalizado a [0, 1], junto con sus etiquetas.
+    """
+    n = len(imagenes_pool)
+    X = np.empty((n, *target_size, 3), dtype=np.float32)
+    y = np.empty(n, dtype=np.int32)
+
+    for i, (jpeg_bytes, clase_id) in enumerate(imagenes_pool):
+        img = Image.open(io.BytesIO(jpeg_bytes)).convert("RGB")
+        img = img.resize((target_size[1], target_size[0]))
+        X[i] = np.array(img, dtype=np.float32) / 255.0
+        y[i] = clase_id
+
+    return X, y
+
+
+# ─────────────────────────────────────────────────────────────────────
 # Entrenamiento principal
 # ─────────────────────────────────────────────────────────────────────
 
@@ -261,7 +280,7 @@ if __name__ == "__main__":
 
     # 2. Precarga completa en memoria + generadores
     print("Precargando imágenes desde MinIO...")
-    train_gen, val_gen, total_por_clase = crear_generadores(
+    train_gen, val_gen, imagenes_pool, total_por_clase = crear_generadores(
         cliente, MINIO_DATASET_VISION, CLASES_IMAGENES
     )
 
@@ -279,22 +298,22 @@ if __name__ == "__main__":
     run = wandb.init(
         entity="pd1-c2526-team2",
         project="clasificador-imagenes",
-        name="cnn-simple",
+        name="cnn-embeddings",
         job_type="train",
         config={
-            "arquitectura": "CNN-3bloques-simple",
+            "arquitectura": "CNN-3bloques-embeddings-128d",
             "epochs": epochs,
             "target_size": CNN_TARGET_SIZE,
             "batch_size": CNN_BATCH_SIZE,
             "optimizer": "adam",
+            "embedding_dim": 128,
             "clases": CLASES_IMAGENES,
-            "data_augmentation": False,
             "total_imagenes": sum(total_por_clase.values()),
             "imagenes_por_clase": total_por_clase,
         }
     )
 
-    # 6. Callbacks (solo lo esencial)
+    # 6. Callbacks
     callbacks = [
         EarlyStopping(
             monitor='val_loss',
@@ -302,19 +321,12 @@ if __name__ == "__main__":
             restore_best_weights=True,
             verbose=1,
         ),
-        ModelCheckpoint(
-            filepath='mejor_modelo_cnn.keras',
-            monitor='val_recall',
-            mode='max',
-            save_best_only=True,
-            verbose=1,
-        ),
         wandb.keras.WandbMetricsLogger(),
     ]
 
     # 7. Entrenar
     print("Iniciando entrenamiento...")
-    historia = modelo.fit(
+    modelo.fit(
         train_gen,
         validation_data=val_gen,
         epochs=epochs,
@@ -324,6 +336,32 @@ if __name__ == "__main__":
         use_multiprocessing=False,
     )
 
-    # 8. Finalizar
+    # ─────────────────────────────────────────────────────────────────
+    # 8. Extraer embeddings
+    #
+    #    Creamos un modelo "extractor" que reutiliza las capas ya
+    #    entrenadas, pero cuya salida es la capa Dense(128) en
+    #    lugar del Softmax final.
+    # ─────────────────────────────────────────────────────────────────
+    extractor = models.Model(
+        inputs=modelo.input,
+        outputs=modelo.get_layer('embedding').output,
+    )
+
+    print("\nDecodificando todas las imágenes...")
+    X_todas, etiquetas = decodificar_todas(imagenes_pool)
+
+    print("Extrayendo embeddings...")
+    embeddings = extractor.predict(X_todas, batch_size=CNN_BATCH_SIZE)
+
+    # 9. Guardar como .npy
+    np.save('embeddings_habitaciones.npy', embeddings)
+    np.save('etiquetas.npy', etiquetas)
+
+    print(f"\n  ✅ embeddings_habitaciones.npy  → shape {embeddings.shape}")
+    print(f"  ✅ etiquetas.npy               → shape {etiquetas.shape}")
+    print(f"  Clases: {CLASES_IMAGENES}")
+
+    # 10. Finalizar
     wandb.finish()
-    print("Entrenamiento finalizado.")
+    print("Entrenamiento y extracción de embeddings finalizado.")
