@@ -1,19 +1,9 @@
 """
 B_modelo_cnn.py
 
-Red Neuronal Convolucional (CNN) que genera embeddings de 128 dimensiones
-a partir de imágenes de habitaciones (Cocina, Dormitorio, Salón, Baño).
-
-Estrategia:
-───────────
- 1. Se entrena una CNN con clasificación normal (Softmax).
- 2. Tras el entrenamiento, se extrae la capa Dense(128) como
-    vector de representación (embedding) de cada imagen.
- 3. Se guardan los embeddings en embeddings_habitaciones.npy
-    y las etiquetas en etiquetas.npy.
-
-Las imágenes se cargan desde MinIO en formato Parquet.
-El entrenamiento se registra en Weights & Biases.
+CNN que genera embeddings de 128-d para imágenes de habitaciones.
+Se entrena como clasificador (Softmax temporal) y después se le quita
+la cabeza para quedarnos solo con la capa Dense(128).
 """
 
 import gc
@@ -23,11 +13,12 @@ import numpy as np
 import wandb
 import tensorflow as tf
 from PIL import Image
-from tensorflow.keras import layers, models
+from tensorflow.keras import layers, models, Model
 from tensorflow.keras.utils import Sequence
 from tensorflow.keras.callbacks import EarlyStopping
 from sklearn.model_selection import train_test_split
 from sklearn.utils.class_weight import compute_class_weight
+from sklearn.metrics import confusion_matrix
 
 from utils.funciones_minio import (
     crear_cliente_minio,
@@ -42,26 +33,26 @@ from utils.config import (
 )
 
 
-# ─────────────────────────────────────────────────────────────────────
-# Generador de datos
-# ─────────────────────────────────────────────────────────────────────
+# --- Generador de datos ---
 
-class MinioParquetGenerator(Sequence):
+class GeneradorHabitaciones(Sequence):
     """
-    Generador Keras que entrega batches de imágenes desde memoria.
-
-    Las imágenes se almacenan como bytes JPEG comprimidos y se
-    decodifican a numpy solo cuando se necesitan (lazy decode).
+    Genera batches decodificando JPEGs bajo demanda.
+    Mantiene los bytes comprimidos en RAM y solo convierte
+    a numpy el batch que toca, así no petamos la memoria.
     """
 
-    def __init__(self, imagenes_pool, indices, clases,
-                 batch_size=CNN_BATCH_SIZE, target_size=CNN_TARGET_SIZE):
-        self.imagenes = imagenes_pool
+    def __init__(self, pool_habitaciones, indices, clases,
+                 batch_size=CNN_BATCH_SIZE, target_size=CNN_TARGET_SIZE,
+                 shuffle=True):
+        self.pool = pool_habitaciones
         self.indices = indices.copy()
         self.batch_size = batch_size
-        self.target_size = target_size      # (alto, ancho) → (160, 240)
+        self.target_size = target_size  # (alto, ancho) -> (160, 240)
         self.num_clases = len(clases)
-        np.random.shuffle(self.indices)
+        self.shuffle = shuffle
+        if self.shuffle:
+            np.random.shuffle(self.indices)
 
     def __len__(self):
         return int(np.ceil(len(self.indices) / self.batch_size))
@@ -69,15 +60,14 @@ class MinioParquetGenerator(Sequence):
     def __getitem__(self, idx):
         inicio = idx * self.batch_size
         fin = min(inicio + self.batch_size, len(self.indices))
-        batch_indices = self.indices[inicio:fin]
-        tamano = fin - inicio
+        batch_idx = self.indices[inicio:fin]
+        n = fin - inicio
 
-        X = np.empty((tamano, *self.target_size, 3), dtype=np.float32)
-        y = np.zeros((tamano, self.num_clases), dtype=np.float32)
+        X = np.empty((n, *self.target_size, 3), dtype=np.float32)
+        y = np.zeros((n, self.num_clases), dtype=np.float32)
 
-        for i, img_idx in enumerate(batch_indices):
-            jpeg_bytes, clase_id = self.imagenes[img_idx]
-
+        for i, pos in enumerate(batch_idx):
+            jpeg_bytes, clase_id = self.pool[pos]
             img = Image.open(io.BytesIO(jpeg_bytes)).convert("RGB")
             img = img.resize((self.target_size[1], self.target_size[0]))
             X[i] = np.array(img, dtype=np.float32) / 255.0
@@ -86,34 +76,28 @@ class MinioParquetGenerator(Sequence):
         return X, y
 
     def on_epoch_end(self):
-        np.random.shuffle(self.indices)
+        if self.shuffle:
+            np.random.shuffle(self.indices)
 
 
-# ─────────────────────────────────────────────────────────────────────
-# Precarga de datos desde MinIO
-# ─────────────────────────────────────────────────────────────────────
+# --- Carga desde MinIO ---
 
-def precargar_imagenes_minio(cliente, path_base, clases):
+def descargar_pool_habitaciones(cliente, path_base, clases):
     """
-    Descarga todos los Parquets desde MinIO y construye un pool
-    en memoria de (jpeg_bytes, clase_id).
+    Baja todos los Parquets y devuelve una lista de (jpeg_bytes, clase_id).
+    Liberamos cada DataFrame justo después de extraer los bytes.
     """
     mapa_clases = {clase: i for i, clase in enumerate(clases)}
-    imagenes = []
-    total_por_clase = {clase: 0 for clase in clases}
+    pool_habitaciones = []
+    conteo_clase = {c: 0 for c in clases}
 
     registros = []
     for clase in clases:
-        ruta_clase = f"{path_base}/{clase}"
-        archivos = buscar_todos_los_archivos(cliente, ruta_clase)
-        for nombre in archivos:
-            registros.append({
-                'path': ruta_clase,
-                'archivo': nombre,
-                'clase': clase,
-            })
+        ruta = f"{path_base}/{clase}"
+        for archivo in buscar_todos_los_archivos(cliente, ruta):
+            registros.append({'path': ruta, 'archivo': archivo, 'clase': clase})
 
-    print(f"  Descargando {len(registros)} archivos Parquet...")
+    print(f"  Descargando {len(registros)} Parquets...")
 
     for i, reg in enumerate(registros):
         df = bajar_minio_especifico(
@@ -121,246 +105,253 @@ def precargar_imagenes_minio(cliente, path_base, clases):
         )
         clase_id = mapa_clases[reg['clase']]
 
-        for raw_bytes in df['imagen_bytes']:
-            imagenes.append((bytes(raw_bytes), clase_id))
+        for raw in df['imagen_bytes']:
+            pool_habitaciones.append((bytes(raw), clase_id))
 
-        total_por_clase[reg['clase']] += len(df)
+        conteo_clase[reg['clase']] += len(df)
         del df
 
         if (i + 1) % 10 == 0 or i == len(registros) - 1:
-            print(f"    [{i+1}/{len(registros)}] — {len(imagenes):,} imágenes cargadas")
+            print(f"    [{i+1}/{len(registros)}] {len(pool_habitaciones):,} imgs")
 
     gc.collect()
 
-    print(f"  ✅ Total en caché: {len(imagenes):,} imágenes")
-    for clase, n in total_por_clase.items():
+    print(f"  Total en cache: {len(pool_habitaciones):,} imagenes")
+    for clase, n in conteo_clase.items():
         print(f"    {clase}: {n:,}")
 
-    return imagenes, total_por_clase
+    return pool_habitaciones, conteo_clase
 
-
-# ─────────────────────────────────────────────────────────────────────
-# Creación de generadores con split estratificado
-# ─────────────────────────────────────────────────────────────────────
 
 def crear_generadores(cliente, path_base, clases,
                       val_split=0.2, batch_size=CNN_BATCH_SIZE):
-    """
-    Descarga todos los datos y crea generadores train/val
-    con split estratificado por clase.
-    """
-    imagenes, total_por_clase = precargar_imagenes_minio(
+    """Split estratificado y creación de generadores train/val."""
+    pool_habitaciones, conteo_clase = descargar_pool_habitaciones(
         cliente, path_base, clases
     )
 
-    etiquetas = np.array([img[1] for img in imagenes])
-    indices = np.arange(len(imagenes))
+    etiquetas = np.array([item[1] for item in pool_habitaciones])
+    indices = np.arange(len(pool_habitaciones))
 
-    train_idx, val_idx = train_test_split(
-        indices,
-        test_size=val_split,
-        random_state=42,
-        stratify=etiquetas,
+    idx_train, idx_val = train_test_split(
+        indices, test_size=val_split, random_state=42, stratify=etiquetas
     )
 
-    train_gen = MinioParquetGenerator(imagenes, train_idx, clases, batch_size)
-    val_gen = MinioParquetGenerator(imagenes, val_idx, clases, batch_size)
+    gen_train = GeneradorHabitaciones(pool_habitaciones, idx_train, clases, batch_size)
+    gen_val = GeneradorHabitaciones(pool_habitaciones, idx_val, clases, batch_size)
 
-    print(f"\n  Imágenes  train: {len(train_idx):,} | val: {len(val_idx):,}")
-    print(f"  Batches   train: {len(train_gen):,} | val: {len(val_gen):,}")
-    print(f"  Batch size: {batch_size}")
+    print(f"\n  Train: {len(idx_train):,} imgs ({len(gen_train)} batches)")
+    print(f"  Val:   {len(idx_val):,} imgs ({len(gen_val)} batches)")
 
-    return train_gen, val_gen, imagenes, total_por_clase
+    return gen_train, gen_val, pool_habitaciones, conteo_clase
 
 
-# ─────────────────────────────────────────────────────────────────────
-# Arquitectura CNN
-# ─────────────────────────────────────────────────────────────────────
+# --- Arquitectura CNN modular ---
 
-def construir_cnn(input_shape, num_clases=4):
+def crear_bloque_conv(x, filtros, kernel=(3, 3)):
     """
-    CNN sencilla de 3 bloques convolucionales.
-
-    Arquitectura:
-        [Conv2D → ReLU → MaxPool] × 3
-        → Flatten → Dense(128, name='embedding') → Softmax
-
-    La capa Dense(128) actúa como embedding: tras entrenar, se
-    puede extraer su salida como vector de representación.
+    Conv2D + BatchNorm + ReLU + MaxPool.
+    Usamos BN para evitar que los gradientes se mueran en redes
+    más profundas y para estabilizar el entrenamiento en general.
     """
-    model = models.Sequential([
-        # Bloque 1: 32 filtros
-        layers.Conv2D(32, (3, 3), activation='relu', input_shape=input_shape),
-        layers.MaxPooling2D((2, 2)),
-
-        # Bloque 2: 64 filtros
-        layers.Conv2D(64, (3, 3), activation='relu'),
-        layers.MaxPooling2D((2, 2)),
-
-        # Bloque 3: 128 filtros
-        layers.Conv2D(128, (3, 3), activation='relu'),
-        layers.MaxPooling2D((2, 2)),
-
-        # Capa de embedding (128 dimensiones)
-        layers.Flatten(),
-        layers.Dense(128, activation='relu', name='embedding'),
-
-        # Clasificador (se usará solo durante el entrenamiento)
-        layers.Dense(num_clases, activation='softmax'),
-    ])
-
-    model.compile(
-        optimizer='adam',
-        loss='categorical_crossentropy',
-    )
-    return model
+    x = layers.Conv2D(filtros, kernel, padding='same')(x)
+    x = layers.BatchNormalization()(x)
+    x = layers.Activation('relu')(x)
+    x = layers.MaxPooling2D((2, 2))(x)
+    return x
 
 
-# ─────────────────────────────────────────────────────────────────────
-# Cálculo de pesos de clase
-# ─────────────────────────────────────────────────────────────────────
-
-def calcular_pesos_clase(total_por_clase, clases):
+def construir_modelo(input_shape, filtros_por_bloque=(32, 64, 128),
+                     dim_embedding=128):
     """
-    Calcula pesos inversamente proporcionales al nº real de imágenes
-    por clase para compensar desbalanceo.
-    """
-    cantidades = np.array([total_por_clase[c] for c in clases])
+    Construye la CNN apilando N bloques convolucionales.
 
-    etiquetas = np.concatenate(
+    Parámetros:
+        filtros_por_bloque: tupla con los filtros de cada bloque.
+            Ej: (32, 64) para una red ligera, (32, 64, 128, 256) si
+            quisiéramos más capacidad. Lo dejamos configurable para
+            poder comparar variantes sin tocar código.
+        dim_embedding: tamaño del vector de salida.
+
+    Devuelve un Model de Keras cuya última capa es Dense(dim_embedding).
+    """
+    entrada = layers.Input(shape=input_shape)
+    x = entrada
+
+    for n_filtros in filtros_por_bloque:
+        x = crear_bloque_conv(x, n_filtros)
+
+    # Aplanar y proyectar al espacio de embeddings
+    x = layers.Flatten()(x)
+    salida = layers.Dense(dim_embedding, activation='relu', name='embedding')(x)
+
+    return Model(inputs=entrada, outputs=salida, name='cnn_habitaciones')
+
+
+# --- Pesos de clase ---
+
+def calcular_pesos_clase(conteo_clase, clases):
+    """Pesos inversamente proporcionales al número de imágenes por clase."""
+    cantidades = np.array([conteo_clase[c] for c in clases])
+    etiquetas_dummy = np.concatenate(
         [np.full(n, i) for i, n in enumerate(cantidades)]
     )
-
     pesos = compute_class_weight(
-        'balanced', classes=np.arange(len(clases)), y=etiquetas
+        'balanced', classes=np.arange(len(clases)), y=etiquetas_dummy
     )
-    pesos_dict = {i: peso for i, peso in enumerate(pesos)}
+    pesos_dict = dict(enumerate(pesos))
 
     print("  Pesos de clase:")
     for i, clase in enumerate(clases):
-        print(f"    {clase}: {pesos_dict[i]:.4f}  ({total_por_clase[clase]:,} imgs)")
+        print(f"    {clase}: {pesos_dict[i]:.4f}  ({conteo_clase[clase]:,} imgs)")
 
     return pesos_dict
 
 
-# ─────────────────────────────────────────────────────────────────────
-# Decodificar todas las imágenes a un array numpy
-# ─────────────────────────────────────────────────────────────────────
+# --- Extracción de embeddings batch a batch ---
 
-def decodificar_todas(imagenes_pool, target_size=CNN_TARGET_SIZE):
+def extraer_embeddings(modelo_embedding, pool_habitaciones, clases,
+                       batch_size=CNN_BATCH_SIZE):
     """
-    Convierte el pool completo de JPEG bytes a un array (N, H, W, 3)
-    normalizado a [0, 1], junto con sus etiquetas.
+    Pasa todas las imágenes por el modelo usando el generador
+    (batch a batch) para no cargar todo en RAM de golpe.
+    Devuelve arrays de embeddings y etiquetas.
     """
-    n = len(imagenes_pool)
-    X = np.empty((n, *target_size, 3), dtype=np.float32)
-    y = np.empty(n, dtype=np.int32)
+    gen_completo = GeneradorHabitaciones(
+        pool_habitaciones,
+        np.arange(len(pool_habitaciones)),
+        clases,
+        batch_size=batch_size,
+        shuffle=False,  # importante: orden consistente con las etiquetas
+    )
 
-    for i, (jpeg_bytes, clase_id) in enumerate(imagenes_pool):
-        img = Image.open(io.BytesIO(jpeg_bytes)).convert("RGB")
-        img = img.resize((target_size[1], target_size[0]))
-        X[i] = np.array(img, dtype=np.float32) / 255.0
-        y[i] = clase_id
+    # predict ya itera batch a batch internamente
+    embeddings = modelo_embedding.predict(gen_completo, verbose=1)
+    etiquetas = np.array([item[1] for item in pool_habitaciones])
 
-    return X, y
+    return embeddings, etiquetas
 
 
-# ─────────────────────────────────────────────────────────────────────
-# Entrenamiento principal
-# ─────────────────────────────────────────────────────────────────────
+# =================================================================
+# Flujo principal: Configuración -> Carga -> Entrenamiento -> Extracción
+# =================================================================
 
 if __name__ == "__main__":
 
-    # Semilla para reproducibilidad
+    # -- Configuración --
     tf.keras.utils.set_random_seed(42)
-
-    # 1. Configuración
     cliente = crear_cliente_minio()
-    epochs = 20
 
-    # 2. Precarga completa en memoria + generadores
-    print("Precargando imágenes desde MinIO...")
-    train_gen, val_gen, imagenes_pool, total_por_clase = crear_generadores(
+    EPOCHS = 20
+    FILTROS = [32, 64, 128]  # probar tambien [32, 64] o [64, 128, 256]
+    DIM_EMBEDDING = 128
+
+    # -- Carga de datos --
+    print("Descargando imagenes desde MinIO...")
+    gen_train, gen_val, pool_habitaciones, conteo_clase = crear_generadores(
         cliente, MINIO_DATASET_VISION, CLASES_IMAGENES
     )
 
-    # 3. Pesos de clase
-    pesos_clase = calcular_pesos_clase(total_por_clase, CLASES_IMAGENES)
+    # -- Preprocesado: pesos de clase --
+    pesos_clase = calcular_pesos_clase(conteo_clase, CLASES_IMAGENES)
 
-    # 4. Construir modelo
-    modelo = construir_cnn(
+    # -- Construcción del modelo --
+    modelo_base = construir_modelo(
         input_shape=(*CNN_TARGET_SIZE, 3),
-        num_clases=len(CLASES_IMAGENES),
+        filtros_por_bloque=FILTROS,
+        dim_embedding=DIM_EMBEDDING,
     )
-    modelo.summary()
 
-    # 5. W&B
+    # Cabeza Softmax temporal: solo sirve para entrenar como clasificador
+    salida_clasificador = layers.Dense(
+        len(CLASES_IMAGENES), activation='softmax', name='head_temporal'
+    )(modelo_base.output)
+
+    modelo_entrenamiento = Model(
+        inputs=modelo_base.input,
+        outputs=salida_clasificador,
+        name='cnn_clasificador_temporal',
+    )
+    modelo_entrenamiento.compile(optimizer='adam', loss='categorical_crossentropy')
+    modelo_entrenamiento.summary()
+
+    # -- W&B --
     run = wandb.init(
         entity="pd1-c2526-team2",
         project="clasificador-imagenes",
         name="cnn-embeddings",
         job_type="train",
         config={
-            "arquitectura": "CNN-3bloques-embeddings-128d",
-            "epochs": epochs,
+            "arquitectura": f"CNN-{len(FILTROS)}bloques-BN",
+            "filtros": FILTROS,
+            "epochs": EPOCHS,
             "target_size": CNN_TARGET_SIZE,
             "batch_size": CNN_BATCH_SIZE,
             "optimizer": "adam",
-            "embedding_dim": 128,
+            "embedding_dim": DIM_EMBEDDING,
             "clases": CLASES_IMAGENES,
-            "total_imagenes": sum(total_por_clase.values()),
-            "imagenes_por_clase": total_por_clase,
-        }
+            "total_imagenes": sum(conteo_clase.values()),
+            "imagenes_por_clase": conteo_clase,
+        },
     )
 
-    # 6. Callbacks
+    # -- Entrenamiento --
     callbacks = [
         EarlyStopping(
-            monitor='val_loss',
-            patience=5,
-            restore_best_weights=True,
-            verbose=1,
+            monitor='val_loss', patience=5,
+            restore_best_weights=True, verbose=1,
         ),
         wandb.keras.WandbMetricsLogger(),
     ]
 
-    # 7. Entrenar
     print("Iniciando entrenamiento...")
-    modelo.fit(
-        train_gen,
-        validation_data=val_gen,
-        epochs=epochs,
+    modelo_entrenamiento.fit(
+        gen_train,
+        validation_data=gen_val,
+        epochs=EPOCHS,
         class_weight=pesos_clase,
         callbacks=callbacks,
-
     )
 
-    # ─────────────────────────────────────────────────────────────────
-    # 8. Extraer embeddings
-    #
-    #    Creamos un modelo "extractor" que reutiliza las capas ya
-    #    entrenadas, pero cuya salida es la capa Dense(128) en
-    #    lugar del Softmax final.
-    # ─────────────────────────────────────────────────────────────────
-    extractor = models.Model(
-        inputs=modelo.input,
-        outputs=modelo.get_layer('embedding').output,
+    # -- Confusion Matrix --
+    print("\nCalculando matriz de confusión...")
+    y_pred = modelo_entrenamiento.predict(gen_val, verbose=1)
+    y_pred_classes = np.argmax(y_pred, axis=1)
+
+    y_true = []
+    for i in range(len(gen_val)):
+        _, y_batch = gen_val[i]
+        y_true.extend(np.argmax(y_batch, axis=1))
+    y_true = np.array(y_true)
+
+    cm = confusion_matrix(y_true, y_pred_classes)
+    print("Matriz de Confusión:")
+    print(cm)
+
+    # Imprimir confusiones específicas
+    for i, clase_true in enumerate(CLASES_IMAGENES):
+        for j, clase_pred in enumerate(CLASES_IMAGENES):
+            if i != j and cm[i, j] > 0:
+                print(f"Se han confundido {cm[i, j]} {clase_true} con {clase_pred}")
+
+    # -- Extracción de embeddings --
+    # modelo_base ya termina en Dense(128), no hace falta pop()
+    print(f"\nModelo de embeddings: salida = {modelo_base.output_shape}")
+
+    embeddings, etiquetas = extraer_embeddings(
+        modelo_base, pool_habitaciones, CLASES_IMAGENES
     )
 
-    print("\nDecodificando todas las imágenes...")
-    X_todas, etiquetas = decodificar_todas(imagenes_pool)
-
-    print("Extrayendo embeddings...")
-    embeddings = extractor.predict(X_todas, batch_size=CNN_BATCH_SIZE)
-
-    # 9. Guardar como .npy
     np.save('embeddings_habitaciones.npy', embeddings)
     np.save('etiquetas.npy', etiquetas)
 
-    print(f"\n  ✅ embeddings_habitaciones.npy  → shape {embeddings.shape}")
-    print(f"  ✅ etiquetas.npy               → shape {etiquetas.shape}")
+    print(f"\n  embeddings_habitaciones.npy -> {embeddings.shape}")
+    print(f"  etiquetas.npy              -> {etiquetas.shape}")
     print(f"  Clases: {CLASES_IMAGENES}")
 
-    # 10. Finalizar
+    # -- Guardar modelo --
+    modelo_entrenamiento.save('modelo_final_habitaciones.keras')
+
+    # -- Fin --
     wandb.finish()
-    print("Entrenamiento y extracción de embeddings finalizado.")
+    print("Entrenamiento y extraccion completados.")
