@@ -155,35 +155,35 @@ Extracción → Limpieza → Agrupación → Modelos
 
 ---
 
-### 1️⃣ Extracción
+### 1 Extracción
 
 ```bash
 uv run -m src.1_Extraccion.main
 ```
 
 
-### 2️⃣ Limpieza
+### 2 Limpieza
 
 ```bash
 uv run -m src.2_Limpieza.main
 ```
 
 
-### 3️⃣ Agrupación
+### 3 Agrupación
 
 ```bash
 uv run -m src.3_Agrupacion.main
 ```
 
 
-### 4️⃣ Análisis
+### 4 Análisis
 
 ```bash
 uv run -m src.4_Analisis
 ```
 
 
-### 5️⃣ Modelos
+### 5 Modelos
 
 #### 💰 Precios
 ```bash
@@ -200,4 +200,11 @@ uv run -m src.5_Modelos.2_Texto
 uv run -m src.5_Modelos.3_Imagenes
 ```
 
+
+### 6 Evaluacion
+
+#### 💰 Precios
+```bash
+uv run -m src.6.Evaluacion.1_Precios
+```
 ---

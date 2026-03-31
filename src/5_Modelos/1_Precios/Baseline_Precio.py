@@ -34,7 +34,7 @@ def calculo_medias_por_distrito(df, nombre_mercado):
     rmse_base = root_mean_squared_error(y_test, y_pred_baseline)
     r2_base = r2_score(y_test, y_pred_baseline)
 
-    # 4. Registramos en W&B como UN SOLO experimento para poder compararlo luego con Lasso
+    # 4. Registramos en W&B
     run = wandb.init(
         entity="pd1-c2526-team2",
         project=f"modelo-precio-viviendas-{nombre_mercado}", 
