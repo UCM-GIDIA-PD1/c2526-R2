@@ -332,8 +332,7 @@ if __name__ == "__main__":
         epochs=epochs,
         class_weight=pesos_clase,
         callbacks=callbacks,
-        workers=4,
-        use_multiprocessing=False,
+
     )
 
     # ─────────────────────────────────────────────────────────────────
