@@ -66,6 +66,20 @@ def reorganizar_imagenes_por_clase(cliente:Minio, prefijo_destino="cleaned/datas
     for clase in clases:
         vaciar_y_subir_buffer(clase)
 
+def obtener_tamano_imagen(imagen_pil):
+    """
+    Recibe un objeto Image de Pillow y extrae sus dimensiones.
+    Devuelve una tupla con (ancho, alto).
+    """
+    ancho, alto = imagen_pil.size
+    
+    print(f" Dimensiones de la imagen:")
+    print(f"   - Ancho: {ancho} píxeles")
+    print(f"   - Alto:  {alto} píxeles")
+    
+    return ancho, alto
+
+
 def embeddings_imagenes(cliente, batch_size=32):
     print("  Inicio del proceso de transofmración y vectorización de las imágenes con resnet50")
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
