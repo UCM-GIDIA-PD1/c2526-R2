@@ -126,14 +126,14 @@ def calcular_pesos(conteo, clases):
 # ══════════════════════════════════════════════════════════════════════
 
 if __name__ == "__main__":
-
     tf.keras.utils.set_random_seed(42)
 
     EPOCHS = 20
     FILTROS = [32, 64, 128]
     DIM_EMBEDDING = 128
-
-    # 1. Descargar imágenes
+    import tensorflow as tf
+    print("Num GPUs Available: ", len(tf.config.list_physical_devices('GPU')))
+    print("Dispositivos:", tf.config.list_physical_devices())
     print("Descargando imagenes desde MinIO...")
     pool, conteo = descargar_imagenes(CLASES_IMAGENES)
 
