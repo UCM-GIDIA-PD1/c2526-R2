@@ -82,6 +82,10 @@ def entrenar():
     # el prefetch de arriba ya se encarga de la paralelización.
     modelo.fit(train_ds, validation_data=val_ds, epochs=EPOCHS, callbacks=[WandbCallback()])
 
+    # 5. Guardar el modelo
+    modelo.save("modelo_imagenes.keras")
+    print("Modelo guardado como 'modelo_imagenes.keras'")
+
     wandb.finish()
 
 if __name__ == "__main__":
