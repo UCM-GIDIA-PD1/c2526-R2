@@ -243,5 +243,5 @@ COMPONENTES_TRANSPORTE = [{"tipo":"bus","fichero":"paradas_bus.parquet","calculo
 
 CLASES_IMAGENES = ['Cocina', 'Dormitorio', 'Salón', 'Banyo']
 MINIO_DATASET_VISION = "cleaned/dataset_vision"
-CNN_TARGET_SIZE = (160, 240)
-CNN_BATCH_SIZE = 32
+CNN_TARGET_SIZE = (120, 180)
+CNN_BATCH_SIZE = 64
