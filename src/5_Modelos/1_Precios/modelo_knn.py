@@ -55,7 +55,6 @@ def construir_preprocesador(num_cols, cat_cols,scaler,min_frequency):
 
     num_pipeline = Pipeline(steps=[("imputer", SimpleImputer(strategy="median")),("scaler", scaler)])
     
-    #min_frequency = 0.01 para agrupar categorias muy raras
     cat_pipeline = Pipeline(steps=[("imputer", SimpleImputer(strategy="constant", fill_value="Desconocido")),
     ("onehot", OneHotEncoder(handle_unknown="infrequent_if_exist",min_frequency=min_frequency,sparse_output=False))])
 
@@ -82,25 +81,22 @@ def construir_modelos(num_cols,cat_cols):
             #pipeline sin selector
             pipeline_sin_selector = Pipeline(steps=[("preprocessor", preprocessor),("pca",PCA()),("regressor", KNeighborsRegressor())])
             modelo_sin_selector =  TransformedTargetRegressor(regressor=pipeline_sin_selector,func=np.log1p,inverse_func=np.expm1)
-            grid_sin_selector = [{"regressor__pca__n_components":[0.80,0.90,0.95],"regressor__regressor__n_neighbors": [3, 5, 10, 20, 40,80],
-            "regressor__regressor__weights": ["distance"],"regressor__regressor__p":[1,2],
-            "regressor__regressor__algorithm": ["auto", "brute"],"regressor__regressor__leaf_size":[20,30,50]},{"regressor__pca_n_components":[0.80,0.90,0.95],"regressor__regressor__n_neighbors": [5, 10, 20, 40,80],
-            "regressor__regressor__weights": ["uniform"],"regressor__regressor__p":[1,2],"regressor__regressor__algorithm": ["auto", "brute"],"regressor__regressor__leaf_size":[20,30,50]}]
+            grid_sin_selector = [{"regressor__pca__n_components":[0.90,0.95],"regressor__regressor__n_neighbors": [5, 10, 20, 40],
+            "regressor__regressor__weights": ["distance","uniform"],"regressor__regressor__p":[1,2],
+            "regressor__regressor__algorithm": ["auto"],"regressor__regressor__leaf_size":[30]}]
         
             modelos.append({"nombre": f"knn_sin_selector_scaler_{scaler_name}_minfreq_{freq}","modelo": modelo_sin_selector,
-            "param_grid":grid_sin_selector,"min_frequency": freq,"usa_selector": False,"scaler":scaler})
+            "param_grid":grid_sin_selector,"min_frequency": freq,"usa_selector": False,"scaler":scaler_name})
 
             #pipeline con selector
             pipeline_con_selector = Pipeline(steps=[("preprocessor", preprocessor),("selector",SelectKBest(score_func=mutual_info_regression)),("pca",PCA()),("regressor", KNeighborsRegressor())])
             modelo_con_selector = TransformedTargetRegressor(regressor=pipeline_con_selector,func=np.log1p,inverse_func=np.expm1)
-            grid_con_selector =  [{"regressor__selector__k": [20, 50, 100, 200, "all"],"regressor__pca_n_components":[0.80,0.90,0.95],
-            "regressor__regressor__n_neighbors": [3, 5, 10, 20, 40, 80],"regressor__regressor__weights": ["distance"], "regressor__regressor__p":[1,2],
-            "regressor__regressor__algorithm": ["auto", "brute"],"regressor__regressor__leaf_size":[20,30,50]},
-            {"regressor__selector__k": [20, 50, 100, 200,"all"],"regressor__pca_n_components":[0.80,0.90,0.95],"regressor__regressor__n_neighbors": [5, 10, 20, 40,80],
-            "regressor__regressor__weights": ["uniform"],"regressor__regressor__p":[1,2],"regressor__regressor__algorithm": ["auto", "brute"],"regressor__regressor_leaf_size":[20,30,50]}]
+            grid_con_selector =  [{"regressor__selector__k": [20, 50, 80, "all"],"regressor__pca__n_components":[0.90,0.95],
+            "regressor__regressor__n_neighbors": [5, 10, 20, 40],"regressor__regressor__weights": ["distance","uniform"], "regressor__regressor__p":[1,2],
+            "regressor__regressor__algorithm": ["auto"],"regressor__regressor__leaf_size":[30]}]
         
             modelos.append({"nombre": f"knn_con_selector_scaler_{scaler_name}_minfreq_{freq}","modelo": modelo_con_selector,
-            "param_grid":grid_con_selector,"min_frequency": freq,"usa_selector": True,"scaler":scaler})
+            "param_grid":grid_con_selector,"min_frequency": freq,"usa_selector": True,"scaler":scaler_name})
 
     return modelos
 
@@ -229,7 +225,7 @@ def entrenar_knn(df, nombre_mercado):
     "best_min_frequency": mejor_resultado["min_frequency"],"best_usa_selector": mejor_resultado["usa_selector"],"best_scaler":mejor_resultado["scaler"]})
     run.finish()
 
-    return best_model,mejor_resultado,mejor_grid
+    return mejor_modelo, mejor_resultado, mejor_grid
 
 if __name__ == "__main__":
 
@@ -239,4 +235,4 @@ if __name__ == "__main__":
     df_alquiler = bajar_minio(cliente, "dataset_ml/precios/alquiler", "df_alquiler_limpio.parquet")
 
     entrenar_knn(df_venta, "venta")
-    entrenar_knn(df_alquiler, "alquiler")
+    #entrenar_knn(df_alquiler, "alquiler")
