@@ -37,6 +37,7 @@ def cargador_datos(cliente, fase,clases, transformador):
     for clase in clases:
         path = f"dataset_ml/dataset_vision/{fase}/{clase}"
         archivos_base[clase] = buscar_todos_los_archivos(cliente, path)
+        parquets[clase] = archivos_base[clase].copy()
         aumentar[clase] = False
 
     while True:
@@ -50,7 +51,7 @@ def cargador_datos(cliente, fase,clases, transformador):
             
             archivo = parquets[clase].pop()
             
-            f"dataset_ml/dataset_vision/{fase}/{clase}"
+            path = f"dataset_ml/dataset_vision/{fase}/{clase}"
             df_chunk = bajar_minio(cliente, path, archivo)
             df_chunk['etiqueta_numerica'] = indice_num
             df_chunk['nombre_clase'] = clase
