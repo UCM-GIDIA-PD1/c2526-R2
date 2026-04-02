@@ -29,13 +29,13 @@ def aplicar_augmentation(tensor_img):
     img = tf.image.random_brightness(img, max_delta=0.2)
     return img
 
-def cargador_datos(cliente, clases, transformador):
+def cargador_datos(cliente, fase,clases, transformador):
     parquets = {clase: [] for clase in clases}
     
     archivos_base = {}
     aumentar = {}
     for clase in clases:
-        path = f"cleaned/dataset_vision/{clase}"
+        path = f"dataset_ml/dataset_vision/{fase}/{clase}"
         archivos_base[clase] = buscar_todos_los_archivos(cliente, path)
         aumentar[clase] = False
 
@@ -48,10 +48,10 @@ def cargador_datos(cliente, clases, transformador):
                 random.shuffle(parquets[clase])
                 aumentar[clase] = True
             
-            srchivo = parquets[clase].pop()
+            archivo = parquets[clase].pop()
             
-            path = f"cleaned/dataset_vision/{clase}"
-            df_chunk = bajar_minio(cliente, path, srchivo)
+            f"dataset_ml/dataset_vision/{fase}/{clase}"
+            df_chunk = bajar_minio(cliente, path, archivo)
             df_chunk['etiqueta_numerica'] = indice_num
             df_chunk['nombre_clase'] = clase
             
@@ -125,18 +125,26 @@ if __name__ == "__main__":
     mi_transformer = SizeTransformer()
 
     cliente = crear_cliente_minio()
+    BATCH_SIZE = 32
+
     dataset_entrenamiento = tf.data.Dataset.from_generator(
-        lambda: cargador_datos(cliente, clases, mi_transformer),
+        lambda: cargador_datos(cliente,"train", clases, mi_transformer),
         output_signature=(
             tf.TensorSpec(shape=(160, 240, 3), dtype=tf.float32), 
             tf.TensorSpec(shape=(), dtype=tf.int32)             
         )
-    )
+    ).batch(BATCH_SIZE).prefetch(tf.data.AUTOTUNE)
 
-    BATCH_SIZE = 32
-    dataset_entrenamiento = dataset_entrenamiento.batch(BATCH_SIZE).prefetch(tf.data.AUTOTUNE)
+    dataset_test = tf.data.Dataset.from_generator(
+        lambda: cargador_datos(cliente,"test", clases, mi_transformer),
+        output_signature=(
+            tf.TensorSpec(shape=(160, 240, 3), dtype=tf.float32), 
+            tf.TensorSpec(shape=(), dtype=tf.int32)             
+        )
+    ).batch(BATCH_SIZE).prefetch(tf.data.AUTOTUNE)
 
-    pasos_test = 31 
+    pasos_train = 7500
+    pasos_test = 1875
 
     configuraciones_a_probar = [
         {"tipo": "basica", "capas": 3, "filtros": 32, "dropout": 0.2},
@@ -146,7 +154,8 @@ if __name__ == "__main__":
 
     for config in configuraciones_a_probar:        
         run = wandb.init(
-            project="idealista-cnn-clasificacion",
+            entity="pd1-c2526-team2",
+            project="clasificador-imagenes",
             config=config,
             name=f"CNN_{config['tipo']}_C{config['capas']}_F{config['filtros']}"
         )
@@ -167,13 +176,13 @@ if __name__ == "__main__":
         modelo.compile(
             optimizer='adam',
             loss='sparse_categorical_crossentropy',
-            metrics=['accuracy', tf.keras.metrics.SparseRecall(name='recall')]
+            metrics=['accuracy']
         )
 
         modelo.fit(
             dataset_entrenamiento, 
-            epochs=5,
-            steps_per_epoch=9375,
+            epochs=50,
+            steps_per_epoch=pasos_train,
             callbacks=[WandbMetricsLogger()]
         )
 

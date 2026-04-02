@@ -117,17 +117,15 @@ def reorganizar_imagenes_train_test(cliente, prefijo_destino="dataset_ml/dataset
                 for clase in clases:
                     if clase in df_original.columns:
                         lista_imgs = fila[clase]
-                        if isinstance(lista_imgs, list): 
-                            for img_bytes in lista_imgs:
-                                if isinstance(img_bytes, bytes):
-                                    buffers[split_destino][clase].append({
-                                        'id': id_piso,
-                                        'imagen_bytes': img_bytes
-                                    })
-                                    tamaño_buffers[split_destino][clase] += len(img_bytes)
-                                    
-                                    if tamaño_buffers[split_destino][clase] >= LIMITE_BYTES:
-                                        vaciar_y_subir_buffer(split_destino, clase)
+                        for img_bytes in lista_imgs:
+                            buffers[split_destino][clase].append({
+                                'id': id_piso,
+                                 'imagen_bytes': img_bytes
+                            })
+                            tamaño_buffers[split_destino][clase] += len(img_bytes)
+                                
+                            if tamaño_buffers[split_destino][clase] >= LIMITE_BYTES:
+                                vaciar_y_subir_buffer(split_destino, clase)
 
     for split in splits:
         for clase in clases:
