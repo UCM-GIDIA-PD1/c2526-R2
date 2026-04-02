@@ -235,4 +235,4 @@ if __name__ == "__main__":
     df_alquiler = bajar_minio(cliente, "dataset_ml/precios/alquiler", "df_alquiler_limpio.parquet")
 
     entrenar_knn(df_venta, "venta")
-    #entrenar_knn(df_alquiler, "alquiler")
+    entrenar_knn(df_alquiler, "alquiler")
