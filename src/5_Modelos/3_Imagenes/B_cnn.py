@@ -91,8 +91,7 @@ def construir_cnn_mejorada(cantidad_Layers_convolucion:int,cantidad_embedings=25
     modelo.add(layers.Flatten())
     
     modelo.add(layers.Dense(cantidad_embedings, activation='relu',name = "capa_embedings"))
-    if tasa_dropout > 0:
-        modelo.add(layers.Dropout(tasa_dropout))
+    modelo.add(layers.Dropout(tasa_dropout))
         
     modelo.add(layers.Dense(num_clases, activation='softmax',name = "capa_clasificacion"))
     
@@ -113,8 +112,7 @@ def construir_cnn_basica(cantidad_Layers_convolucion:int,cantidad_embedings=256,
     modelo.add(layers.Flatten())
     
     modelo.add(layers.Dense(cantidad_embedings, activation='relu',name = "capa_embedings"))
-    if tasa_dropout > 0:
-        modelo.add(layers.Dropout(tasa_dropout))
+    modelo.add(layers.Dropout(tasa_dropout))
         
     modelo.add(layers.Dense(num_clases, activation='softmax',name = "capa_clasificacion"))
     
@@ -144,7 +142,7 @@ if __name__ == "__main__":
         )
     ).batch(BATCH_SIZE).prefetch(tf.data.AUTOTUNE)
 
-    pasos_train = 7500
+    pasos_train = 500
     pasos_test = 1875
 
     configuraciones_a_probar = [
@@ -156,7 +154,7 @@ if __name__ == "__main__":
     for config in configuraciones_a_probar:        
         run = wandb.init(
             entity="pd1-c2526-team2",
-            project="clasificador-imagenes",
+            project="CNN_imagenes",
             config=config,
             name=f"CNN_{config['tipo']}_C{config['capas']}_F{config['filtros']}"
         )
@@ -182,7 +180,7 @@ if __name__ == "__main__":
 
         modelo.fit(
             dataset_entrenamiento, 
-            epochs=50,
+            epochs=150,
             steps_per_epoch=pasos_train,
             callbacks=[WandbMetricsLogger()]
         )
