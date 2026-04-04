@@ -36,7 +36,7 @@ def entrenar_xgboost_tuning(df, nombre_mercado):
     preprocessor = ColumnTransformer(transformers=[('num', num_transformer, num_cols),('cat', cat_transformer, cat_cols)])
 
     # 4. Pipeline con XGBoost
-    full_pipeline = Pipeline(steps=[('preprocessor', preprocessor),('regressor', TransformedTargetRegressor(regressor=XGBRegressor(objetive="reg:absoluteerror",random_state=42,n_jobs=1),func=np.log1p,inverse_func=np.expm1))])
+    full_pipeline = Pipeline(steps=[('preprocessor', preprocessor),('regressor', TransformedTargetRegressor(regressor=XGBRegressor(objective="reg:absoluteerror",random_state=42,n_jobs=-1),func=np.log1p,inverse_func=np.expm1))])
 
     run = wandb.init(
         entity="pd1-c2526-team2",
@@ -56,7 +56,7 @@ def entrenar_xgboost_tuning(df, nombre_mercado):
     }
     
     inicio_grid = time.time()
-    grid_search = GridSearchCV(full_pipeline, param_grid, cv=5, scoring='r2', n_jobs=-1)
+    grid_search = GridSearchCV(full_pipeline, param_grid, cv=5, scoring='r2', n_jobs=1)
     grid_search.fit(X_train, y_train)
     tiempo_grid = time.time() - inicio_grid
 
@@ -70,13 +70,13 @@ def entrenar_xgboost_tuning(df, nombre_mercado):
         'regressor__regressor__n_estimators': stats.randint(100, 1000),
         'regressor__regressor__learning_rate': stats.uniform(0.01, 0.3),
         'regressor__regressor__max_depth': stats.randint(3, 15),
-        'regressor__regressor__min_child_weight':stats.randit(1,10),
+        'regressor__regressor__min_child_weight':stats.randint(1,10),
         'regressor__regressor__subsample': stats.uniform(0.5, 0.5),
         'regressor__regressor__colsample_bytree': stats.uniform(0.5, 0.5)
     }
     
     inicio_random = time.time()
-    random_search = RandomizedSearchCV(full_pipeline, param_distributions=param_dist, n_iter=50, cv=5, scoring='r2', n_jobs=-1, random_state=42)
+    random_search = RandomizedSearchCV(full_pipeline, param_distributions=param_dist, n_iter=50, cv=5, scoring='r2', n_jobs=1, random_state=42)
     random_search.fit(X_train, y_train)
     tiempo_random = time.time() - inicio_random
 
@@ -102,7 +102,7 @@ def entrenar_xgboost_tuning(df, nombre_mercado):
         "mejor_n_estimators": mejores_params['regressor__regressor__n_estimators'],
         "mejor_learning_rate": mejores_params['regressor__regressor__learning_rate'],
         "mejor_max_depth": mejores_params['regressor__regressor__max_depth'],
-        "mejor_min_child_weight": mejores_params.get("regressor__regressor__min_child_weight",1.0)
+        "mejor_min_child_weight": mejores_params.get("regressor__regressor__min_child_weight",1.0),
         "mejor_subsample": mejores_params.get('regressor__regressor__subsample', 1.0),
         "mejor_colsample_bytree": mejores_params.get('regressor__regressor__colsample_bytree', 1.0),
         "val_r2_cv": mejor_r2,

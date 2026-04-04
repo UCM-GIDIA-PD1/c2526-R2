@@ -15,20 +15,20 @@ from utils.funciones_minio import crear_cliente_minio, bajar_minio
 #(Queda por actualizar)
 MEJORES_PARAMS_XGB = {
     "venta": {
-        "n_estimators": 863, 
-        "learning_rate": 0.02223, 
-        "max_depth": 6,
-        "min_child_weight":1,
-        "subsample": 0.83878,
-        "colsample_bytree": 0.59326
+        "n_estimators": 727, 
+        "learning_rate": 0.09163967481539059, 
+        "max_depth": 13,
+        "min_child_weight":9,
+        "subsample": 0.6762844281670846,
+        "colsample_bytree": 0.9534142207728771
     },
     "alquiler": {
-        "n_estimators": 863, 
-        "learning_rate": 0.02223, 
-        "max_depth": 6,
-        "min_child_weight":1,
-        "subsample": 0.83878,
-        "colsample_bytree": 0.59326
+        "n_estimators": 472, 
+        "learning_rate": 0.039992474745400866, 
+        "max_depth": 13,
+        "min_child_weight": 8,
+        "subsample": 0.8005575058716043,
+        "colsample_bytree": 0.7229163764267956
     }
 }
 
@@ -60,16 +60,20 @@ def evaluar_xgb_final(df, nombre_mercado):
     
     modelo_final = Pipeline(steps=[
         ('preprocessor', preprocessor),
-        ('regressor', XGBRegressor(
-            objetive="reg:absoluteerror",
-            n_estimators=params["n_estimators"],
-            learning_rate=params["learning_rate"],
-            max_depth=params["max_depth"],
-            min_child_weight=params.get("min_child_weight",1),
-            subsample=params.get("subsample", 1.0),
-            colsample_bytree=params.get("colsample_bytree", 1.0),
-            random_state=42,
-            n_jobs=-1
+        ('regressor', TransformedTargetRegressor(
+            regressor=XGBRegressor(
+                objective="reg:absoluteerror",
+                n_estimators=params["n_estimators"],
+                learning_rate=params["learning_rate"],
+                max_depth=params["max_depth"],
+                min_child_weight=params.get("min_child_weight",1),
+                subsample=params.get("subsample", 1.0),
+                colsample_bytree=params.get("colsample_bytree", 1.0),
+                random_state=42,
+                n_jobs=-1
+            ),
+            func=np.log1p,
+            inverse_func=np.expm1
         ))
     ])
 
