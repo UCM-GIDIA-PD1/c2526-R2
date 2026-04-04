@@ -3,7 +3,7 @@ import numpy as np
 import wandb
 from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
-from sklearn.compose import ColumnTransformer
+from sklearn.compose import ColumnTransformer,TransformedTargetRegressor
 from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import StandardScaler, OneHotEncoder
 from xgboost import XGBRegressor
@@ -12,11 +12,13 @@ from sklearn.metrics import mean_absolute_error, root_mean_squared_error, r2_sco
 from utils.funciones_minio import crear_cliente_minio, bajar_minio
 
 # Mejores parametros según la fase de tuning (copiados manualmente desde los resultados de W&B)
+#(Queda por actualizar)
 MEJORES_PARAMS_XGB = {
     "venta": {
         "n_estimators": 863, 
         "learning_rate": 0.02223, 
         "max_depth": 6,
+        "min_child_weight":1,
         "subsample": 0.83878,
         "colsample_bytree": 0.59326
     },
@@ -24,6 +26,7 @@ MEJORES_PARAMS_XGB = {
         "n_estimators": 863, 
         "learning_rate": 0.02223, 
         "max_depth": 6,
+        "min_child_weight":1,
         "subsample": 0.83878,
         "colsample_bytree": 0.59326
     }
@@ -58,9 +61,11 @@ def evaluar_xgb_final(df, nombre_mercado):
     modelo_final = Pipeline(steps=[
         ('preprocessor', preprocessor),
         ('regressor', XGBRegressor(
+            objetive="reg:absoluteerror",
             n_estimators=params["n_estimators"],
             learning_rate=params["learning_rate"],
             max_depth=params["max_depth"],
+            min_child_weight=params.get("min_child_weight",1),
             subsample=params.get("subsample", 1.0),
             colsample_bytree=params.get("colsample_bytree", 1.0),
             random_state=42,
@@ -104,7 +109,7 @@ def evaluar_xgb_final(df, nombre_mercado):
     nombres_todas = num_cols + list(nombres_cat)
     
     # Extraemos las feature_importances_
-    importancias = modelo_final.named_steps['regressor'].feature_importances_
+    importancias = modelo_final.named_steps['regressor'].regressor_.feature_importances_
     
     df_importancia = pd.DataFrame({'Variable': nombres_todas, 'Importancia': importancias})
     top_importantes = df_importancia.sort_values(by='Importancia', ascending=False).head(10)
@@ -128,6 +133,7 @@ def evaluar_xgb_final(df, nombre_mercado):
         "n_estimators_usado": params["n_estimators"],
         "learning_rate_usado": params["learning_rate"],
         "max_depth_usado": params["max_depth"],
+        "min_child_weight_usado":params.get("min_child_weight",1),
         "subsample_usado": params.get("subsample", 1.0),
         "colsample_bytree_usado": params.get("colsample_bytree", 1.0),
         "mercado": nombre_mercado,

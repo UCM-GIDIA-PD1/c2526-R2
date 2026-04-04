@@ -4,7 +4,7 @@ import wandb
 import time   
 from sklearn.model_selection import train_test_split, GridSearchCV, RandomizedSearchCV
 from sklearn.pipeline import Pipeline
-from sklearn.compose import ColumnTransformer
+from sklearn.compose import ColumnTransformer,TransformedTargetRegressor
 from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import StandardScaler, OneHotEncoder
 from xgboost import XGBRegressor
@@ -36,10 +36,7 @@ def entrenar_xgboost_tuning(df, nombre_mercado):
     preprocessor = ColumnTransformer(transformers=[('num', num_transformer, num_cols),('cat', cat_transformer, cat_cols)])
 
     # 4. Pipeline con XGBoost
-    full_pipeline = Pipeline(steps=[
-        ('preprocessor', preprocessor),
-        ('regressor', XGBRegressor(random_state=42, n_jobs=-1))
-    ])
+    full_pipeline = Pipeline(steps=[('preprocessor', preprocessor),('regressor', TransformedTargetRegressor(regressor=XGBRegressor(objetive="reg:absoluteerror",random_state=42,n_jobs=1),func=np.log1p,inverse_func=np.expm1))])
 
     run = wandb.init(
         entity="pd1-c2526-team2",
@@ -52,9 +49,10 @@ def entrenar_xgboost_tuning(df, nombre_mercado):
     # Estrategia 1: GridSearch, probamos pocos hiperparámetros para no tardar demasiado
     print("\n Estrategia 1: GridSearchCV")
     param_grid = {
-        'regressor__n_estimators': [150, 300, 500],
-        'regressor__learning_rate': [0.05, 0.1, 0.2],
-        'regressor__max_depth': [5, 7] # Total: 18 combinaciones x 5 CV = 90 fits
+        'regressor__regressor__n_estimators': [150, 300, 500],
+        'regressor__regressor__learning_rate': [0.05, 0.1, 0.2],
+        'regressor__regressor__max_depth': [5, 7, 9], # Total: 18 combinaciones x 5 CV = 90 fits
+        'regressor__regressor__min_child_weight':[1,3,5]
     }
     
     inicio_grid = time.time()
@@ -69,11 +67,12 @@ def entrenar_xgboost_tuning(df, nombre_mercado):
     # Estrategia 2: RandomizedSearch
     print("\n Estrategia 2: RandomizedSearchCV")
     param_dist = {
-        'regressor__n_estimators': stats.randint(100, 1000),
-        'regressor__learning_rate': stats.uniform(0.01, 0.3),
-        'regressor__max_depth': stats.randint(3, 15),
-        'regressor__subsample': stats.uniform(0.5, 0.5),
-        'regressor__colsample_bytree': stats.uniform(0.5, 0.5)
+        'regressor__regressor__n_estimators': stats.randint(100, 1000),
+        'regressor__regressor__learning_rate': stats.uniform(0.01, 0.3),
+        'regressor__regressor__max_depth': stats.randint(3, 15),
+        'regressor__regressor__min_child_weight':stats.randit(1,10),
+        'regressor__regressor__subsample': stats.uniform(0.5, 0.5),
+        'regressor__regressor__colsample_bytree': stats.uniform(0.5, 0.5)
     }
     
     inicio_random = time.time()
@@ -100,11 +99,12 @@ def entrenar_xgboost_tuning(df, nombre_mercado):
     # Subimos a W&B
     wandb.log({
         "mejor_estrategia": mejor_estrategia,
-        "mejor_n_estimators": mejores_params['regressor__n_estimators'],
-        "mejor_learning_rate": mejores_params['regressor__learning_rate'],
-        "mejor_max_depth": mejores_params['regressor__max_depth'],
-        "mejor_subsample": mejores_params.get('regressor__subsample', 1.0),
-        "mejor_colsample_bytree": mejores_params.get('regressor__colsample_bytree', 1.0),
+        "mejor_n_estimators": mejores_params['regressor__regressor__n_estimators'],
+        "mejor_learning_rate": mejores_params['regressor__regressor__learning_rate'],
+        "mejor_max_depth": mejores_params['regressor__regressor__max_depth'],
+        "mejor_min_child_weight": mejores_params.get("regressor__regressor__min_child_weight",1.0)
+        "mejor_subsample": mejores_params.get('regressor__regressor__subsample', 1.0),
+        "mejor_colsample_bytree": mejores_params.get('regressor__regressor__colsample_bytree', 1.0),
         "val_r2_cv": mejor_r2,
         "tiempo_grid_segundos": tiempo_grid,
         "tiempo_random_segundos": tiempo_random,
