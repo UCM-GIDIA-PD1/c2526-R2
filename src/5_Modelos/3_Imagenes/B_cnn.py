@@ -146,7 +146,6 @@ if __name__ == "__main__":
     pasos_test = 1875
 
     configuraciones_a_probar = [
-        {"tipo": "basica", "capas": 3, "filtros": 32, "dropout": 0.2},
         {"tipo": "mejorada", "capas": 3, "filtros": 32, "dropout": 0.3},
         {"tipo": "mejorada", "capas": 4, "filtros": 64, "dropout": 0.5},
     ]
