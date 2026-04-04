@@ -91,7 +91,7 @@ def construir_preprocesador(num_cols, cat_cols, scaler,min_frequency):
     - categóricas: imputación + OneHot con agrupación de categorías raras
     """
     num_pipeline = Pipeline(steps=[("imputer", SimpleImputer(strategy="median")), ("scaler", scaler)])
-    cat_pipeline = Pipeline(steps=[("imputer", SimpleImputer(strategy="constant", fill_value="Desconocido")), ("onehot", OneHotEncoder(handle_unknown='infrequent_if_exists',min_frequency = min_frequency, sparse_output=False))])
+    cat_pipeline = Pipeline(steps=[("imputer", SimpleImputer(strategy="constant", fill_value="Desconocido")), ("onehot", OneHotEncoder(handle_unknown='infrequent_if_exist',min_frequency = min_frequency, sparse_output=False))])
     preprocessor = ColumnTransformer(transformers=[("num", num_pipeline, num_cols), ("cat", cat_pipeline, cat_cols)], remainder='drop')
 
     return preprocessor
