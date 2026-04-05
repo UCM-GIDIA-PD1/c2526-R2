@@ -178,7 +178,7 @@ if __name__ == "__main__":
             metrics=['accuracy']
         )
 
-        nombre_archivo = f"mejor_CNN_{config['tipo']}_C{config['capas']}_F{config['filtros']}_ep{{epoch:02d}}.keras"
+        nombre_archivo = f"mejor_CNN_{config['tipo']}_C{config['capas']}_F{config['filtros']}.keras"
         
         guardado_local = ModelCheckpoint(
             filepath=nombre_archivo,
@@ -187,41 +187,41 @@ if __name__ == "__main__":
             mode="max",            
             verbose=1              
         )
-
-        guardado_nube = WandbModelCheckpoint(
-            filepath=nombre_archivo,
-            monitor="accuracy",
-            save_best_only=True,
-            mode="max"
-        )
-
-        modelo.fit(
-            dataset_entrenamiento, 
-            epochs=150,
-            steps_per_epoch=pasos_train,
-            callbacks=[WandbMetricsLogger(),guardado_local,guardado_nube]
-        )
-
-        y_true = []
-        y_pred = []
         
-        for lote_imagenes, lote_etiquetas in dataset_test.take(pasos_test):
-            predicciones = modelo.predict(lote_imagenes, verbose=0)
-            clases_predichas = np.argmax(predicciones, axis=1)
+        try :
+            modelo.fit(
+                dataset_entrenamiento, 
+                epochs=150,
+                steps_per_epoch=pasos_train,
+                callbacks=[WandbMetricsLogger(),guardado_local,guardado_nube]
+            )
+
+            y_true = []
+            y_pred = []
             
-            y_pred.extend(clases_predichas)
-            y_true.extend(lote_etiquetas.numpy())
+            for lote_imagenes, lote_etiquetas in dataset_test.take(pasos_test):
+                predicciones = modelo.predict(lote_imagenes, verbose=0)
+                clases_predichas = np.argmax(predicciones, axis=1)
+                
+                y_pred.extend(clases_predichas)
+                y_true.extend(lote_etiquetas.numpy())
 
-        test_acc = accuracy_score(y_true, y_pred)
-        test_rec = recall_score(y_true, y_pred, average='weighted')
-        test_f1 = f1_score(y_true, y_pred, average='weighted')
+            test_acc = accuracy_score(y_true, y_pred)
+            test_rec = recall_score(y_true, y_pred, average='weighted')
+            test_f1 = f1_score(y_true, y_pred, average='weighted')
 
-        
-        wandb.log({
-            "accuracy": test_acc,
-            "recall": test_rec,
-            "f1_score": test_f1
-        })
+            
+            wandb.log({
+                "accuracy": test_acc,
+                "recall": test_rec,
+                "f1_score": test_f1
+            })
+        except KeyboardInterrupt:
+            print("\n Has parado el entrenamiento.")
+        except Exception as e:
+            print("\n Error durante el entrenamiento ")
 
-        wandb.finish()
+        finally:
+           wandb.save(nombre_archivo) 
+           wandb.finish()
 
