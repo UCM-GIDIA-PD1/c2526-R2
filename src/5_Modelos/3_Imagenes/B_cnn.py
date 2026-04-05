@@ -11,6 +11,7 @@ from wandb.integration.keras import WandbModelCheckpoint
 from sklearn.metrics import f1_score, accuracy_score, recall_score
 from PIL import Image, ImageOps
 import random
+import warnings
 import io
 import matplotlib.pyplot as plt
 
@@ -124,7 +125,7 @@ def construir_cnn_basica(cantidad_Layers_convolucion:int,cantidad_embedings=256,
 if __name__ == "__main__":
     clases = ["Salón","Dormitorio","Cocina","Banyo"]
     mi_transformer = SizeTransformer()
-
+    warnings.filterwarnings('ignore')
     cliente = crear_cliente_minio()
     BATCH_SIZE = 32
 
@@ -187,13 +188,13 @@ if __name__ == "__main__":
             mode="max",            
             verbose=1              
         )
-        
+
         try :
             modelo.fit(
                 dataset_entrenamiento, 
                 epochs=150,
                 steps_per_epoch=pasos_train,
-                callbacks=[WandbMetricsLogger(),guardado_local,guardado_nube]
+                callbacks=[WandbMetricsLogger(),guardado_local]
             )
 
             y_true = []
