@@ -316,7 +316,7 @@ def entrenar_svm(X_train, y_train, X_test, y_test,tipo_dataset = ""):
             modelo, X_train, y_train, 
             cv=5, 
             scoring=metricas, 
-            n_jobs=-1
+            n_jobs=2
         )
         
         val_acc = resultados_cv['test_accuracy'].mean()
@@ -473,7 +473,7 @@ def entrenar_arbol_decision(X_train, y_train, X_test, y_test,tipo_dataset = ""):
             modelo, X_train, y_train, 
             cv=5, 
             scoring=metricas, 
-            n_jobs=-1
+            n_jobs=2
         )
         
         val_acc = resultados_cv['test_accuracy'].mean()
@@ -549,7 +549,7 @@ def entrenar_knn(X_train, y_train, X_test, y_test,tipo_dataset = ""):
             n_neighbors=n_neighbors,
             weights=weights,
             metric=metric,
-            n_jobs=-1
+            n_jobs=2
         )
         
         metricas = ['accuracy', 'f1_macro', 'recall_macro']
@@ -637,7 +637,7 @@ def entrenar_random_forest(X_train, y_train, X_test, y_test,tipo_dataset = ""):
             min_samples_split=min_samples_split,
             criterion="entropy",
             random_state=101,
-            n_jobs=-1
+            n_jobs=2
         )
         
         metricas = ['accuracy', 'f1_macro', 'recall_macro']

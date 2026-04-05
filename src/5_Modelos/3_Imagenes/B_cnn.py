@@ -6,6 +6,8 @@ from tensorflow.keras.utils import img_to_array
 from utils.funciones_minio import bajar_minio,crear_cliente_minio,buscar_todos_los_archivos
 import wandb
 from wandb.integration.keras import WandbMetricsLogger
+from tensorflow.keras.callbacks import ModelCheckpoint
+from wandb.integration.keras import WandbModelCheckpoint
 from sklearn.metrics import f1_score, accuracy_score, recall_score
 from PIL import Image, ImageOps
 import random
@@ -146,7 +148,6 @@ if __name__ == "__main__":
     pasos_test = 1875
 
     configuraciones_a_probar = [
-        {"tipo": "mejorada", "capas": 3, "filtros": 32, "dropout": 0.3},
         {"tipo": "mejorada", "capas": 4, "filtros": 64, "dropout": 0.5},
     ]
 
@@ -177,11 +178,28 @@ if __name__ == "__main__":
             metrics=['accuracy']
         )
 
+        nombre_archivo = f"mejor_CNN_{config['tipo']}_C{config['capas']}_F{config['filtros']}_ep{{epoch:02d}}.keras"
+        
+        guardado_local = ModelCheckpoint(
+            filepath=nombre_archivo,
+            monitor="accuracy",   
+            save_best_only=True,   
+            mode="max",            
+            verbose=1              
+        )
+
+        guardado_nube = WandbModelCheckpoint(
+            filepath=nombre_archivo,
+            monitor="accuracy",
+            save_best_only=True,
+            mode="max"
+        )
+
         modelo.fit(
             dataset_entrenamiento, 
             epochs=150,
             steps_per_epoch=pasos_train,
-            callbacks=[WandbMetricsLogger()]
+            callbacks=[WandbMetricsLogger(),guardado_local,guardado_nube]
         )
 
         y_true = []
