@@ -32,16 +32,14 @@ def aplicar_augmentation(tensor_img):
     img = tf.image.random_brightness(img, max_delta=0.2)
     return img
 
-def cargador_datos(cliente, fase,clases, transformador):
+def cargador_datos(cliente, fase, clases, transformador):
     parquets = {clase: [] for clase in clases}
-    
     archivos_base = {}
-    aumentar = {}
+    
     for clase in clases:
         path = f"dataset_ml/dataset_vision/{fase}/{clase}"
         archivos_base[clase] = buscar_todos_los_archivos(cliente, path)
         parquets[clase] = archivos_base[clase].copy()
-        aumentar[clase] = False
 
     while True:
         dfs_temporales = []
@@ -50,7 +48,6 @@ def cargador_datos(cliente, fase,clases, transformador):
             if len(parquets[clase]) == 0:
                 parquets[clase] = archivos_base[clase].copy()
                 random.shuffle(parquets[clase])
-                aumentar[clase] = True
             
             archivo = parquets[clase].pop()
             
@@ -66,11 +63,11 @@ def cargador_datos(cliente, fase,clases, transformador):
         for _, fila in df_mezclado.iterrows():
             img = Image.open(io.BytesIO(fila['imagen_bytes']))
             tensor_listo = transformador(img)            
-            if aumentar[fila["nombre_clase"]] == True:
+            
+            if fase == "train":
                 tensor_listo = aplicar_augmentation(tensor_listo)
             
             yield tensor_listo, fila['etiqueta_numerica']
-
 
 def construir_cnn_mejorada(cantidad_Layers_convolucion:int,cantidad_embedings=256,filtros_iniciales = 32,tasa_dropout = 0.3,num_clases=4):
     modelo = models.Sequential()
