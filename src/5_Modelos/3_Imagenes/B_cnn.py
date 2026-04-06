@@ -3,13 +3,15 @@ import pandas as pd
 import tensorflow as tf
 from tensorflow.keras import layers,models
 from tensorflow.keras.utils import img_to_array
-from utils.funciones_minio import bajar_minio,crear_cliente_minio,buscar_todos_los_archivos
+from utils.funciones_minio import bajar_minio,crear_cliente_minio,buscar_todos_los_archivos,subir_minio
 import wandb
 from wandb.integration.keras import WandbMetricsLogger
+from tensorflow.keras.models import load_model, Model
 from tensorflow.keras.callbacks import ModelCheckpoint
 from wandb.integration.keras import WandbModelCheckpoint
 from sklearn.metrics import f1_score, accuracy_score, recall_score
 from PIL import Image, ImageOps
+from tqdm import tqdm
 import random
 import warnings
 import io
@@ -26,6 +28,72 @@ class SizeTransformer:
         imagen_final = ImageOps.pad(imagen_rgb, self.target_size, color=self.color)
         vector = np.array(imagen_final) / 255
         return vector
+    
+def embeddings_cnn_propia(cliente, nombre_modelo_keras,wandb_run_path = "pd1-c2526-team2/CNN_imagenes/4bw0h77i", batch_size=32):
+    """
+    Descarga un modelo entrenado de WandB, recorta hasta la 'capa_embedings',
+    vectoriza todas las imágenes y sube el resultado a MinIO.
+    """
+    api = wandb.Api()
+    run = api.run(wandb_run_path)
+    run.file(nombre_modelo_keras).download(replace=True)
+    
+    modelo_completo = load_model(nombre_modelo_keras)
+    
+    modelo_extractor = Model(
+        inputs=modelo_completo.input,
+        outputs=modelo_completo.get_layer("capa_embedings").output
+    )
+    
+    clases = ['Cocina', 'Dormitorio', 'Salón', 'Banyo']
+    transformador = SizeTransformer() 
+    resultados_finales = []
+    
+    def procesar_lote_keras(vectores, ids, etiquetas):
+        if len(vectores) == 0: return
+        
+        batch_tensor = np.stack(vectores)
+        
+        embeddings = modelo_extractor.predict(batch_tensor, verbose=0)
+        embeddings_np = embeddings.astype(np.float16)
+        
+        for i in range(len(ids)):
+            resultados_finales.append({
+                'id': ids[i],
+                'clase': etiquetas[i],
+                'embedding': embeddings_np[i]
+            })
+
+    
+    for clase in clases:
+        path = f"cleaned/dataset_vision/{clase}"
+        objetos = buscar_todos_los_archivos(cliente, path)
+        
+        for obj in tqdm(objetos, desc=f"Procesando imágenes de {clase}"):
+            df_chunk = bajar_minio(cliente, path, obj)
+            
+            lote_vectores = []
+            lote_ids = []
+            lote_clases = []
+            
+            for _, fila in df_chunk.iterrows():
+                img = Image.open(io.BytesIO(fila['imagen_bytes']))
+                vector_listo = transformador(img)
+                    
+                lote_vectores.append(vector_listo)
+                lote_ids.append(fila['id'])
+                lote_clases.append(clase)
+                    
+                if len(lote_vectores) == batch_size:
+                    procesar_lote_keras(lote_vectores, lote_ids, lote_clases)
+                    lote_vectores, lote_ids, lote_clases = [], [], []
+            
+            procesar_lote_keras(lote_vectores, lote_ids, lote_clases)
+
+    df_final = pd.DataFrame(resultados_finales)
+    nombre_salida = "embeddings_cnn_propia.parquet"
+    
+    subir_minio(df_final, cliente, "dataset_ml", nombre_salida)
 
 def aplicar_augmentation(tensor_img):
     img = tf.image.random_flip_left_right(tensor_img)
@@ -119,7 +187,7 @@ def construir_cnn_basica(cantidad_Layers_convolucion:int,cantidad_embedings=256,
     return modelo
 
 
-if __name__ == "__main__":
+def probar_distintos_cnn():
     clases = ["Salón","Dormitorio","Cocina","Banyo"]
     mi_transformer = SizeTransformer()
     warnings.filterwarnings('ignore')
@@ -146,7 +214,7 @@ if __name__ == "__main__":
     pasos_test = 1875
 
     configuraciones_a_probar = [
-        {"tipo": "mejorada", "capas": 4, "filtros": 64, "dropout": 0.5},
+        {"tipo": "basica", "capas": 3, "filtros": 32, "dropout": 0.2},
     ]
 
     for config in configuraciones_a_probar:        
@@ -223,3 +291,9 @@ if __name__ == "__main__":
            wandb.save(nombre_archivo) 
            wandb.finish()
 
+
+
+if __name__ == "__main__":
+    cliente = crear_cliente_minio()
+    nombre_pryecto = "mejor_CNN_basica_C3_F32.keras"
+    embeddings_cnn_propia(cliente,nombre_pryecto)
