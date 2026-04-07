@@ -1,125 +1,143 @@
-import os
-import pandas as pd
 import wandb
-from sklearn.model_selection import train_test_split
+import numpy as np
+
 from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
 from sklearn.pipeline import Pipeline
-from sklearn.metrics import accuracy_score, classification_report, f1_score, recall_score, precision_score
+from sklearn.metrics import accuracy_score, f1_score, recall_score, precision_score
+
 import nltk
 from nltk.corpus import stopwords
 
-from utils.funciones_minio import crear_cliente_minio, bajar_minio
-from utils.config import PATH_PRIMARIOS_LIMPIO
-
-OBJ_VIVIENDAS_VENTA = "viviendas_venta.parquet"
-OBJ_VIVIENDAS_ALQUILER = "viviendas_alquiler.parquet"
+from funciones_texto import bajar_df_texto, x_y_split, train_val_test_split
 
 
-def cargar_datos():
-    client = crear_cliente_minio()
-    df_venta = bajar_minio(client, PATH_PRIMARIOS_LIMPIO, OBJ_VIVIENDAS_VENTA)
-    df_alquiler = bajar_minio(client, PATH_PRIMARIOS_LIMPIO, OBJ_VIVIENDAS_ALQUILER)
+def evaluar_modelo(model, X_val, y_val):
+    y_pred = model.predict(X_val)
 
-    df_venta["tipo"] = "venta"
-    df_alquiler["tipo"] = "alquiler"
-
-    df = pd.concat([df_venta, df_alquiler])
-    return df
-
-
-def agrupar_tipo(x):
-    if x == "Particular":
-        return "Particular"
-    elif x in ["Agente Pro", "Profesional"]:
-        return "Intermediario"
-    elif x == "Promotora":
-        return "Promotora"
+    return {
+        "accuracy": accuracy_score(y_val, y_pred),
+        "f1_macro": f1_score(y_val, y_pred, average="macro"),
+        "recall_macro": recall_score(y_val, y_pred, average="macro"),
+        "precision_macro": precision_score(y_val, y_pred, average="macro"),
+    }
 
 
-def preparar_datos(df):
-    df["grupo"] = df["Anuncia"].apply(agrupar_tipo)
+def entrenar_logreg_texto(X_train, y_train, X_val, y_val):
 
-    X = df["Descripcion"]
-    y = df["grupo"]
-
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.2, random_state=42, stratify=y
-    )
-
-    X_val, X_test, y_val, y_test = train_test_split(
-        X_test, y_test, test_size=0.5, random_state=42, stratify=y_test
-    )
-
-    return X_train, X_val, X_test, y_train, y_val, y_test
-
-
-def entrenar_evaluar(vectorizer, X_train, y_train, X_eval, y_eval):
     spanish_stopwords = stopwords.words("spanish")
 
-    model = Pipeline([
-        ("vectorizer", vectorizer(
-            max_features=10000,
-            ngram_range=(1, 2),
-            stop_words=spanish_stopwords
-        )),
-        ("classifier", LogisticRegression(
-            C=1.0,
-            penalty="l2",
-            solver="lbfgs",
-            max_iter=1000,
-            class_weight="balanced"
-        ))
-    ])
+    vectorizers = {
+        "count": CountVectorizer,
+        "tfidf": TfidfVectorizer
+    }
 
-    model.fit(X_train, y_train)
-    y_pred = model.predict(X_eval)
+    Cs = [0.1, 1.0, 5.0]
+    ngrams = [(1,1), (1,2)]
+    max_features_list = [5000, 10000]
 
-    acc = accuracy_score(y_eval, y_pred)
-    f1_macro = f1_score(y_eval, y_pred, average="macro")
-    recall_macro = recall_score(y_eval, y_pred, average="macro")
-    precision_macro = precision_score(y_eval, y_pred, average="macro")
+    mejor_resultado = None
+    mejor_modelo = None
 
-    print("Accuracy:", acc)
-    print("F1 macro:", f1_macro)
-    print("Recall macro:", recall_macro)
-    print("Precision macro:", precision_macro)
-    print(classification_report(y_eval, y_pred))
-
-    return acc, f1_macro, recall_macro, precision_macro
-
-
-def run_experiment(name, vectorizer, X_train, y_train, X_val, y_val):
     run = wandb.init(
-        project="regresion-logistica-texto",
-        name=name,
         entity="pd1-c2526-team2",
-        config={"vectorizer": name}
+        project="modelo-texto-logreg",
+        name="logreg-texto",
+        job_type="model-training",
+        config={
+            "modelo": "LogisticRegression",
+            "task": "clasificacion",
+            "vectorizers": ["count", "tfidf"],
+            "C_values": Cs,
+            "ngram_range": ngrams,
+            "max_features": max_features_list,
+            "split": "train/val/test",
+            "random_state": 42
+        }
     )
 
-    acc, f1_macro, recall_macro, precision_macro = entrenar_evaluar(
-        vectorizer, X_train, y_train, X_val, y_val
-    )
+    print("Buscando mejor modelo de texto...")
+    table = wandb.Table(columns=[
+        "modelo", "vectorizer", "C", "ngram", "max_features",
+        "f1_macro", "accuracy", "recall_macro", "precision_macro"
+    ])
+    for vec_name, vec_class in vectorizers.items():
+        for C in Cs:
+            for ngram in ngrams:
+                for max_feat in max_features_list:
+
+                    nombre = f"{vec_name}_C{C}_ng{ngram}_mf{max_feat}"
+                    print(f"\nEntrenando: {nombre}")
+
+                    model = Pipeline([
+                        ("vectorizer", vec_class(
+                            max_features=max_feat,
+                            ngram_range=ngram,
+                            stop_words=spanish_stopwords
+                        )),
+                        ("classifier", LogisticRegression(
+                            C=C,
+                            max_iter=1000,
+                            class_weight="balanced"
+                        ))
+                    ])
+
+                    model.fit(X_train, y_train)
+                    metricas = evaluar_modelo(model, X_val, y_val)
+
+                    print(metricas)
+
+                    table.add_data(
+                        nombre,
+                        vec_name,
+                        C,
+                        str(ngram),
+                        max_feat,
+                        metricas["f1_macro"],
+                        metricas["accuracy"],
+                        metricas["recall_macro"],
+                        metricas["precision_macro"]
+                    )
+
+                    if (mejor_resultado is None) or (metricas["f1_macro"] > mejor_resultado["f1_macro"]):
+                        mejor_resultado = metricas | {
+                            "nombre": nombre,
+                            "vectorizer": vec_name,
+                            "C": C,
+                            "ngram": ngram,
+                            "max_features": max_feat
+                        }
+                        mejor_modelo = model
+
+    print("\n=== MEJOR MODELO ===")
+    print(mejor_resultado)
+
+    wandb.log({"resultados_modelos": table})
 
     wandb.log({
-        "accuracy": acc,
-        "f1_macro": f1_macro,
-        "recall_macro": recall_macro,
-        "precision_macro": precision_macro
-    })
+    "f1_por_modelo": wandb.plot.bar(
+        table,
+        "modelo",
+        "f1_macro",
+        title="F1 por modelo"
+    )
+})
 
     run.finish()
+
+    return mejor_modelo, mejor_resultado
+
 
 def main():
     nltk.download("stopwords")
 
-    df = cargar_datos()
-    X_train, X_val, X_test, y_train, y_val, y_test = preparar_datos(df)
+    df = bajar_df_texto()
+    X, y = x_y_split(df)
+    X_train, X_val, X_test, y_train, y_val, y_test = train_val_test_split(X, y)
 
     wandb.login()
 
-    run_experiment("CountVectorizer", CountVectorizer, X_train, y_train, X_val, y_val)
-    run_experiment("TfidfVectorizer", TfidfVectorizer, X_train, y_train, X_val, y_val)
+    entrenar_logreg_texto(X_train, y_train, X_val, y_val)
 
 
 if __name__ == "__main__":
