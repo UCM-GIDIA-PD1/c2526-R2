@@ -20,7 +20,7 @@ def descargar_imagenes_ejemplo(clases, max_por_clase=MAX_IMAGENES_POR_CLASE):
     imagenes = {}
     
     for clase in clases:
-        print(f"Descargando imágenes para {clase}...")
+        print(f"Descargando imgenes para {clase}...")
         try:
             archivos = buscar_todos_los_archivos(cliente, f"{MINIO_DATASET_VISION}/{clase}")
             if not archivos:
