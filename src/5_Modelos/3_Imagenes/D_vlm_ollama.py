@@ -2,6 +2,7 @@ import ollama
 import time
 import io
 import random
+import wandb
 from PIL import Image
 from utils.config import CLASES_IMAGENES, MINIO_DATASET_VISION
 from utils.funciones_minio import crear_cliente_minio, bajar_minio, buscar_todos_los_archivos
@@ -9,7 +10,7 @@ from utils.funciones_minio import crear_cliente_minio, bajar_minio, buscar_todos
 # Configuración fácil de cambiar
 MAX_IMAGENES_POR_CLASE = 5  # Cuántas imágenes descargar por clase
 NUM_EJEMPLOS_CONTEXTO = 1   # Cuántos ejemplos usar por clase en Test B
-TEMPERATURA_OLLAMA = 0.2    # Temperatura para el modelo (baja para consistencia) si es alta la respuesta es mas aleatoria
+TEMPERATURA_OLLAMA = 0.1    # Temperatura para el modelo (baja para consistencia) si es alta la respuesta es mas aleatoria
 
 def descargar_imagenes_ejemplo(clases, max_por_clase=MAX_IMAGENES_POR_CLASE):
     """
@@ -131,51 +132,90 @@ def clasificar_imagen(img_bytes, test_type, ejemplos=None):
     else:
         raise ValueError("Tipo de test desconocido.")
 
+def extraer_clase(respuesta, clases):
+    """Extrae la clase de la respuesta basándose en si contiene el nombre de la clase"""
+    respuesta_lower = respuesta.lower()
+    for c in clases:
+        if c.lower() in respuesta_lower:
+            return c
+    # Si no la encuentra claramente, devolver los primeros 30 caracteres
+    return respuesta.replace('\n', ' ').strip()[:30]
+
 def main():
     """
     Función principal del programa.
-    Descarga imágenes, pregunta qué test hacer y clasifica.
+    Descarga imágenes y las clasifica con Test A y Test B para comparar.
+    Sube los resultados a Weights & Biases.
     """
-    print("Bienvenido al clasificador de imágenes con LLaVA!")
-    print("Este es un proyecto de datos para clasificar habitaciones de casas.")
+    print("¡Bienvenido al comparador de Zero-Shot vs Few-Shot con LLaVA!")
+    
+    # Inicializar wandb
+    wandb.init(
+        project="proyecto-vlm-minio",
+        name="test-zero-vs-few-shot",
+        config={
+            "modelo": "llava",
+            "temperatura": TEMPERATURA_OLLAMA,
+            "max_imagenes_por_clase": MAX_IMAGENES_POR_CLASE
+        }
+    )
+    
+    # Crear la tabla de wandb
+    columnas = ["imagen", "clase_real", "pred_clase_a", "time_a", "acierto_a", "pred_clase_b", "time_b", "acierto_b"]
+    tabla_wandb = wandb.Table(columns=columnas)
     
     # Descargar imágenes
     print("\nDescargando imágenes de MinIO...")
     imagenes_por_clase = descargar_imagenes_ejemplo(CLASES_IMAGENES)
     
-    # Seleccionar test
-    test_type = input("\nElige test A (sin ejemplos) o B (con contextual learning): ").strip().lower()
-    while test_type not in ['a', 'b']:
-        test_type = input("Por favor, elige 'a' o 'b': ").strip().lower()
-    
-    # Preparar ejemplos si es Test B
-    ejemplos = []
-    if test_type == 'b':
-        print("Preparando ejemplos para contextual learning...")
-        ejemplos = preparar_ejemplos(imagenes_por_clase)
-        print(f"Se usarán {len(ejemplos)} ejemplos.")
+    # Preparar ejemplos para contextual learning
+    print("\nPreparando ejemplos para contextual learning (Test B)...")
+    ejemplos = preparar_ejemplos(imagenes_por_clase)
+    print(f"Se usarán {len(ejemplos)} ejemplos.")
     
     # Clasificar imágenes
     total_imagenes = sum(len(imgs) for imgs in imagenes_por_clase.values())
-    print(f"\nClasificando {total_imagenes} imágenes...")
+    print(f"\nClasificando {total_imagenes} imágenes comparando Test A vs Test B...")
     
-    for clase, lista_imagenes in imagenes_por_clase.items():
-        print(f"\n--- Clasificando imágenes de {clase} ---")
+    for clase_real, lista_imagenes in imagenes_por_clase.items():
+        print(f"\n--- Clasificando imágenes de {clase_real} ---")
         for i, img in enumerate(lista_imagenes):
             # Convertir imagen a bytes
             img_buffer = io.BytesIO()
             img.save(img_buffer, format='JPEG')
             img_bytes = img_buffer.getvalue()
             
-            # Clasificar
-            respuesta, tiempo = clasificar_imagen(img_bytes, test_type, ejemplos)
+            # Ejecutar Test A (Zero-shot)
+            print(f"\nEjecutando Test A (Zero-shot) para imagen {i+1} de {clase_real}...")
+            respuesta_a, time_a = clasificar_imagen(img_bytes, 'a')
+            pred_clase_a = extraer_clase(respuesta_a, CLASES_IMAGENES)
+            acierto_a = clase_real.lower() in respuesta_a.lower()
+            print(f"Test A -> Predicción: {pred_clase_a} | Acierto: {acierto_a} | Tiempo: {time_a:.2f}s")
             
-            print(f"Tiempo: {tiempo:.2f} segundos")
-            print(f"Imagen {i+1} de {clase}:")
-            print(f"  Resultado: {respuesta}")
-            print("-" * 50)
+            # Ejecutar Test B (Few-shot)
+            print(f"Ejecutando Test B (Few-shot) para imagen {i+1} de {clase_real}...")
+            respuesta_b, time_b = clasificar_imagen(img_bytes, 'b', ejemplos)
+            pred_clase_b = extraer_clase(respuesta_b, CLASES_IMAGENES)
+            acierto_b = clase_real.lower() in respuesta_b.lower()
+            print(f"Test B -> Predicción: {pred_clase_b} | Acierto: {acierto_b} | Tiempo: {time_b:.2f}s")
+            
+            # 2. Añadir fila a la tabla visual (La magia de W&B para VLMs)
+            tabla_wandb.add_data(
+                wandb.Image(img), 
+                clase_real, 
+                pred_clase_a, 
+                time_a, 
+                bool(acierto_a), 
+                pred_clase_b, 
+                time_b, 
+                bool(acierto_b)
+            )
+            
+    print("\nRegistrando resultados en Weights & Biases...")
+    wandb.log({"resultados_comparativa": tabla_wandb})
+    wandb.finish()
     
-    print("\n¡Clasificación terminada!")
+    print("\n¡Clasificación y subida a W&B terminada exitosamente!")
 
 if __name__ == "__main__":
     main()

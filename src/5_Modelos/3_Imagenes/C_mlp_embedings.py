@@ -186,6 +186,11 @@ def entrenar_mlp(X_train, X_val, X_test, y_train, y_val, y_test, num_classes, pr
             if val_acc > mejor_val_accuracy:
                 mejor_val_accuracy = val_acc
                 modelo.save(temp_best_model_path)
+                
+                # Subimos el modelo a W&B como artefacto solo si es el nuevo "mejor"
+                best_artifact = wandb.Artifact(name=f"mejor_modelo_{prefijo_wandb}", type="model")
+                best_artifact.add_file(temp_best_model_path, name=f"best_mlp_{nombre_arq}_lr{lr}.keras")
+                run.log_artifact(best_artifact)
             
             run.finish()
             
