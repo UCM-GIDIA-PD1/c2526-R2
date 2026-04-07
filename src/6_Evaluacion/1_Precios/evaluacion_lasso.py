@@ -13,7 +13,7 @@ from utils.funciones_minio import crear_cliente_minio, bajar_minio
 
 # Mejores alphas según la fase de tuning (copiados manualmente desde los resultados de W&B)
 MEJORES_ALPHAS = {
-    "venta": 157.02,
+    "venta": 127.07,
     "alquiler": 1
 }
 

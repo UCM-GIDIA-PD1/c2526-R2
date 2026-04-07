@@ -14,14 +14,18 @@ from utils.funciones_minio import crear_cliente_minio, bajar_minio
 # Mejores parametros según la fase de tuning (copiados manualmente desde los resultados de W&B)
 MEJORES_PARAMS_RF = {
     "venta": {
-        "n_estimators": 200, 
+        "n_estimators": 400, 
         "max_depth": 25, 
-        "min_samples_split": 2
+        "min_samples_split": 2,
+        "min_samples_leaf": 1,
+        "max_features": 1.0
     },
     "alquiler": {
-        "n_estimators": 200, 
+        "n_estimators": 692, 
         "max_depth": None, 
-        "min_samples_split": 2
+        "min_samples_split": 4,
+        "min_samples_leaf": 3,
+        "max_features": 1.0
     }
 }
 
@@ -54,6 +58,8 @@ def evaluar_rf_final(df, nombre_mercado):
             n_estimators=params["n_estimators"],
             max_depth=params["max_depth"],
             min_samples_split=params["min_samples_split"],
+            min_samples_leaf=params["min_samples_leaf"],
+            max_features=params["max_features"],
             random_state=42,
             n_jobs=-1
         ))

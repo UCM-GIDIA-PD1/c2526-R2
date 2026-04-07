@@ -67,10 +67,10 @@ def entrenar_lasso(df, nombre_mercado):
     # Estrategia 2: Randomized Search
     print("\n Estrategia 2: RandomizedSearchCV")
     import scipy.stats as stats
-    param_dist = {'regressor__alpha': stats.uniform(1.0, 1000.0)} 
+    param_dist = {'regressor__alpha': stats.uniform(0.01, 1000.0)} 
     
     inicio_random = time.time()
-    random_search = RandomizedSearchCV(full_pipeline, param_distributions=param_dist, n_iter=5, cv=5, scoring='r2', n_jobs=-1, random_state=42)
+    random_search = RandomizedSearchCV(full_pipeline, param_distributions=param_dist, n_iter=500, cv=5, scoring='r2', n_jobs=-1, random_state=42)
     random_search.fit(X_train, y_train)
     tiempo_random = time.time() - inicio_random
 

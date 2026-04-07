@@ -50,9 +50,10 @@ def entrenar_rf_tuning(df, nombre_mercado):
     # Estrategia 1: GridSearchCV
     print("\n Estrategia 1: GridSearchCV")
     param_grid = {
-        'regressor__n_estimators': [100, 200],
-        'regressor__max_depth': [None, 15, 25],
-        'regressor__min_samples_split': [2, 5]
+        'regressor__n_estimators': [200, 400],
+        'regressor__max_depth': [15, 25],
+        'regressor__min_samples_split': [2, 5],
+        'regressor__max_features': ['sqrt', 'log2', 1.0]
     }
     
     inicio_grid = time.time()
@@ -66,13 +67,15 @@ def entrenar_rf_tuning(df, nombre_mercado):
     # Estrategia 2: Randomized Search
     print("\n Estrategia 2: RandomizedSearchCV")
     param_dist = {
-        'regressor__n_estimators': stats.randint(50, 250),
-        'regressor__max_depth': [None, 10, 20, 30],
-        'regressor__min_samples_split': stats.randint(2, 10)
+        'regressor__n_estimators': stats.randint(100, 800),
+        'regressor__max_depth': [None, 10, 20, 30, 40],
+        'regressor__min_samples_split': stats.randint(2, 15),
+        'regressor__min_samples_leaf': stats.randint(1, 5),
+        'regressor__max_features': ['sqrt', 'log2', 1.0]
     }
     
     inicio_random = time.time()
-    random_search = RandomizedSearchCV(full_pipeline, param_distributions=param_dist, n_iter=5, cv=5, scoring='r2', n_jobs=-1, random_state=42)
+    random_search = RandomizedSearchCV(full_pipeline, param_distributions=param_dist, n_iter=50, cv=5, scoring='r2', n_jobs=-1, random_state=42)
     random_search.fit(X_train, y_train)
     tiempo_random = time.time() - inicio_random
 
@@ -95,8 +98,10 @@ def entrenar_rf_tuning(df, nombre_mercado):
     wandb.log({
         "mejor_estrategia": mejor_estrategia,
         "mejor_n_estimators": mejores_params['regressor__n_estimators'],
-        "mejor_max_depth": mejores_params.get('regressor__max_depth', None), # get() por si devuelve None nativo
+        "mejor_max_depth": mejores_params.get('regressor__max_depth', None), 
         "mejor_min_samples_split": mejores_params['regressor__min_samples_split'],
+        "mejor_min_samples_leaf": mejores_params.get('regressor__min_samples_leaf', 1),
+        "mejor_max_features": str(mejores_params.get('regressor__max_features', 1.0)),
         "val_r2_cv": mejor_r2,
         "tiempo_grid_segundos": tiempo_grid,
         "tiempo_random_segundos": tiempo_random,
