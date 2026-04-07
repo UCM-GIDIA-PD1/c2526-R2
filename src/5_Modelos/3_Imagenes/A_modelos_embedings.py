@@ -803,6 +803,7 @@ def menu_interactivo():
         print("==================================================")
         print("[1] Cargar los embedings")
         print("[2] Descargar los embedings")
+        print("[3] Descargar los embedings PROPIOS (CNN)")
         print("[0] Salir del sistema")
         print("--------------------------------------------------")
 
@@ -812,15 +813,21 @@ def menu_interactivo():
             embeddings_imagenes(crear_cliente_minio())
         elif carga == "0":
             break
-        elif carga == "2":
+        elif carga in ["2", "3"]:
             print("Cargando datos desde MinIO...\n")
     
             try:
+                from utils.config import MINIO_EMBEDDINGS
                 cliente = crear_cliente_minio()
-                ruta_ml = "dataset_ml"
-                fichero = "embeddings_imagenes.parquet"
-                df = bajar_minio(cliente, ruta_ml, fichero)
-                print("Datos cargados correctamente.")
+                
+                if carga == "2":
+                    fichero = "embeddings_imagenes.parquet"
+                else:
+                    EMBEDDINGS_IMAGENES_PROPIA = "embeddings_cnn_propia.parquet"
+                    fichero = EMBEDDINGS_IMAGENES_PROPIA
+                    
+                df = bajar_minio(cliente, MINIO_EMBEDDINGS, fichero)
+                print(f"Datos cargados correctamente ({fichero}).")
             except Exception as e:
                 print(f"Error al cargar los datos: {e}")
                 return

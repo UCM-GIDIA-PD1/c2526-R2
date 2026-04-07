@@ -41,7 +41,7 @@ def embeddings_cnn_propia(cliente, nombre_modelo_keras,wandb_run_path = "pd1-c25
     modelo_completo = load_model(nombre_modelo_keras)
     
     modelo_extractor = Model(
-        inputs=modelo_completo.input,
+        inputs=modelo_completo.inputs,
         outputs=modelo_completo.get_layer("capa_embedings").output
     )
     
