@@ -119,14 +119,14 @@ class ClasificadorEmbeddings(nn.Module):
     """
         Genera el modelo de pytorch con la capa densa para la clasificación
     """
-    def __init__(self, num_clases=4):
+    def __init__(self,num_emb, num_clases=4):
         """
             Inicio de la red neuronal con su configuracion de una capa densa
         Args:
             num_clases (int, optional): Numero de clases que queremos clasificar. Defaults to 4.
         """
         super().__init__()
-        self.capa_final = nn.Linear(2048, num_clases)
+        self.capa_final = nn.Linear(num_emb, num_clases)
 
     def forward(self, x):
         """
@@ -139,7 +139,7 @@ class ClasificadorEmbeddings(nn.Module):
         """
         return self.capa_final(x)
 
-def entrenar_mini_red(X_train, y_train, X_test, y_test, num_clases=4, epochs=50, batch_size=256):
+def entrenar_mini_red(X_train, y_train, X_test, y_test,nombre_proyecto, num_clases=4, epochs=50, batch_size=256):
     """
         Entrena un algoritmo de softmax con una red neuronal de una sola capa que aprovecha los embedings de
         Resnet 50 para traducirlos a probabilidades de cada clase 
@@ -162,15 +162,16 @@ def entrenar_mini_red(X_train, y_train, X_test, y_test, num_clases=4, epochs=50,
     
     dataset_train = TensorDataset(X_train_tensor, y_train_tensor)
     loader_train = DataLoader(dataset_train, batch_size=batch_size, shuffle=True)
+    dimensiones_entrada = X_train.shape[1] 
     
-    modelo = ClasificadorEmbeddings(num_clases=num_clases)
+    modelo = ClasificadorEmbeddings(num_emb=dimensiones_entrada, num_clases=num_clases)
     # el criterio crossentropyloss hace su propio softmax internamente por eso no lo metemos antes
     criterio = nn.CrossEntropyLoss() 
     optimizador = torch.optim.Adam(modelo.parameters(), lr=0.001)
 
     run = wandb.init(
         entity="pd1-c2526-team2",
-        project="clasificador-imagenes",
+        project=nombre_proyecto,
         name="SoftMax_lastlayer_embeddings",
         job_type="train",
         config={"epochs": epochs, "batch_size": batch_size, "lr": 0.001}
@@ -278,7 +279,7 @@ def visualizar_umap(df:pd.DataFrame, n_muestras_visualizar=20000):
     
     fig.show()
 
-def entrenar_svm(X_train, y_train, X_test, y_test,tipo_dataset = ""):
+def entrenar_svm(X_train, y_train, X_test, y_test,nombre_proyecto,tipo_dataset = ""):
     """
     Optimiza y entrena un modelo Support Vector Machine (LinearSVC) utilizando Optuna y registra las métricas en Weights & Biases.
 
@@ -295,7 +296,7 @@ def entrenar_svm(X_train, y_train, X_test, y_test,tipo_dataset = ""):
 
     run = wandb.init(
         entity="pd1-c2526-team2",
-        project="clasificador-imagenes",
+        project=nombre_proyecto,
         name=f"LinearSVC{tipo_dataset}",
         job_type="hyperparameter-tuning"
     )
@@ -413,7 +414,7 @@ def visualizar_tsne(df:pd.DataFrame, n_muestras_visualizar=50000):
         x='Dimensión 1',
         y='Dimensión 2',
         color='Habitación',
-        title='Mapa Habitaciones',
+        title='Mapa T-sne Habitaciones',
         opacity=0.6, 
         color_discrete_sequence=px.colors.qualitative.Bold 
     )
@@ -432,7 +433,7 @@ def visualizar_tsne(df:pd.DataFrame, n_muestras_visualizar=50000):
     
     fig.show()
 
-def entrenar_arbol_decision(X_train, y_train, X_test, y_test,tipo_dataset = ""):
+def entrenar_arbol_decision(X_train, y_train, X_test, y_test,nombre_proyecto,tipo_dataset = ""):
     """
     Optimiza y entrena un modelo de Árbol de Decisión utilizando Optuna y registra las métricas en Weights & Biases.
 
@@ -448,7 +449,7 @@ def entrenar_arbol_decision(X_train, y_train, X_test, y_test,tipo_dataset = ""):
     """
     run = wandb.init(
         entity="pd1-c2526-team2",
-        project="clasificador-imagenes",
+        project=nombre_proyecto,
         name=f"DecisionTree_Optuna{tipo_dataset}",
         job_type="hyperparameter-tuning"
     )
@@ -519,7 +520,7 @@ def entrenar_arbol_decision(X_train, y_train, X_test, y_test,tipo_dataset = ""):
     
     return mejor_modelo   
 
-def entrenar_knn(X_train, y_train, X_test, y_test,tipo_dataset = ""):
+def entrenar_knn(X_train, y_train, X_test, y_test,nombre_proyecto,tipo_dataset = ""):
     """
     Optimiza y entrena un modelo K-Nearest Neighbors (KNN) utilizando Optuna y registra las métricas en Weights & Biases.
 
@@ -535,7 +536,7 @@ def entrenar_knn(X_train, y_train, X_test, y_test,tipo_dataset = ""):
     """
     run = wandb.init(
         entity="pd1-c2526-team2",
-        project="clasificador-imagenes",
+        project=nombre_proyecto,
         name=f"KNN{tipo_dataset}",
         job_type="hyperparameter-tuning"
     )
@@ -604,7 +605,7 @@ def entrenar_knn(X_train, y_train, X_test, y_test,tipo_dataset = ""):
     return mejor_modelo
 
 
-def entrenar_random_forest(X_train, y_train, X_test, y_test,tipo_dataset = ""):
+def entrenar_random_forest(X_train, y_train, X_test, y_test,nombre_proyecto,tipo_dataset = ""):
     """
     Optimiza y entrena un modelo Random Forest utilizando Optuna y registra las métricas en Weights & Biases.
 
@@ -621,7 +622,7 @@ def entrenar_random_forest(X_train, y_train, X_test, y_test,tipo_dataset = ""):
 
     run = wandb.init(
         entity="pd1-c2526-team2",
-        project="clasificador-imagenes",
+        project=nombre_proyecto,
         name=f"Random_Forest{tipo_dataset}",
         job_type="hyperparameter-tuning"
     )
@@ -690,7 +691,7 @@ def entrenar_random_forest(X_train, y_train, X_test, y_test,tipo_dataset = ""):
     
     return mejor_modelo
 
-def basline_cat_max(X_train,X_test,y_train,y_test):
+def basline_cat_max(X_train,X_test,y_train,y_test,nombre_proyecto):
 
     """
     Entrena y evalúa un modelo base (baseline) utilizando la estrategia de la clase más frecuente, registrando los resultados en Weights & Biases.
@@ -703,7 +704,7 @@ def basline_cat_max(X_train,X_test,y_train,y_test):
     """
 
     run = wandb.init(entity = "pd1-c2526-team2",
-            project="clasificador-imagenes",
+            project=nombre_proyecto,
             job_type = "train",
             config={
             "algoritmo": "DummyClassifier",
@@ -822,9 +823,11 @@ def menu_interactivo():
                 
                 if carga == "2":
                     fichero = "embeddings_imagenes.parquet"
+                    nombre_proyecto = "clasificador-imagenes"
                 else:
                     EMBEDDINGS_IMAGENES_PROPIA = "embeddings_cnn_propia.parquet"
                     fichero = EMBEDDINGS_IMAGENES_PROPIA
+                    nombre_proyecto = "clasificador-embedings-cnn"
                     
                 df = bajar_minio(cliente, MINIO_EMBEDDINGS, fichero)
                 print(f"Datos cargados correctamente ({fichero}).")
@@ -913,16 +916,16 @@ def menu_interactivo():
                             if op_mod == "0":
                                 break
                             elif op_mod == "1":
-                                entrenar_svm(X_train, y_train, X_test, y_test, tipo_dataset)
+                                entrenar_svm(X_train, y_train, X_test, y_test,nombre_proyecto, tipo_dataset)
                             elif op_mod == "2":
-                                entrenar_knn(X_train, y_train, X_test, y_test, tipo_dataset)
+                                entrenar_knn(X_train, y_train, X_test, y_test,nombre_proyecto, tipo_dataset)
                             elif op_mod == "3":
-                                entrenar_random_forest(X_train, y_train, X_test, y_test, tipo_dataset)
+                                entrenar_random_forest(X_train, y_train, X_test, y_test,nombre_proyecto, tipo_dataset)
                             elif op_mod == "4":
-                                entrenar_arbol_decision(X_train, y_train, X_test, y_test, tipo_dataset)
+                                entrenar_arbol_decision(X_train, y_train, X_test, y_test,nombre_proyecto, tipo_dataset)
                             elif op_mod == "5":
                                 if op_data == "1":
-                                    entrenar_mini_red(X_train, y_train, X_test, y_test)
+                                    entrenar_mini_red(X_train, y_train, X_test, y_test,nombre_proyecto)
                                 else:
                                     print("\n[ERROR] La Mini Red Neuronal solo admite embeddings originales. No compatible con PCA/UMAP.")
                             else:
