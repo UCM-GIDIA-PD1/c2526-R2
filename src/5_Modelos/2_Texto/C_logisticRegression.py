@@ -23,7 +23,7 @@ def evaluar_modelo(model, X_val, y_val):
     }
 
 
-def entrenar_logreg_texto(X_train, y_train, X_val, y_val):
+def entrenar_logreg_texto(X_train, y_train, X_val, y_val, X_test, y_test):
 
     spanish_stopwords = stopwords.words("spanish")
 
@@ -122,6 +122,18 @@ def entrenar_logreg_texto(X_train, y_train, X_val, y_val):
         title="F1 por modelo"
     )
 })
+    
+    metricas_test = evaluar_modelo(mejor_modelo, X_test, y_test)
+
+    print("\n=== RESULTADOS EN TEST ===")
+    print(metricas_test)
+
+    wandb.log({
+        "test_f1": metricas_test["f1_macro"],
+        "test_accuracy": metricas_test["accuracy"],
+        "test_recall": metricas_test["recall_macro"],
+        "test_precision": metricas_test["precision_macro"]
+    })
 
     run.finish()
 
@@ -137,7 +149,7 @@ def main():
 
     wandb.login()
 
-    entrenar_logreg_texto(X_train, y_train, X_val, y_val)
+    entrenar_logreg_texto(X_train, y_train, X_val, y_val, X_test, y_test)
 
 
 if __name__ == "__main__":
