@@ -55,7 +55,7 @@ def optimizar_evaluar_naive_bayes(x_train, y_train, x_val, y_val, x_test, y_test
     best_model = grid_search.best_estimator_
     print(f"\n✅ Mejores hiperparámetros encontrados:\n{grid_search.best_params_}")
 
-    # 5. Evaluar el MEJOR modelo sobre el conjunto de TEST
+    # 5. Evaluar el mejor modelo sobre el conjunto de TEST
     print("\nEvaluando el mejor modelo en el conjunto de TEST...")
     y_pred_test = best_model.predict(x_test)
 
@@ -65,7 +65,7 @@ def optimizar_evaluar_naive_bayes(x_train, y_train, x_val, y_val, x_test, y_test
     test_recall_macro = recall_score(y_test, y_pred_test, average='macro', zero_division=0)
     test_acc = accuracy_score(y_test, y_pred_test)
 
-    # 6. Registrar en Weights & Biases (Sin la matriz de confusión)
+    # 6. Registrar en Weights & Biases
     run = wandb.init(
         entity="pd1-c2526-team2",
         project="modelo-texto",
