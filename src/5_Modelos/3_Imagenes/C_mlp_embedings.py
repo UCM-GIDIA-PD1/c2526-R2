@@ -14,14 +14,15 @@ from utils.config import MINIO_EMBEDDINGS
 
 CLASES_PERMITIDAS = ['Cocina', 'Dormitorio', 'Salón', 'Banyo']
 EMBEDDINGS_IMAGENES = "embeddings_imagenes.parquet"
+EMBEDDINGS_IMAGENES_PROPIA = "embeddings_cnn_propia.parquet"
 
-def cargar_y_preparar_datos():
+def cargar_y_preparar_datos(archivo_embeddings=EMBEDDINGS_IMAGENES_PROPIA):
     """
     Descarga los embeddings de MinIO, filtra por clases permitidas,
     aplica PCA para reducción dimensional, codifica las etiquetas y divide en train/test.
     """
     cliente = crear_cliente_minio()
-    df = bajar_minio(cliente, MINIO_EMBEDDINGS, EMBEDDINGS_IMAGENES)
+    df = bajar_minio(cliente, MINIO_EMBEDDINGS, archivo_embeddings)
     
     # Filtrar solo por las clases permitidas
     df = df[df['clase'].isin(CLASES_PERMITIDAS)]
@@ -46,7 +47,8 @@ def cargar_y_preparar_datos():
     )
 
     # Aplicar PCA ajustándose solo al Train Set para evitar Data Leakage
-    pca = PCA(n_components=512, random_state=42)
+    max_components = min(512, min(X_train.shape))
+    pca = PCA(n_components=max_components, random_state=42)
     X_train_pca = pca.fit_transform(X_train)
     X_val_pca = pca.transform(X_val)
     X_test_pca = pca.transform(X_test)
@@ -84,7 +86,7 @@ def build_mlp_model(input_shape, num_classes, unidades, learning_rate, dropout_r
     return model
 
 
-def entrenar_mlp(X_train, X_val, X_test, y_train, y_val, y_test, num_classes):
+def entrenar_mlp(X_train, X_val, X_test, y_train, y_val, y_test, num_classes, prefijo_wandb="mlp_propia"):
     """
     Entrena modelos MLP variando hiperparámetros (arquitectura y learning rate).
     Guarda el mejor usando el VALIDATION SET y previene Memory Leaks.
@@ -114,7 +116,7 @@ def entrenar_mlp(X_train, X_val, X_test, y_train, y_val, y_test, num_classes):
             run = wandb.init(
                 entity="pd1-c2526-team2",
                 project="clasificador-imagenes",
-                name=f"mlp-{nombre_arq}-lr-{lr}",
+                name=f"{prefijo_wandb}-{nombre_arq}-lr-{lr}",
                 job_type="hyperparameter-tuning",
                 config={
                     "algoritmo": "MLP_PCA",
@@ -175,10 +177,9 @@ def entrenar_mlp(X_train, X_val, X_test, y_train, y_val, y_test, num_classes):
             print(f"   LR={lr:.4f} | Val Acc: {val_acc:.3f} | Test Acc: {test_acc:.3f} | F1: {f1:.3f}")
             
             wandb.log({
-                "final_val_accuracy": val_acc,
-                "final_test_accuracy": test_acc,
-                "final_f1_score": f1,
-                "final_recall": recall
+                "test_final_accuracy": test_acc,
+                "test_final_f1_score": f1,
+                "test_final_recall": recall
             })
             
             # Seleccionar hiperparámetros basándose en Validation, NO en Test Set
@@ -209,18 +210,32 @@ if __name__ == '__main__':
     tf.keras.utils.set_random_seed(42)
     np.random.seed(42)
     
-    print("Conectando a MinIO y descargando datos...")
-    X_train, X_val, X_test, y_train, y_val, y_test, num_classes, encoder, pca_model = cargar_y_preparar_datos()
+    print("======== MENÚ DE EMBEDDINGS ========")
+    print("1. embeddings_imagenes.parquet (Dataset original)")
+    print("2. embeddings_cnn_propia.parquet (Modelo CNN propio)")
+    opcion = input("Seleccione el archivo a utilizar (1 o 2) [por defecto 2]: ").strip()
+    
+    if opcion == "1":
+        archivo_seleccionado = EMBEDDINGS_IMAGENES
+        prefijo_wandb = "mlp_base"
+        nombre_guardado = "best_mlp_model_cnn_base.keras"
+    else:
+        archivo_seleccionado = EMBEDDINGS_IMAGENES_PROPIA
+        prefijo_wandb = "mlp_propia"
+        nombre_guardado = "best_mlp_model_cnn_propio.keras"
+        
+    print(f"\nConectando a MinIO y descargando datos de '{archivo_seleccionado}'...")
+    X_train, X_val, X_test, y_train, y_val, y_test, num_classes, encoder, pca_model = cargar_y_preparar_datos(archivo_seleccionado)
     
     print(f"Estructura de entrenamiento tras PCA: {X_train.shape}")
     print(f"Clases detectadas: {encoder.classes_} ({num_classes})")
     
     print("Iniciando fase experimental del MLP...")
     # Entrenar multi-layer perceptron iterando hiperparámetros
-    mejor_mlp = entrenar_mlp(X_train, X_val, X_test, y_train, y_val, y_test, num_classes)
+    mejor_mlp = entrenar_mlp(X_train, X_val, X_test, y_train, y_val, y_test, num_classes, prefijo_wandb)
     
-    print("\nGuardando el mejor modelo, el codificador y transformador PCA...")
-    mejor_mlp.save("best_mlp_model.keras")
+    print(f"\nGuardando el mejor modelo en '{nombre_guardado}', junto al codificador y transformador PCA...")
+    mejor_mlp.save(nombre_guardado)
     joblib.dump(encoder, "label_encoder.pkl")
     joblib.dump(pca_model, "pca_model.pkl") # Importante guardar el objeto PCA
     print("Artefactos guardados con éxito.")
