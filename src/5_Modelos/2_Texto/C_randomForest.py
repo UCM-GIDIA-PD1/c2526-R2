@@ -1,126 +1,169 @@
-import os
-import pandas as pd
 import wandb
-from sklearn.model_selection import train_test_split
+
 from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.pipeline import Pipeline
-from sklearn.metrics import accuracy_score, classification_report, f1_score, recall_score, precision_score
+from sklearn.metrics import accuracy_score, f1_score, recall_score, precision_score
+
 import nltk
 from nltk.corpus import stopwords
 
-from utils.funciones_minio import crear_cliente_minio, bajar_minio
-from utils.config import PATH_PRIMARIOS_LIMPIO
+from funciones_texto import bajar_df_texto, x_y_split, train_val_test_split
 
-OBJ_VIVIENDAS_VENTA = "viviendas_venta.parquet"
-OBJ_VIVIENDAS_ALQUILER = "viviendas_alquiler.parquet"
+def evaluar_modelo(model, X_val, y_val):
+    y_pred = model.predict(X_val)
 
-
-def cargar_datos():
-    client = crear_cliente_minio()
-    df_venta = bajar_minio(client, PATH_PRIMARIOS_LIMPIO, OBJ_VIVIENDAS_VENTA)
-    df_alquiler = bajar_minio(client, PATH_PRIMARIOS_LIMPIO, OBJ_VIVIENDAS_ALQUILER)
-
-    df_venta["tipo"] = "venta"
-    df_alquiler["tipo"] = "alquiler"
-
-    return pd.concat([df_venta, df_alquiler])
+    return {
+        "accuracy": accuracy_score(y_val, y_pred),
+        "f1_macro": f1_score(y_val, y_pred, average="macro"),
+        "recall_macro": recall_score(y_val, y_pred, average="macro"),
+        "precision_macro": precision_score(y_val, y_pred, average="macro", zero_division=0),
+    }
 
 
-def agrupar_tipo(x):
-    if x == "Particular":
-        return "Particular"
-    elif x in ["Agente Pro", "Profesional"]:
-        return "Intermediario"
-    elif x == "Promotora":
-        return "Promotora"
+def entrenar_rf_texto(X_train, y_train, X_val, y_val, X_test, y_test):
 
-
-def preparar_datos(df):
-    df["grupo"] = df["Anuncia"].apply(agrupar_tipo)
-
-    X = df["Descripcion"]
-    y = df["grupo"]
-
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.2, random_state=42, stratify=y
-    )
-
-    X_val, X_test, y_val, y_test = train_test_split(
-        X_test, y_test, test_size=0.5, random_state=42, stratify=y_test
-    )
-
-    return X_train, X_val, X_test, y_train, y_val, y_test
-
-
-def entrenar_evaluar(vectorizer, X_train, y_train, X_eval, y_eval):
     spanish_stopwords = stopwords.words("spanish")
 
-    model = Pipeline([
-        ("vectorizer", vectorizer(
-            max_features=10000,
-            ngram_range=(1, 2),
-            stop_words=spanish_stopwords
-        )),
-        ("classifier", RandomForestClassifier(
-            n_estimators=200,
-            max_depth=None,
-            min_samples_split=2,
-            min_samples_leaf=1,
-            random_state=42,
-            n_jobs=-1
-        ))
+    vectorizers = {
+        "count": CountVectorizer,
+        "tfidf": TfidfVectorizer
+    }
+
+    n_estimators_list = [100, 200]
+    max_depth_list = [None, 20]
+    min_samples_leaf_list = [1, 3]
+
+    mejor_resultado = None
+    mejor_modelo = None
+
+    run = wandb.init(
+        entity="pd1-c2526-team2",
+        project="modelo-texto-randomforest",
+        name="rf-texto",
+        job_type="model-training",
+        config={
+            "modelo": "RandomForestClassifier",
+            "task": "clasificacion",
+            "vectorizers": ["count", "tfidf"],
+            "n_estimators": n_estimators_list,
+            "max_depth": max_depth_list,
+            "min_samples_leaf": min_samples_leaf_list,
+            "split": "train/val/test",
+            "random_state": 42
+        }
+    )
+
+    print("Buscando mejor Random Forest...")
+
+    table = wandb.Table(columns=[
+        "modelo", "vectorizer",
+        "n_estimators", "max_depth", "min_samples_leaf",
+        "f1_macro", "accuracy", "recall_macro", "precision_macro"
     ])
 
-    model.fit(X_train, y_train)
-    y_pred = model.predict(X_eval)
+    for vec_name, vec_class in vectorizers.items():
+        for n_est in n_estimators_list:
+            for max_d in max_depth_list:
+                for min_leaf in min_samples_leaf_list:
 
-    acc = accuracy_score(y_eval, y_pred)
-    f1_macro = f1_score(y_eval, y_pred, average="macro")
-    recall_macro = recall_score(y_eval, y_pred, average="macro")
-    precision_macro = precision_score(y_eval, y_pred, average="macro")
+                    nombre = f"{vec_name}_n{n_est}_d{max_d}_leaf{min_leaf}"
+                    print(f"\nEntrenando: {nombre}")
 
-    print("Accuracy:", acc)
-    print("F1 macro:", f1_macro)
-    print("Recall macro:", recall_macro)
-    print("Precision macro:", precision_macro)
-    print(classification_report(y_eval, y_pred))
+                    model = Pipeline([
+                        ("vectorizer", vec_class(
+                            max_features=10000,
+                            ngram_range=(1, 2),
+                            stop_words=spanish_stopwords
+                        )),
+                        ("classifier", RandomForestClassifier(
+                            n_estimators=n_est,
+                            max_depth=max_d,
+                            min_samples_leaf=min_leaf,
+                            random_state=42,
+                            n_jobs=-1
+                        ))
+                    ])
 
-    return acc, f1_macro, recall_macro, precision_macro
+                    model.fit(X_train, y_train)
+                    metricas = evaluar_modelo(model, X_val, y_val)
 
+                    print(metricas)
 
-def run_experiment(name, vectorizer, X_train, y_train, X_val, y_val):
-    run = wandb.init(
-        project="random-forest-texto",
-        name=name,
-        entity="pd1-c2526-team2",
-        config={"vectorizer": name}
-    )
+        
+                    table.add_data(
+                        nombre,
+                        vec_name,
+                        n_est,
+                        str(max_d),
+                        min_leaf,
+                        metricas["f1_macro"],
+                        metricas["accuracy"],
+                        metricas["recall_macro"],
+                        metricas["precision_macro"]
+                    )
 
-    acc, f1_macro, recall_macro, precision_macro = entrenar_evaluar(
-        vectorizer, X_train, y_train, X_val, y_val
-    )
+                    if (mejor_resultado is None) or (metricas["f1_macro"] > mejor_resultado["f1_macro"]):
+                        mejor_resultado = metricas | {
+                            "nombre": nombre,
+                            "vectorizer": vec_name,
+                            "n_estimators": n_est,
+                            "max_depth": max_d,
+                            "min_samples_leaf": min_leaf
+                        }
+                        mejor_modelo = model
+
+    print("\n=== MEJOR MODELO RF ===")
+    print(mejor_resultado)
+
+    wandb.log({"resultados_modelos": table})
 
     wandb.log({
-        "accuracy": acc,
-        "f1_macro": f1_macro,
-        "recall_macro": recall_macro,
-        "precision_macro": precision_macro
+        "f1_por_modelo": wandb.plot.bar(
+            table,
+            "modelo",
+            "f1_macro",
+            title="F1 por modelo (RF)"
+        )
+    })
+
+    wandb.log({
+        "best_model": mejor_resultado["nombre"],
+        "best_f1": mejor_resultado["f1_macro"],
+        "best_accuracy": mejor_resultado["accuracy"],
+        "best_vectorizer": mejor_resultado["vectorizer"],
+        "best_n_estimators": mejor_resultado["n_estimators"],
+        "best_max_depth": str(mejor_resultado["max_depth"]),
+        "best_min_samples_leaf": mejor_resultado["min_samples_leaf"]
+    })
+
+    metricas_test = evaluar_modelo(mejor_modelo, X_test, y_test)
+
+    print("\n=== RESULTADOS EN TEST ===")
+    print(metricas_test)
+
+    wandb.log({
+        "test_f1": metricas_test["f1_macro"],
+        "test_accuracy": metricas_test["accuracy"],
+        "test_recall": metricas_test["recall_macro"],
+        "test_precision": metricas_test["precision_macro"]
     })
 
     run.finish()
+
+    return mejor_modelo, mejor_resultado
 
 
 def main():
     nltk.download("stopwords")
 
-    df = cargar_datos()
-    X_train, X_val, X_test, y_train, y_val, y_test = preparar_datos(df)
+    df = bajar_df_texto()
+    X, y = x_y_split(df)
+    X_train, X_val, X_test, y_train, y_val, y_test = train_val_test_split(X, y)
 
     wandb.login()
 
-    run_experiment("CountVectorizer_RF", CountVectorizer, X_train, y_train, X_val, y_val)
-    run_experiment("TfidfVectorizer_RF", TfidfVectorizer, X_train, y_train, X_val, y_val)
+    entrenar_rf_texto(X_train, y_train, X_val, y_val, X_test, y_test)
 
 
 if __name__ == "__main__":
