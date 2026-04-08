@@ -12,6 +12,14 @@ MAX_IMAGENES_POR_CLASE = 5  # Cuántas imágenes descargar por clase
 NUM_EJEMPLOS_CONTEXTO = 1   # Cuántos ejemplos usar por clase en Test B
 TEMPERATURA_OLLAMA = 0.1    # Temperatura para el modelo (baja para consistencia) si es alta la respuesta es mas aleatoria
 
+MAPEO_CLASES_EN = {
+    'Cocina': 'Kitchen',
+    'Dormitorio': 'Bedroom',
+    'Salón': 'Living room',
+    'Banyo': 'Bathroom'
+}
+CLASES_EN = list(MAPEO_CLASES_EN.values())
+
 def descargar_imagenes_ejemplo(clases, max_por_clase=MAX_IMAGENES_POR_CLASE):
     """
     Descarga imágenes de ejemplo de MinIO para cada clase.
@@ -69,22 +77,38 @@ def preparar_ejemplos(imagenes_por_clase, num_ejemplos=NUM_EJEMPLOS_CONTEXTO):
                 ejemplos.append({'clase': clase, 'bytes': img_buffer.getvalue()})
     return ejemplos
 
-def clasificar_test_a(img_bytes):
+def clasificar_test_a(img_bytes, modelo, idioma):
     """
     Clasifica una imagen sin ejemplos usando Ollama.
     """
-    prompt = f"""
-    Analiza esta imagen y clasificala. Responde estrictamente en español con este formato de tres puntos y sé muy breve:
-    1. **Clase:** [Selecciona una de: {CLASES_IMAGENES}]
-    2. **Razón:** [Explicación muy breve]
-    3. **Similitud:** [Si se parece a otra clase, di cuál es y por qué muy brevemente. Si no, di 'Ninguna']
-    No añadas introducciones ni saludos.
-    """
+    if idioma == 'es':
+        prompt = f"""Actúa como un clasificador visual automatizado. 
+Tu única tarea es clasificar la imagen adjunta dentro de una de estas clases: {CLASES_IMAGENES}.
+
+REGLAS ESTRICTAS:
+- Responde ÚNICAMENTE con la palabra exacta de la clase en español.
+- NO añadas explicaciones, ni contexto, ni signos de puntuación, ni saludos.
+
+EJEMPLO DE RESPUESTA ESPERADA:
+Dormitorio
+"""
+    else:
+        prompt = f"""Act as an automated visual classifier. 
+Your only task is to classify the attached image into one of these classes: {CLASES_EN}.
+
+STRICT RULES:
+- Reply ONLY with the exact word of the class in English.
+- DO NOT add explanations, context, punctuation marks, or greetings.
+
+EXAMPLE OF EXPECTED OUTPUT:
+Bedroom
+"""
+
     images = [img_bytes]
     
     start_time = time.time()
     respuesta = ollama.generate(
-        model='llava',
+        model=modelo,
         prompt=prompt,
         images=images,
         options={'temperature': TEMPERATURA_OLLAMA}
@@ -93,26 +117,55 @@ def clasificar_test_a(img_bytes):
     
     return respuesta['response'], end_time - start_time
 
-def clasificar_test_b(img_bytes, ejemplos):
+def clasificar_test_b(img_bytes, ejemplos, modelo, idioma):
     """
     Clasifica una imagen con contextual learning usando ejemplos.
     """
-    prompt_con_contexto = "Actúa como un clasificador experto. Te voy a dar ejemplos primero:\n"
-    
     todas_las_imagenes = []
-    for i, ej in enumerate(ejemplos, 1):
-        prompt_con_contexto += f"La imagen {i} es de la clase: {ej['clase']}\n"
-        todas_las_imagenes.append(ej['bytes'])
     
-    # Añadimos la imagen final
-    prompt_con_contexto += f"\nAhora, clasifica la última imagen en una de estas categorías: {CLASES_IMAGENES}. Responde solo con la clase."
+    if idioma == 'es':
+        prompt_con_contexto = "Aquí tienes algunos ejemplos de referencia:\n"
+        for i, ej in enumerate(ejemplos, 1):
+            prompt_con_contexto += f"- Ejemplo {i} (Clase: {ej['clase']})\n"
+            todas_las_imagenes.append(ej['bytes'])
+            
+        prompt_con_contexto += f"""
+Actúa como un clasificador visual automatizado. 
+Tu única tarea es clasificar la última imagen adjunta dentro de una de estas clases: {CLASES_IMAGENES}.
+
+REGLAS ESTRICTAS:
+- Responde ÚNICAMENTE con la palabra exacta de la clase en español.
+- NO añadas explicaciones, ni contexto, ni signos de puntuación, ni saludos.
+
+EJEMPLO DE RESPUESTA ESPERADA:
+Cocina
+"""
+    else:
+        prompt_con_contexto = "Here are some reference examples:\n"
+        for i, ej in enumerate(ejemplos, 1):
+            clase_ingles = MAPEO_CLASES_EN[ej['clase']]
+            prompt_con_contexto += f"- Example {i} (Class: {clase_ingles})\n"
+            todas_las_imagenes.append(ej['bytes'])
+            
+        prompt_con_contexto += f"""
+Act as an automated visual classifier. 
+Your only task is to classify the last attached image into one of these classes: {CLASES_EN}.
+
+STRICT RULES:
+- Reply ONLY with the exact word of the class in English.
+- DO NOT add explanations, context, punctuation marks, or greetings.
+
+EXAMPLE OF EXPECTED OUTPUT:
+Kitchen
+"""
+
     todas_las_imagenes.append(img_bytes)
     prompt = prompt_con_contexto
     images = todas_las_imagenes
     
     start_time = time.time()
     respuesta = ollama.generate(
-        model='llava',
+        model=modelo,
         prompt=prompt,
         images=images,
         options={'temperature': TEMPERATURA_OLLAMA}
@@ -121,14 +174,14 @@ def clasificar_test_b(img_bytes, ejemplos):
     
     return respuesta['response'], end_time - start_time
 
-def clasificar_imagen(img_bytes, test_type, ejemplos=None):
+def clasificar_imagen(img_bytes, test_type, modelo, idioma, ejemplos=None):
     """
     Función envoltorio para clasificar la imagen dependiendo del tipo de test.
     """
     if test_type == 'a':
-        return clasificar_test_a(img_bytes)
+        return clasificar_test_a(img_bytes, modelo, idioma)
     elif test_type == 'b':
-        return clasificar_test_b(img_bytes, ejemplos)
+        return clasificar_test_b(img_bytes, ejemplos, modelo, idioma)
     else:
         raise ValueError("Tipo de test desconocido.")
 
@@ -138,8 +191,11 @@ def extraer_clase(respuesta, clases):
     for c in clases:
         if c.lower() in respuesta_lower:
             return c
-    # Si no la encuentra claramente, devolver los primeros 30 caracteres
-    return respuesta.replace('\n', ' ').strip()[:30]
+    # Si no logramos encontrar la clase, intentamos limpiar o devolvemos desconocido
+    primera_palabra = respuesta.replace('\n', ' ').strip().split(' ')
+    if primera_palabra and primera_palabra[0] != '':
+        return primera_palabra[0][:20]
+    return "Unknown"
 
 def main():
     """
@@ -147,14 +203,30 @@ def main():
     Descarga imágenes y las clasifica con Test A y Test B para comparar.
     Sube los resultados a Weights & Biases.
     """
-    print("¡Bienvenido al comparador de Zero-Shot vs Few-Shot con LLaVA!")
+    print("¡Bienvenido al comparador de Zero-Shot vs Few-Shot!")
+    
+    print("\n--- MENÚ DE CONFIGURACIÓN ---")
+    print("Selecciona el modelo a utilizar:")
+    print("1) llava")
+    print("2) bakllava")
+    opcion_modelo = input("Opción (1/2) [por defecto 1]: ").strip()
+    modelo_seleccionado = 'bakllava' if opcion_modelo == '2' else 'llava'
+    
+    print("\nSelecciona el idioma del prompt:")
+    print("1) Español")
+    print("2) Inglés")
+    opcion_idioma = input("Opción (1/2) [por defecto 2]: ").strip()
+    idioma = 'es' if opcion_idioma == '1' else 'en'
+    
+    print(f"\nConfiguración final -> Modelo: {modelo_seleccionado} | Idioma: {idioma}")
     
     # Inicializar wandb
     wandb.init(
         project="proyecto-vlm-minio",
-        name="test-zero-vs-few-shot",
+        name=f"test-zero-vs-few-shot-{modelo_seleccionado}-{idioma}",
         config={
-            "modelo": "llava",
+            "modelo": modelo_seleccionado,
+            "idioma": idioma,
             "temperatura": TEMPERATURA_OLLAMA,
             "max_imagenes_por_clase": MAX_IMAGENES_POR_CLASE
         }
@@ -185,24 +257,28 @@ def main():
             img.save(img_buffer, format='JPEG')
             img_bytes = img_buffer.getvalue()
             
+            # Ajustar clases según el idioma elegido
+            clases_evaluacion = CLASES_IMAGENES if idioma == 'es' else CLASES_EN
+            clase_real_evaluacion = clase_real if idioma == 'es' else MAPEO_CLASES_EN[clase_real]
+            
             # Ejecutar Test A (Zero-shot)
             print(f"\nEjecutando Test A (Zero-shot) para imagen {i+1} de {clase_real}...")
-            respuesta_a, time_a = clasificar_imagen(img_bytes, 'a')
-            pred_clase_a = extraer_clase(respuesta_a, CLASES_IMAGENES)
-            acierto_a = clase_real.lower() in respuesta_a.lower()
+            respuesta_a, time_a = clasificar_imagen(img_bytes, 'a', modelo_seleccionado, idioma)
+            pred_clase_a = extraer_clase(respuesta_a, clases_evaluacion)
+            acierto_a = clase_real_evaluacion.lower() in respuesta_a.lower()
             print(f"Test A -> Predicción: {pred_clase_a} | Acierto: {acierto_a} | Tiempo: {time_a:.2f}s")
             
             # Ejecutar Test B (Few-shot)
             print(f"Ejecutando Test B (Few-shot) para imagen {i+1} de {clase_real}...")
-            respuesta_b, time_b = clasificar_imagen(img_bytes, 'b', ejemplos)
-            pred_clase_b = extraer_clase(respuesta_b, CLASES_IMAGENES)
-            acierto_b = clase_real.lower() in respuesta_b.lower()
+            respuesta_b, time_b = clasificar_imagen(img_bytes, 'b', modelo_seleccionado, idioma, ejemplos)
+            pred_clase_b = extraer_clase(respuesta_b, clases_evaluacion)
+            acierto_b = clase_real_evaluacion.lower() in respuesta_b.lower()
             print(f"Test B -> Predicción: {pred_clase_b} | Acierto: {acierto_b} | Tiempo: {time_b:.2f}s")
             
             # 2. Añadir fila a la tabla visual (La magia de W&B para VLMs)
             tabla_wandb.add_data(
                 wandb.Image(img), 
-                clase_real, 
+                clase_real_evaluacion, 
                 pred_clase_a, 
                 time_a, 
                 bool(acierto_a), 
