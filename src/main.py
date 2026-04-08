@@ -32,7 +32,7 @@ def menu_principal(lista_carpetas):
         print("=" * 50)
 
         for i, carpeta in enumerate(lista_carpetas):
-            print(f"  {i + 1}. Fase: {carpeta}")
+            print(f"  {i + 1}. Fase: {carpeta.split("_")[1]}")
 
         print("-" * 50)
         print(f"  0. Salir de la aplicación")
