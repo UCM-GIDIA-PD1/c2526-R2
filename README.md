@@ -199,6 +199,60 @@ uv run -m src.5_Modelos.2_Texto
 ```bash
 uv run -m src.5_Modelos.3_Imagenes
 ```
+## 🚀 Guía de Instalación: Ollama y Modelos VLM
+
+Para ejecutar este proyecto de forma local y garantizar la privacidad de los datos, utilizamos **Ollama** como nuestro motor de inferencia. A continuación, se detallan los pasos para configurar el entorno en cualquier sistema operativo.
+
+### 1. Instalación de Ollama
+
+Elige las instrucciones correspondientes a tu sistema operativo:
+
+#### 🪟 Windows
+1. Dirígete a la página oficial: [https://ollama.com/download](https://ollama.com/download)
+2. Haz clic en **Download for Windows**.
+3. Ejecuta el archivo `.exe` descargado y sigue las instrucciones del instalador.
+4. Abre el Símbolo del sistema (CMD) o PowerShell para verificar la instalación ejecutando `ollama -v`.
+
+#### 🍏 macOS
+1. Dirígete a [https://ollama.com/download](https://ollama.com/download) y descarga la versión para macOS.
+2. Descomprime el archivo y arrastra la aplicación **Ollama** a tu carpeta de *Aplicaciones*.
+3. Alternativamente, si usas **Homebrew**, puedes instalarlo desde la terminal con:
+   ```bash
+   brew install ollama
+#### 🐧 Instalación en Linux
+Abre tu terminal y ejecuta el script de instalación oficial con el siguiente comando:
+```bash
+curl -fsSL [https://ollama.com/install.sh](https://ollama.com/install.sh) | sh
+```
+### 2. Descarga de los Modelos (LLaVA y BakLLaVA)
+
+Una vez que Ollama esté instalado y ejecutándose en segundo plano, abre tu terminal y ejecuta los siguientes comandos para descargar los modelos de Visión-Lenguaje utilizados en este proyecto.
+
+*Nota: La primera vez que ejecutes estos comandos, Ollama descargará los pesos de los modelos (aprox. 4GB a 5GB cada uno). El tiempo dependerá de tu conexión a internet.*
+
+**Descargar el modelo base (LLaVA):**
+```bash
+ollama run llava
+```
+*(Para salir del chat interactivo que se abre al terminar la descarga, escribe `/bye` o presiona `Ctrl + D`).*
+
+**Descargar el modelo optimizado (BakLLaVA):**
+```bash
+ollama run bakllava
+```
+*(Igualmente, escribe `/bye` para salir una vez descargado).*
+
+---
+
+### 3. Verificación del Entorno
+
+Para confirmar que los modelos se han descargado correctamente y están listos para que el script de Python los utilice, ejecuta el siguiente comando en tu terminal:
+
+```bash
+ollama list
+```
+
+Deberías ver `llava:latest` y `bakllava:latest` en la lista de modelos disponibles. ¡Tu servidor de inferencia local ya está configurado y listo para clasificar imágenes!
 
 
 ### 6 Evaluacion
