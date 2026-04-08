@@ -223,6 +223,7 @@ Elige las instrucciones correspondientes a tu sistema operativo:
 Abre tu terminal y ejecuta el script de instalación oficial con el siguiente comando:
 ```bash
 curl -fsSL [https://ollama.com/install.sh](https://ollama.com/install.sh) | sh
+```
 ### 2. Descarga de los Modelos (LLaVA y BakLLaVA)
 
 Una vez que Ollama esté instalado y ejecutándose en segundo plano, abre tu terminal y ejecuta los siguientes comandos para descargar los modelos de Visión-Lenguaje utilizados en este proyecto.
