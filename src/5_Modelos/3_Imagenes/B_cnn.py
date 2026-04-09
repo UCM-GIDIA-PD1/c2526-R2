@@ -10,6 +10,7 @@ from tensorflow.keras.models import load_model, Model
 from tensorflow.keras.callbacks import ModelCheckpoint
 from wandb.integration.keras import WandbModelCheckpoint
 from sklearn.metrics import f1_score, accuracy_score, recall_score
+from sklearn.preprocessing import normalize
 from PIL import Image, ImageOps
 from tqdm import tqdm
 import random
@@ -91,6 +92,14 @@ def embeddings_cnn_propia(cliente, nombre_modelo_keras,wandb_run_path = "pd1-c25
             procesar_lote_keras(lote_vectores, lote_ids, lote_clases)
 
     df_final = pd.DataFrame(resultados_finales)
+    matriz_embeddings = np.stack(df_final['embedding'].values)
+    
+    matriz_normalizada = normalize(matriz_embeddings, norm='l2', axis=1)
+    
+    matriz_normalizada = matriz_normalizada.astype(np.float16)
+    
+    df_final['embedding'] = list(matriz_normalizada)
+
     nombre_salida = "embeddings_cnn_propia.parquet"
     
     subir_minio(df_final, cliente, "dataset_ml", nombre_salida)
@@ -295,5 +304,5 @@ def probar_distintos_cnn():
 
 if __name__ == "__main__":
     cliente = crear_cliente_minio()
-    nombre_pryecto = "mejor_CNN_basica_C3_F32.keras"
-    embeddings_cnn_propia(cliente,nombre_pryecto)
+    nombre_archivo_cnn = "mejor_CNN_basica_C3_F32.keras"
+    embeddings_cnn_propia(cliente,nombre_archivo_cnn)
