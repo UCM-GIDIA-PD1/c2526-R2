@@ -28,7 +28,7 @@ def menu_principal(lista_carpetas):
     """
     while True:
         print("\n" + "=" * 50)
-        print(" MENU PRINCIPAL - PIPELINE DE DATOS")
+        print("             MENU PRINCIPAL - MAiDay")
         print("=" * 50)
 
         for i, carpeta in enumerate(lista_carpetas):

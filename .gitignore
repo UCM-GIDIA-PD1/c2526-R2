@@ -16,3 +16,9 @@ wandb/
 dataset_ml/
 *.h5
 *.hdf5
+
+
+/datos_optimizados_tfrecords/
+/datos_locales/
+*.parquet
+*.tfrecord
