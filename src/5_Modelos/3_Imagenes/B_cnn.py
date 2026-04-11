@@ -104,8 +104,8 @@ def descargar_y_preparar_tfrecords(cliente, fases=['train', 'test'], clases=['Co
 
                 if fase == "train" and ciclos_completados[clase] > 0:
                     tensor_tf = tf.convert_to_tensor(tensor_base, dtype=tf.float32)
-                    tensor_base = aplicar_augmentation(tensor_tf).numpy()
-
+                    tensor_aug = aplicar_augmentation(tensor_tf)
+                    tensor_base = tf.cast(tensor_aug, tf.uint8).numpy()
                 lote_balanceado.append((tensor_base, indice_clase))
             
             if fin_extraccion:
@@ -154,10 +154,11 @@ def decodificar_TfRecord(ejemplo_serializado):
     
     datos_extraidos = tf.io.parse_single_example(ejemplo_serializado, diccionario_caracteristicas)
     
-    imagen_tensor = tf.io.parse_tensor(datos_extraidos['imagen'], out_type=tf.float32)
-
+    imagen_tensor = tf.io.parse_tensor(datos_extraidos['imagen'], out_type=tf.uint8)
     imagen_tensor.set_shape([160, 240, 3]) 
     
+    imagen_tensor = tf.cast(imagen_tensor, tf.float32) / 255.0
+
     etiqueta = tf.cast(datos_extraidos['etiqueta'], tf.int32)
     
     return imagen_tensor, etiqueta
@@ -193,7 +194,7 @@ class SizeTransformer:
 
         imagen_rgb = img.convert("RGB")
         imagen_final = ImageOps.pad(imagen_rgb, self.target_size, color=self.color)
-        vector = np.array(imagen_final) / 255
+        vector = np.array(imagen_final, dtype=np.uint8)        
         return vector
     
 def embeddings_cnn_propia(cliente, nombre_modelo_keras,wandb_run_path = "pd1-c2526-team2/CNN_imagenes/4bw0h77i", batch_size=32):
