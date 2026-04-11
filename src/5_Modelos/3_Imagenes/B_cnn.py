@@ -177,7 +177,8 @@ def crear_dataloader_tfrecord(fase, batch_size=32):
     dataset = dataset.map(decodificar_TfRecord, num_parallel_calls=tf.data.AUTOTUNE)
     
     if fase == "train":
-        dataset = dataset.shuffle(buffer_size=2000) 
+        dataset = dataset.shuffle(buffer_size=2000)
+        dataset = dataset.repeat() 
         
     dataset = dataset.batch(batch_size)
     
@@ -457,8 +458,8 @@ def probar_cnn(configuracion, cliente_minio=None):
         dataset_entrenamiento = crear_dataloader_tfrecord("train", batch_size=BATCH_SIZE)
         dataset_test = crear_dataloader_tfrecord("test", batch_size=BATCH_SIZE)
         
-        pasos_train = None 
-        pasos_test = None
+        pasos_train = 1000  
+        pasos_test = 200
 
     print(f"  Construyendo modelo: {configuracion['tipo'].upper()} | Capas: {configuracion['capas']} | Filtros: {configuracion['filtros']}")
     if configuracion["tipo"] == "mejorada":
