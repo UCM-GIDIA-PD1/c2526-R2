@@ -30,7 +30,7 @@ from sklearn.preprocessing import LabelEncoder
 import optuna
 from tqdm import tqdm
 
-clases = ['Cocina', 'Dormitorio', 'Salón', 'Banyo']
+clases = ["Cocina","Dormitorio","Salón","Banyo"]
 
 class LetterboxPad:
     """

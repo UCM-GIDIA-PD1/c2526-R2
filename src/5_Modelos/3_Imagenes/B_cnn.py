@@ -214,7 +214,7 @@ def embeddings_cnn_propia(cliente, nombre_modelo_keras,wandb_run_path = "pd1-c25
         outputs=modelo_completo.get_layer("capa_embedings").output
     )
     
-    clases = ['Cocina', 'Dormitorio', 'Salón', 'Banyo']
+    clases = ["Cocina","Dormitorio","Salón","Banyo"]
     transformador = SizeTransformer() 
     resultados_finales = []
     
@@ -223,6 +223,7 @@ def embeddings_cnn_propia(cliente, nombre_modelo_keras,wandb_run_path = "pd1-c25
         
         batch_tensor = np.stack(vectores)
         
+        batch_tensor = np.stack(vectores).astype(np.float32) / 255.0
         embeddings = modelo_extractor.predict(batch_tensor, verbose=0)
         embeddings_np = embeddings.astype(np.float16)
         
