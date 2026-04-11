@@ -198,7 +198,7 @@ class SizeTransformer:
         vector = np.array(imagen_final, dtype=np.uint8)        
         return vector
     
-def embeddings_cnn_propia(cliente, nombre_modelo_keras,wandb_run_path = "pd1-c2526-team2/CNN_imagenes/4bw0h77i", batch_size=32):
+def embeddings_cnn_propia(cliente, nombre_modelo_keras,wandb_run_path = "pd1-c2526-team2/CNN_imagenes/jm8fm8mb", batch_size=32):
     """
     Descarga un modelo entrenado de WandB, recorta hasta la 'capa_embedings',
     vectoriza todas las imágenes y sube el resultado a MinIO.
@@ -600,15 +600,4 @@ def menu_interactivo():
     return configuracion
 
 if __name__ == "__main__":
-    dispositivo = configurar_hardware()
-    
-    config_elegida = menu_interactivo()
-    
-    cliente = crear_cliente_minio()
-    
-    if config_elegida['origen_datos'] == 'descargar_y_local':
-        print("\n Iniciando proceso de descarga y empaquetado de TFRecords...")
-        descargar_y_preparar_tfrecords(cliente)
-        config_elegida['origen_datos'] = 'local'
-    
-    probar_cnn(config_elegida, cliente_minio=cliente)
+    embeddings_cnn_propia(crear_cliente_minio(),"mejor_CNN_mejorada_C5.keras")
