@@ -11,6 +11,7 @@ from tensorflow.keras.callbacks import ModelCheckpoint
 from wandb.integration.keras import WandbModelCheckpoint
 from sklearn.metrics import f1_score, accuracy_score, recall_score
 from sklearn.preprocessing import normalize
+from tensorflow.keras.optimizers import Adam
 from PIL import Image, ImageOps
 from tqdm import tqdm
 import random
@@ -39,7 +40,7 @@ def descargar_y_preparar_tfrecords(cliente, fases=['train', 'test'], clases=['Co
     y guarda en lotes TFRecord listos para inyectar a la GPU.
     """
     transformador = SizeTransformer()
-    base_dir_local = "datos_optimizados_tfrecords"
+    base_dir_local = "Dataset_Imagenes"
     os.makedirs(base_dir_local, exist_ok=True)
     
     IMAGENES_POR_TFRECORD = 1024 
@@ -133,7 +134,7 @@ def descargar_y_preparar_tfrecords(cliente, fases=['train', 'test'], clases=['Co
 
         mapa_clases = {str(indice): clase for indice, clase in enumerate(clases)}
     
-        ruta_metadatos = os.path.join(base_dir_local, "mapa_clases.json")
+        ruta_metadatos = os.path.join(base_dir_local, "diccionario_clases.json")
         with open(ruta_metadatos, 'w', encoding='utf-8') as f:
             json.dump(mapa_clases, f, indent=4, ensure_ascii=False)
                 
@@ -165,7 +166,7 @@ def crear_dataloader_tfrecord(fase, batch_size=32):
     """
     Carga los TFRecords, los parsea y los pasa al modelo.
     """
-    carpeta_fase = os.path.join("datos_optimizados_tfrecords", fase)
+    carpeta_fase = os.path.join("Dataset_Imagenes", fase)
     patron_archivos = os.path.join(carpeta_fase, "*.tfrecord")
     
     lista_archivos = tf.data.Dataset.list_files(patron_archivos)
@@ -569,9 +570,9 @@ def menu_interactivo():
 
     print("\n[2] ARQUITECTURA DE LA CNN")
     print("Recomendaciones de estructuras:")
-    print("  1. Básica    (3 capas, 32 filtros, 0.2 dropout) - Entrenamiento rápido, baseline.")
-    print("  2. Mejorada  (3 capas, 32 filtros, 0.3 dropout) - Buen equilibrio general.")
-    print("  3. Mejorada+ (4 capas, 64 filtros, 0.5 dropout) - Alta capacidad, previene overfitting.")
+    print("  1. Básica    (3 capas, 32 filtros, 0.2 dropout)")
+    print("  2. Mejorada  (3 capas, 32 filtros, 0.3 dropout)")
+    print("  3. Mejorada+ (4 capas, 64 filtros, 0.5 dropout)")
     print("  4. Personalizada (Configurar manualmente)")
     
     while True:
@@ -586,7 +587,7 @@ def menu_interactivo():
             configuracion.update({"tipo": "mejorada", "capas": 4, "filtros": 64, "dropout": 0.5})
             break
         elif op_red == '4':
-            tipo = input("  ¿Tipo de bloque? (basica/mejorada): ").strip().lower()
+            tipo = input("  ¿Tipo de bloques? (basica/mejorada): ").strip().lower()
             capas = int(input("  ¿Cantidad de capas convolucionales? (ej. 3): "))
             filtros = int(input("  ¿Filtros iniciales? (ej. 32): "))
             dropout = float(input("  ¿Tasa de dropout? (ej. 0.3): "))
