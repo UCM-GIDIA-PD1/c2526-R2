@@ -12,23 +12,23 @@ from sklearn.metrics import mean_absolute_error, root_mean_squared_error, r2_sco
 from utils.funciones_minio import crear_cliente_minio, bajar_minio
 
 # Mejores parametros según la fase de tuning (copiados manualmente desde los resultados de W&B)
-#(Queda por actualizar)
+
 MEJORES_PARAMS_XGB = {
     "venta": {
-        "n_estimators": 727, 
-        "learning_rate": 0.09163967481539059, 
-        "max_depth": 13,
-        "min_child_weight":9,
-        "subsample": 0.6762844281670846,
-        "colsample_bytree": 0.9534142207728771
+        "n_estimators": 895, 
+        "learning_rate": 0.09869010575131419, 
+        "max_depth": 7,
+        "min_child_weight":6,
+        "subsample": 0.9018360384495572,
+        "colsample_bytree": 0.8121770240668966
     },
     "alquiler": {
-        "n_estimators": 472, 
-        "learning_rate": 0.039992474745400866, 
-        "max_depth": 13,
+        "n_estimators": 519, 
+        "learning_rate": 0.2652785346302538, 
+        "max_depth": 3,
         "min_child_weight": 8,
-        "subsample": 0.8005575058716043,
-        "colsample_bytree": 0.7229163764267956
+        "subsample": 0.9492770942635396,
+        "colsample_bytree": 0.9438850493804799
     }
 }
 
@@ -37,8 +37,8 @@ def evaluar_xgb_final(df, nombre_mercado):
 
     # 1. Separación de variables
     X = df.drop(columns=['Precio'])
-    y = df['Precio']
-
+    y_m2 = df['Precio'] / df['Superficie']  # Precio por m2 para estabilizar la variable objetivo
+                                            # Aunque empeora los errores en pisos grandes
     cat_cols = X.select_dtypes(exclude=['int64', 'float64']).columns.tolist()
     num_cols = X.select_dtypes(include=['int64', 'float64']).columns.tolist()
     
@@ -46,8 +46,8 @@ def evaluar_xgb_final(df, nombre_mercado):
     X[cat_cols] = X[cat_cols].astype(str)
 
     # 2. Partición Estratificada
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.20, random_state=42, stratify=X['Distrito']
+    X_train, X_test, y_train_m2, y_test_m2 = train_test_split(
+        X, y_m2, test_size=0.20, random_state=42, stratify=X['Distrito']
     )
 
     # 3. Preprocesamiento
@@ -78,15 +78,18 @@ def evaluar_xgb_final(df, nombre_mercado):
     ])
 
     print(f"Entrenando modelo definitivo con parámetros: {params}...")
-    modelo_final.fit(X_train, y_train)
+    modelo_final.fit(X_train, y_train_m2)
 
     # 5. Predicciones
-    y_pred = modelo_final.predict(X_test)
+    y_pred_m2 = modelo_final.predict(X_test)
+    
+    y_pred_total = y_pred_m2 * X_test['Superficie'].values
+    y_test_total = y_test_m2 * X_test['Superficie'].values
 
     # 6. Métricas globales
-    mae = mean_absolute_error(y_test, y_pred)
-    rmse = root_mean_squared_error(y_test, y_pred)
-    r2 = r2_score(y_test, y_pred)
+    mae = mean_absolute_error(y_test_total, y_pred_total)
+    rmse = root_mean_squared_error(y_test_total, y_pred_total)
+    r2 = r2_score(y_test_total, y_pred_total)
 
     print("\n MÉTRICAS GLOBALES EN TEST:")
     print(f"   MAE:  {mae:,.2f} €")
@@ -95,8 +98,8 @@ def evaluar_xgb_final(df, nombre_mercado):
 
     # 7. Métricas por distrito
     X_test_eval = X_test.copy()
-    X_test_eval['Precio_Real'] = y_test
-    X_test_eval['Precio_Predicho'] = y_pred
+    X_test_eval['Precio_Real'] = y_test_total
+    X_test_eval['Precio_Predicho'] = y_pred_total
     X_test_eval['Error_Absoluto'] = abs(X_test_eval['Precio_Real'] - X_test_eval['Precio_Predicho'])
     
     error_por_distrito = X_test_eval.groupby('Distrito')['Error_Absoluto'].mean().sort_values(ascending=False)

@@ -17,7 +17,7 @@ def entrenar_xgboost_tuning(df, nombre_mercado):
 
     # 1. Separación de variables (Precio Total directo)
     X = df.drop(columns=['Precio'])
-    y = df['Precio'] 
+    y = df['Precio'] / df['Superficie']  # Precio por m2 para estabilizar la variable objetivo
 
     cat_cols = X.select_dtypes(exclude=['int64', 'float64']).columns.tolist()
     num_cols = X.select_dtypes(include=['int64', 'float64']).columns.tolist()
@@ -109,7 +109,7 @@ def entrenar_xgboost_tuning(df, nombre_mercado):
         "tiempo_grid_segundos": tiempo_grid,
         "tiempo_random_segundos": tiempo_random,
         "mercado": nombre_mercado,
-        "modelo": "XGBoost (Tuning)"
+        "modelo": "XGBoost Precio por m2 (Tuning)"
     })
     
     run.finish()
