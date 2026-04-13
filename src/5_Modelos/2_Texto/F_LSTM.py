@@ -15,6 +15,20 @@ from funciones_texto import bajar_df_texto, x_y_split, train_val_test_split
 
 
 def evaluar_modelo(y_true, y_pred):
+
+    """Devuelve las métricas de evaluación seleccionadas
+
+    Args:
+        y_true: Etiquetas reales.
+        y_pred: Etiquetas predichas por el modelo.
+
+    Returns:
+        dict: Diccionario con las métricas calculadas:
+            - accuracy (float)
+            - f1_macro (float)
+            - recall_macro (float)
+            - precision_macro (float)
+    """
     return {
         "accuracy": accuracy_score(y_true, y_pred),
         "f1_macro": f1_score(y_true, y_pred, average="macro"),
@@ -24,6 +38,26 @@ def evaluar_modelo(y_true, y_pred):
 
 
 def preparar_tokenizer(X_train, X_val, X_test, max_words, max_len):
+    
+    """Prepara y aplica un tokenizador sobre datos de texto.
+
+    Ajusta un Tokenizer sobre el conjunto de entrenamiento y transforma
+    los textos de entrenamiento, validación y test en secuencias numéricas
+    con padding a una longitud fija.
+
+    Args:
+        X_train: Textos de entrenamiento.
+        X_val: Textos de validación.
+        X_test: Textos de test.
+        max_words (int): Número máximo de palabras a considerar en el vocabulario.
+        max_len (int): Longitud máxima de las secuencias.
+
+    Returns:
+        tuple:
+            - X_train_seq: Secuencias de entrenamiento.
+            - X_val_seq: Secuencias de validación.
+            - X_test_seq: Secuencias de test.
+    """
 
     tokenizer = Tokenizer(num_words=max_words, oov_token="<OOV>")
     tokenizer.fit_on_texts(X_train)
@@ -36,6 +70,21 @@ def preparar_tokenizer(X_train, X_val, X_test, max_words, max_len):
 
 
 def crear_modelo(max_words, max_len, embedding_dim, lstm_units):
+
+    """Crea y compila un modelo de red neuronal LSTM para clasificación de texto.
+
+    El modelo consiste en una capa de embedding, seguida de una capa LSTM
+    y una capa densa final con activación softmax para clasificación multiclase.
+
+    Args:
+        max_words (int): Tamaño del vocabulario.
+        max_len (int): Longitud de entrada de las secuencias.
+        embedding_dim (int): Dimensión del espacio de embeddings.
+        lstm_units (int): Número de unidades en la capa LSTM.
+
+    Returns:
+        keras.Model: Modelo compilado listo para entrenar.
+    """
 
     model = Sequential([
         Embedding(input_dim=max_words, output_dim=embedding_dim, input_length=max_len),
@@ -53,6 +102,36 @@ def crear_modelo(max_words, max_len, embedding_dim, lstm_units):
 
 
 def entrenar_lstm_texto(X_train, y_train, X_val, y_val, X_test, y_test):
+
+    """Entrena y selecciona el mejor modelo LSTM para clasificación de texto.
+
+    Realiza una búsqueda de hiperparámetros sobre:
+    - Tamaño del vocabulario (max_words)
+    - Longitud de secuencia (max_len)
+    - Dimensión de embeddings
+    - Número de unidades LSTM
+
+    Para cada configuración:
+    - Prepara los datos mediante tokenización y padding
+    - Entrena el modelo LSTM
+    - Evalúa en el conjunto de validación
+    - Registra los resultados en Weights & Biases (wandb)
+
+    El mejor modelo según F1 macro se evalúa finalmente en el conjunto de test.
+
+    Args:
+        X_train: Textos de entrenamiento.
+        y_train: Etiquetas de entrenamiento.
+        X_val: Textos de validación.
+        y_val: Etiquetas de validación.
+        X_test: Textos de test.
+        y_test: Etiquetas de test.
+
+    Returns:
+        tuple:
+            - mejor_modelo: Modelo entrenado con la mejor configuración encontrada.
+            - mejor_resultado (dict): Diccionario con la configuración y métricas del mejor modelo.
+    """
 
     clases = {label: i for i, label in enumerate(sorted(y_train.unique()))}
     y_train_enc = y_train.map(clases).values
@@ -163,6 +242,14 @@ def entrenar_lstm_texto(X_train, y_train, X_val, y_val, X_test, y_test):
 
 
 def main():
+    
+    """Función principal del script.
+
+    Descarga los recursos necesarios de NLTK, carga y prepara el dataset de texto,
+    divide los datos en entrenamiento, validación y test, inicia sesión en wandb
+    y ejecuta el entrenamiento del modelo LSTM para clasificación de texto.
+    """
+    
     nltk.download("stopwords")
 
     df = bajar_df_texto()

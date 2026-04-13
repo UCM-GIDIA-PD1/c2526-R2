@@ -11,6 +11,21 @@ from nltk.corpus import stopwords
 from funciones_texto import bajar_df_texto, x_y_split, train_val_test_split
 
 def evaluar_modelo(model, X_val, y_val):
+    """Evalúa un modelo de clasificación sobre un conjunto de validación y devuelve las métricas de evaluación seleccionadas
+
+    Args:
+        model: Modelo entrenado con método "predict".
+        X_val: Datos de entrada del conjunto de validación.
+        y_val: Etiquetas reales del conjunto de validación.
+
+    Returns:
+        dict: Diccionario con las métricas calculadas:
+            - accuracy (float)
+            - f1_macro (float)
+            - recall_macro (float)
+            - precision_macro (float)
+    """
+
     y_pred = model.predict(X_val)
 
     return {
@@ -22,6 +37,32 @@ def evaluar_modelo(model, X_val, y_val):
 
 
 def entrenar_rf_texto(X_train, y_train, X_val, y_val, X_test, y_test):
+    
+    """Entrena y selecciona el mejor modelo de clasificación de texto basado en Random Forest.
+
+    Realiza una búsqueda exhaustiva sobre distintas combinaciones de:
+    - Vectorizadores (CountVectorizer y TfidfVectorizer)
+    - Número de árboles (n_estimators)
+    - Profundidad máxima del árbol (max_depth)
+    - Número mínimo de muestras por hoja (min_samples_leaf)
+
+    Evalúa cada configuración en el conjunto de validación usando F1 macro
+    como métrica principal, registra los resultados en Weights & Biases (wandb)
+    y selecciona el mejor modelo para evaluarlo según el test.
+
+    Args:
+        X_train: Textos de entrenamiento.
+        y_train: Etiquetas de entrenamiento.
+        X_val: Textos de validación.
+        y_val: Etiquetas de validación.
+        X_test: Textos de test.
+        y_test: Etiquetas de test.
+
+    Returns:
+        tuple:
+            - mejor_modelo: Pipeline entrenado con la mejor configuración encontrada.
+            - mejor_resultado (dict): Diccionario con la configuración y métricas del mejor modelo.
+    """
 
     spanish_stopwords = stopwords.words("spanish")
 
@@ -155,6 +196,13 @@ def entrenar_rf_texto(X_train, y_train, X_val, y_val, X_test, y_test):
 
 
 def main():
+    """Función principal del script.
+
+    Descarga los recursos necesarios de NLTK, carga y prepara los datos de texto,
+    realiza la partición en conjuntos de entrenamiento, validación y test, inicia
+    sesión en Weights & Biases y lanza el proceso de entrenamiento y evaluación
+    del modelo de clasificación de texto.
+    """
     nltk.download("stopwords")
 
     df = bajar_df_texto()
