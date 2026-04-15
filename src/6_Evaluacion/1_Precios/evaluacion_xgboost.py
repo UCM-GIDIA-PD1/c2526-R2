@@ -33,7 +33,7 @@ MEJORES_PARAMS_XGB = {
 }
 
 def evaluar_xgb_final_hibrido(df, nombre_mercado):
-    print(f" EVALUACIÓN FINAL XGBOOST: {nombre_mercado.upper()}")
+    print(f"EVALUACIÓN FINAL XGBOOST: {nombre_mercado.upper()}")
 
     # 1. Separación de variables (Para venta es mejor predecir precio/m2 y luego reconvertir, para alquiler predecimos precio total)
     X = df.drop(columns=['Precio'])
