@@ -10,7 +10,7 @@ from utils.funciones_minio import crear_cliente_minio, bajar_minio, buscar_todos
 # Configuración fácil de cambiar
 MAX_IMAGENES_POR_CLASE = 5  # Cuántas imágenes descargar por clase
 NUM_EJEMPLOS_CONTEXTO = 1   # Cuántos ejemplos usar por clase en Test B
-TEMPERATURA_OLLAMA = 0.1    # Temperatura para el modelo (baja para consistencia) si es alta la respuesta es mas aleatoria
+TEMPERATURA_OLLAMA = 0.0    # Temperatura 0.0 para máxima consistencia y evitar alucinaciones
 
 MAPEO_CLASES_EN = {
     'Cocina': 'Kitchen',
@@ -23,13 +23,12 @@ CLASES_EN = list(MAPEO_CLASES_EN.values())
 def descargar_imagenes_ejemplo(clases, max_por_clase=MAX_IMAGENES_POR_CLASE):
     """
     Descarga imágenes de ejemplo de MinIO para cada clase.
-    Esto es para tener datos para probar el modelo.
     """
     cliente = crear_cliente_minio()
     imagenes = {}
     
     for clase in clases:
-        print(f"Descargando imgenes para {clase}...")
+        print(f"Descargando imágenes para {clase}...")
         try:
             archivos = buscar_todos_los_archivos(cliente, f"{MINIO_DATASET_VISION}/{clase}")
             if not archivos:
@@ -50,7 +49,7 @@ def descargar_imagenes_ejemplo(clases, max_por_clase=MAX_IMAGENES_POR_CLASE):
                             break
                         img_bytes = df['imagen_bytes'].iloc[i]
                         img = Image.open(io.BytesIO(img_bytes)).convert("RGB")
-                        img.thumbnail((512, 512), Image.LANCZOS)  # Hacer más pequeñas para que sea rápido
+                        img.thumbnail((512, 512), Image.LANCZOS)
                         imagenes[clase].append(img)
                     if len(imagenes[clase]) >= max_por_clase:
                         break
@@ -70,6 +69,7 @@ def preparar_ejemplos(imagenes_por_clase, num_ejemplos=NUM_EJEMPLOS_CONTEXTO):
     ejemplos = []
     for clase in CLASES_IMAGENES:
         if clase in imagenes_por_clase and imagenes_por_clase[clase]:
+            # Nos aseguramos de no coger más imágenes de las que hay
             for i in range(min(num_ejemplos, len(imagenes_por_clase[clase]))):
                 img_ej = imagenes_por_clase[clase][i]
                 img_buffer = io.BytesIO()
@@ -79,7 +79,7 @@ def preparar_ejemplos(imagenes_por_clase, num_ejemplos=NUM_EJEMPLOS_CONTEXTO):
 
 def clasificar_test_a(img_bytes, modelo, idioma):
     """
-    Clasifica una imagen sin ejemplos usando Ollama.
+    Clasifica una imagen sin ejemplos (Zero-Shot) usando Ollama.
     """
     if idioma == 'es':
         prompt = f"""Actúa como un clasificador visual automatizado. 
@@ -111,7 +111,10 @@ Bedroom
         model=modelo,
         prompt=prompt,
         images=images,
-        options={'temperature': TEMPERATURA_OLLAMA}
+        options={
+            'temperature': TEMPERATURA_OLLAMA,
+            'num_predict': 5 # CORRECCIÓN: Evita alucinaciones forzando respuestas muy cortas
+        }
     )
     end_time = time.time()
     
@@ -119,7 +122,7 @@ Bedroom
 
 def clasificar_test_b(img_bytes, ejemplos, modelo, idioma):
     """
-    Clasifica una imagen con contextual learning usando ejemplos.
+    Clasifica una imagen con contextual learning (Few-Shot) usando ejemplos.
     """
     todas_las_imagenes = []
     
@@ -168,16 +171,16 @@ Kitchen
         model=modelo,
         prompt=prompt,
         images=images,
-        options={'temperature': TEMPERATURA_OLLAMA}
+        options={
+            'temperature': TEMPERATURA_OLLAMA,
+            'num_predict': 5 # CORRECCIÓN: Evita alucinaciones forzando respuestas muy cortas
+        }
     )
     end_time = time.time()
     
     return respuesta['response'], end_time - start_time
 
 def clasificar_imagen(img_bytes, test_type, modelo, idioma, ejemplos=None):
-    """
-    Función envoltorio para clasificar la imagen dependiendo del tipo de test.
-    """
     if test_type == 'a':
         return clasificar_test_a(img_bytes, modelo, idioma)
     elif test_type == 'b':
@@ -191,18 +194,12 @@ def extraer_clase(respuesta, clases):
     for c in clases:
         if c.lower() in respuesta_lower:
             return c
-    # Si no logramos encontrar la clase, intentamos limpiar o devolvemos desconocido
     primera_palabra = respuesta.replace('\n', ' ').strip().split(' ')
     if primera_palabra and primera_palabra[0] != '':
         return primera_palabra[0][:20]
     return "Unknown"
 
 def main():
-    """
-    Función principal del programa.
-    Descarga imágenes y las clasifica con Test A y Test B para comparar.
-    Sube los resultados a Weights & Biases.
-    """
     print("¡Bienvenido al comparador de Zero-Shot vs Few-Shot!")
     
     print("\n--- MENÚ DE CONFIGURACIÓN ---")
@@ -228,7 +225,8 @@ def main():
             "modelo": modelo_seleccionado,
             "idioma": idioma,
             "temperatura": TEMPERATURA_OLLAMA,
-            "max_imagenes_por_clase": MAX_IMAGENES_POR_CLASE
+            "max_imagenes_por_clase": MAX_IMAGENES_POR_CLASE,
+            "ejemplos_por_clase": NUM_EJEMPLOS_CONTEXTO
         }
     )
     
@@ -240,58 +238,78 @@ def main():
     print("\nDescargando imágenes de MinIO...")
     imagenes_por_clase = descargar_imagenes_ejemplo(CLASES_IMAGENES)
     
-    # Preparar ejemplos para contextual learning
+    # Preparar ejemplos
     print("\nPreparando ejemplos para contextual learning (Test B)...")
     ejemplos = preparar_ejemplos(imagenes_por_clase)
-    print(f"Se usarán {len(ejemplos)} ejemplos.")
+    print(f"Se usarán {len(ejemplos)} ejemplos en total.")
     
-    # Clasificar imágenes
-    total_imagenes = sum(len(imgs) for imgs in imagenes_por_clase.values())
-    print(f"\nClasificando {total_imagenes} imágenes comparando Test A vs Test B...")
+    print("\nClasificando imágenes (Comparando Test A vs Test B)...")
+    
+    # Contador global para las gráficas de W&B
+    paso_evaluacion = 1
     
     for clase_real, lista_imagenes in imagenes_por_clase.items():
-        print(f"\n--- Clasificando imágenes de {clase_real} ---")
-        for i, img in enumerate(lista_imagenes):
-            # Convertir imagen a bytes
+        print(f"\n--- Evaluando clase: {clase_real} ---")
+        
+        # CORRECCIÓN CRÍTICA (Data Leakage): 
+        # Omitimos las primeras N imágenes que ya usamos como ejemplos en 'preparar_ejemplos'
+        imagenes_para_test = lista_imagenes[NUM_EJEMPLOS_CONTEXTO:]
+        
+        # Si no quedan imágenes para testear en esta clase, la saltamos
+        if not imagenes_para_test:
+            print(f"No hay suficientes imágenes para testear la clase {clase_real} después de extraer ejemplos.")
+            continue
+            
+        for i, img in enumerate(imagenes_para_test, start=NUM_EJEMPLOS_CONTEXTO + 1):
+            
             img_buffer = io.BytesIO()
             img.save(img_buffer, format='JPEG')
             img_bytes = img_buffer.getvalue()
             
-            # Ajustar clases según el idioma elegido
             clases_evaluacion = CLASES_IMAGENES if idioma == 'es' else CLASES_EN
             clase_real_evaluacion = clase_real if idioma == 'es' else MAPEO_CLASES_EN[clase_real]
             
-            # Ejecutar Test A (Zero-shot)
-            print(f"\nEjecutando Test A (Zero-shot) para imagen {i+1} de {clase_real}...")
-            respuesta_a, time_a = clasificar_imagen(img_bytes, 'a', modelo_seleccionado, idioma)
+            # --- TEST A ---
+            print(f"\n[Imagen {i}/{len(lista_imagenes)}] Ejecutando Test A (Zero-shot)...")
+            respuesta_a, time_a = clasificar_test_a(img_bytes, modelo_seleccionado, idioma)
             pred_clase_a = extraer_clase(respuesta_a, clases_evaluacion)
             acierto_a = clase_real_evaluacion.lower() in respuesta_a.lower()
-            print(f"Test A -> Predicción: {pred_clase_a} | Acierto: {acierto_a} | Tiempo: {time_a:.2f}s")
+            print(f"  -> Predicción: {pred_clase_a} | Acierto: {acierto_a} | Tiempo: {time_a:.2f}s")
             
-            # Ejecutar Test B (Few-shot)
-            print(f"Ejecutando Test B (Few-shot) para imagen {i+1} de {clase_real}...")
-            respuesta_b, time_b = clasificar_imagen(img_bytes, 'b', modelo_seleccionado, idioma, ejemplos)
+            # --- TEST B ---
+            print(f"[Imagen {i}/{len(lista_imagenes)}] Ejecutando Test B (Few-shot)...")
+            respuesta_b, time_b = clasificar_test_b(img_bytes, ejemplos, modelo_seleccionado, idioma)
             pred_clase_b = extraer_clase(respuesta_b, clases_evaluacion)
             acierto_b = clase_real_evaluacion.lower() in respuesta_b.lower()
-            print(f"Test B -> Predicción: {pred_clase_b} | Acierto: {acierto_b} | Tiempo: {time_b:.2f}s")
+            print(f"  -> Predicción: {pred_clase_b} | Acierto: {acierto_b} | Tiempo: {time_b:.2f}s")
             
-            # 2. Añadir fila a la tabla visual (La magia de W&B para VLMs)
+            # CORRECCIÓN: Registrar métricas paso a paso en W&B para generar gráficas de líneas
+            wandb.log({
+                "evaluacion_paso": paso_evaluacion,
+                "tiempo_inferencia/Test_A_segundos": time_a,
+                "tiempo_inferencia/Test_B_segundos": time_b,
+                "precision_acumulada/Acierto_A": int(acierto_a), # 1 o 0
+                "precision_acumulada/Acierto_B": int(acierto_b)
+            })
+            paso_evaluacion += 1
+            
+            # Añadir fila a la tabla visual
             tabla_wandb.add_data(
                 wandb.Image(img), 
                 clase_real_evaluacion, 
                 pred_clase_a, 
-                time_a, 
+                round(time_a, 2), 
                 bool(acierto_a), 
                 pred_clase_b, 
-                time_b, 
+                round(time_b, 2), 
                 bool(acierto_b)
             )
             
-    print("\nRegistrando resultados en Weights & Biases...")
-    wandb.log({"resultados_comparativa": tabla_wandb})
+    print("\nSubiendo resultados finales a Weights & Biases...")
+    wandb.log({"Tabla_Analisis_Visual": tabla_wandb})
     wandb.finish()
     
-    print("\n¡Clasificación y subida a W&B terminada exitosamente!")
+    print("\n✅ ¡Experimento finalizado exitosamente! Revisa tu dashboard en wandb.ai")
 
 if __name__ == "__main__":
     main()
