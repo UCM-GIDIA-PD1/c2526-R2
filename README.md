@@ -4,60 +4,95 @@
 
 ---
 
-## 📌 Qué es?
+## Qué es?
 
-**MAiDay** es el asistente diseñado para equilibrar el sector inmobiliario madrileño. Ofrecemos recomendaciones de precios precisas para propietarios, búsqueda personalizada para inquilinos y evaluación de modernidad mediante IA. Gracias a la inteligencia geográfica, transformamos la incertidumbre en decisiones informadas.
+**MAiDay** es un asistente inteligente diseñado para equilibrar el sector inmobiliario madrileño. El proyecto tiene tres objetivos principales:
+
+1. **Estimación de precios**: Ofrecer recomendaciones de precios, tanto para venta como para alquiler, para propietarios e inquilinos, mediante modelos entrenados con datos reales del mercado y características de la zona.
+2. **Análisis de descripciones**: Mediante un modelo de clasificación, según la descripción de los anuncios, se averigua si un anuncio fue publicado por un particular, un intermediario o una promotora.
+3. **Análisis de imagenes**: Por medio de un modelo de clasificación se etiquetan imágenes según la habitación que muestren: dormitorio, cocina, salón y baño.
 
 ---
-## Cómo funciona ?
 
-El sistema articula tres motores tecnológicos complementarios que transforman datos complejos en soluciones directas para el usuario:
-
-**Sistema de Regresión Multivariable 📊**  Un modelo avanzado que conecta todas las variables críticas —como dimensiones, planta y ubicación— para estimar el precio justo de mercado, eliminando los sesgos y las valoraciones arbitrarias.
-
-**Motor Geointeligente de Madrid 🗺️**  Una herramienta visual que cruza datos de fuentes como OSM y el CRTM para representar en un mapa interactivo las ventajas estratégicas de cada vivienda, analizando su conexión con el transporte, servicios y ocio.
-
-**Análisis Visual mediante IA 🧠**  Un sistema de aprendizaje profundo entrenado para examinar las fotografías de los inmuebles y asignar un "Score de Modernidad" objetivo, permitiendo validar el estado de reforma de la vivienda de forma automática.
-
-
-## 🧠 Arquitectura del sistema
-
-El proyecto se organiza en **5 etapas principales**:
+## Estructura del repositorio
 
 ```
-src/
+c2526-R2/
 │
-├── 1_Extraccion     → Obtención de datos de múltiples fuentes
-├── 2_Limpieza       → Preprocesamiento y limpieza
-├── 3_Agrupacion     → Integración y generación de datasets finales
-├── 4_Analisis       → Análisis exploratorio (notebooks)
-├── 5_Modelos        → Modelos de ML (precio, texto, imágenes)
+├── src/                          # Código fuente principal
+│   ├── main.py                   # Orquestador principal del pipeline
+│   ├── utils/                    # Utilidades compartidas (MinIO, helpers)
+│   │
+│   ├── 1_Extraccion/             # Fase 1: Obtención de datos de múltiples fuentes
+│   │   ├── main.py
+│   │   ├── A_Anuncios_viviendas.py   # Scraping de anuncios inmobiliarios
+│   │   ├── B_aytoMadrid.py           # Datos del Ayuntamiento de Madrid
+│   │   ├── C_transporte.py           # Datos de transporte público (CRTM)
+│   │   ├── D_catastro.py             # Datos del Catastro
+│   │   ├── E_INE.py                  # Datos del INE
+│   │   ├── F_osmnx.py                # Datos OSM (puntos de interés)
+│   │   ├── G_rejillas_madrid.py      # Rejilla geográfica de Madrid
+│   │   └── H_padron.py               # Datos del Padrón Municipal
+│   │
+│   ├── 2_Limpieza/               # Fase 2: Preprocesamiento y limpieza de datos
+│   │   ├── main.py
+│   │   ├── A_viviendas_modificacion.py
+│   │   ├── B_aytoMadrid.py
+│   │   └── C_transporte.py
+│   │
+│   ├── 3_Transformacion/         # Fase 3: Integración y generación de datasets finales
+│   │   ├── main.py
+│   │   ├── A_rejilla_madrid.py
+│   │   ├── B_viviendas_madrid.py
+│   │   ├── C_aytoMadrid.py
+│   │   ├── D_INE_con_geometria.py
+│   │   ├── E_Imagenes_div.py
+│   │   ├── F_Preparar_datasets_Precios.py
+│   │   └── G_texto.py
+│   │
+│   ├── 4_Analisis/               # Fase 4: Análisis exploratorio (notebooks Jupyter)
+│   │   ├── analisis_estadistico.ipynb
+│   │   ├── analisis_estadistico_2.ipynb
+│   │   ├── analisis_texto.ipynb
+│   │   └── analisis_cantidad_imagenes.ipynb
+│   │
+│   ├── 5_Modelos/                # Fase 5: Entrenamiento de modelos de ML
+│   │   ├── main.py
+│   │   ├── 1_Precios/            # Modelo de regresión de precios
+│   │   ├── 2_Texto/              # Modelo de análisis de texto (NLP)
+│   │   └── 3_Imagenes/           # Modelo de análisis de imágenes (VLM)
+│   │
+│   └── 6_Evaluacion/             # Fase 6: Evaluación de los modelos
+│       ├── main.py
+│       ├── 1_Precios/            # Métricas del modelo de precios
+│       ├── 2_Texto/              # Métricas del modelo de texto
+│       └── 3_Imagenes/           # Métricas del modelo de imágenes
+│
+├── pyproject.toml                # Dependencias y configuración del proyecto
+├── uv.lock                       # Lockfile de dependencias
+├── .env                          # Variables de entorno (NO subir a Git)
+└── .gitignore
 ```
-
-Cada carpeta contiene su propio `main.py`, que actúa como **pipeline de esa fase**.
 
 ---
 
-## ⚙️ Configuración del entorno de desarrollo
+## Configuración del entorno de desarrollo
 
-Este proyecto utiliza uv como gestor de entornos y dependencias, hay que seguir los siguientes pasos:
+Este proyecto utiliza [**uv**](https://docs.astral.sh/uv/) como gestor de entornos y dependencias. Requiere **Python ≥ 3.12**.
 
 ### 1. Instalar `uv`
 
 ```bash
 pip install uv
 ```
-Más información: https://docs.astral.sh/uv/
 
----
-
-### 2. Crear entorno virtual
+### 2. Crear el entorno virtual
 
 ```bash
 uv venv
 ```
 
-Activar entorno:
+Activar el entorno:
 
 **Windows**
 ```bash
@@ -69,21 +104,18 @@ Activar entorno:
 source .venv/bin/activate
 ```
 
----
-
 ### 3. Instalar dependencias
 
-Como el proyecto contiene pyproject.toml, para instalar las depedencias se puede ejecutar el comando:
+El proyecto define todas sus dependencias en `pyproject.toml`. Para instalarlas ejecuta:
 
 ```bash
 uv sync
 ```
 
----
+Esto instalará automáticamente todos los paquetes necesarios:
+`drissionpage`, `folium`, `geopandas`, `geopy`, `googlemaps`, `h3`, `matplotlib`, `minio`, `nltk`, `numpy`, `ollama`, `optuna`, `osmnx`, `pandas`, `pillow`, `plotly`, `pyarrow`, `python-dotenv`, `requests`, `scikit-learn`, `scipy`, `seaborn`, `shapely`, `tensorflow`, `torchvision`, `tqdm`, `umap-learn`, `wandb`, `xgboost`, entre otros.
 
-### 4. Verificar versión de Python del entorno
-
-Una vez creado el entorno virtual, se puede comprobar que versión de Python se está usando:
+### 4. Verificar la versión de Python del entorno
 
 **Windows**
 ```bash
@@ -97,11 +129,9 @@ Una vez creado el entorno virtual, se puede comprobar que versión de Python se 
 
 ---
 
-## 🔐 Configuración de MinIO
+## Configuración de variables de entorno (MinIO)
 
-El proyecto utiliza un servidor MinIO para almacenar y recuperar datasets.
-
-Se debe crear un fichero .env en la raíz del proyecto con el siguiente contenido:
+El proyecto utiliza un servidor **MinIO** para almacenar y recuperar datasets. Crea un fichero `.env` en la raíz del proyecto con el siguiente contenido:
 
 ```env
 MINIO_ENDPOINT=minio.fdi.ucm.es
@@ -111,154 +141,128 @@ MINIO_BUCKET=pd1
 MINIO_GROUP_PATH=grupo2
 ```
 
-### ⚠️ Importante
-- NO subir el fichero `.env` a GitHub
-- Añadir `.env` al `.gitignore`
-
-## Descripción de las variables
-
-**MINIO_ENDPOINT:** Dirección del servidor MinIO
-
-**MINIO_ACCESS_KEY:** Clave de acceso al servidor
-
-**MINIO_SECRET_KEY:** Clave secreta
-
-**MINIO_BUCKET:** Bucket donde se almacenan los datos
-
-**MINIO_GROUP_PATH:** Carpeta base del grupo dentro del bucket
+| Variable | Descripción |
+|---|---|
+| `MINIO_ENDPOINT` | Dirección del servidor MinIO |
+| `MINIO_ACCESS_KEY` | Clave de acceso al servidor |
+| `MINIO_SECRET_KEY` | Clave secreta |
+| `MINIO_BUCKET` | Bucket donde se almacenan los datos |
+| `MINIO_GROUP_PATH` | Carpeta base del grupo dentro del bucket |
 
 ---
 
-## 🚀 Ejecución del proyecto
+## Ejecución de los scripts
 
-Para poder ejecutar los scripts y notebooks, se puede con el siguiente comando en el terminal de visual studio code o por la consola:
+### Orquestador principal (menú interactivo)
+
+El orquestador detecta automáticamente todas las fases disponibles y permite ejecutarlas de forma interactiva:
 
 ```bash
-uv run -m (ubicacion del scrip o notebook)
+uv run -m main
 ```
 
-Ejemplo:
+### Ejecución individual de cada fase
 
-```bash
-uv run -m src.1_Extraccion.A_Anuncios_viviendas
-```
+Se pueden ejecutar las fases directamente con el comando `uv run -m`:
 
----
-
-## 🔄 Pipeline completo de datos
-
-Se recomienda ejecutar las fases en orden:
-
-```
-Extracción → Limpieza → Agrupación → Modelos
-```
-
----
-
-### 1 Extracción
-
+#### Fase 1 — Extracción
 ```bash
 uv run -m src.1_Extraccion.main
 ```
 
-
-### 2 Limpieza
-
+#### Fase 2 — Limpieza
 ```bash
 uv run -m src.2_Limpieza.main
 ```
 
-
-### 3 Agrupación
-
+#### Fase 3 — Transformación
 ```bash
-uv run -m src.3_Agrupacion.main
+uv run -m src.3_Transformacion.main
 ```
 
+#### Fase 4 — Análisis (notebooks Jupyter)
 
-### 4 Análisis
-
+Los notebooks de análisis exploratorio se abren con Jupyter:
 ```bash
-uv run -m src.4_Analisis
+uv run jupyter notebook src/4_Analisis/
 ```
 
+#### Fase 5 — Modelos
 
-### 5 Modelos
-
-#### 💰 Precios
 ```bash
-uv run -m src.5_Modelos.1_Precios
+# Modelo de precios
+uv run -m src.5_Modelos.main
+
+# O por submódulo:
+uv run -m src.5_Modelos.1_Precios.main
+uv run -m src.5_Modelos.2_Texto.main
+uv run -m src.5_Modelos.3_Imagenes.main
 ```
 
-#### 💬 Texto
+#### Fase 6 — Evaluación
+
 ```bash
-uv run -m src.5_Modelos.2_Texto
+# Evaluación completa
+uv run -m src.6_Evaluacion.main
+
+# O por submódulo:
+uv run -m src.6_Evaluacion.1_Precios.main
+uv run -m src.6_Evaluacion.2_Texto.main
+uv run -m src.6_Evaluacion.3_Imagenes.main
 ```
 
-#### 🖼️ Imágenes
-```bash
-uv run -m src.5_Modelos.3_Imagenes
+### Orden recomendado de ejecución
+
 ```
-## 🚀 Guía de Instalación: Ollama y Modelos VLM
-
-Para ejecutar este proyecto de forma local y garantizar la privacidad de los datos, utilizamos **Ollama** como nuestro motor de inferencia. A continuación, se detallan los pasos para configurar el entorno en cualquier sistema operativo.
-
-### 1. Instalación de Ollama
-
-Elige las instrucciones correspondientes a tu sistema operativo:
-
-#### 🪟 Windows
-1. Dirígete a la página oficial: [https://ollama.com/download](https://ollama.com/download)
-2. Haz clic en **Download for Windows**.
-3. Ejecuta el archivo `.exe` descargado y sigue las instrucciones del instalador.
-4. Abre el Símbolo del sistema (CMD) o PowerShell para verificar la instalación ejecutando `ollama -v`.
-
-#### 🍏 macOS
-1. Dirígete a [https://ollama.com/download](https://ollama.com/download) y descarga la versión para macOS.
-2. Descomprime el archivo y arrastra la aplicación **Ollama** a tu carpeta de *Aplicaciones*.
-3. Alternativamente, si usas **Homebrew**, puedes instalarlo desde la terminal con:
-   ```bash
-   brew install ollama
-#### 🐧 Instalación en Linux
-Abre tu terminal y ejecuta el script de instalación oficial con el siguiente comando:
-```bash
-curl -fsSL [https://ollama.com/install.sh](https://ollama.com/install.sh) | sh
+1_Extraccion → 2_Limpieza → 3_Transformacion → 5_Modelos → 6_Evaluacion
 ```
-### 2. Descarga de los Modelos (LLaVA y BakLLaVA)
-
-Una vez que Ollama esté instalado y ejecutándose en segundo plano, abre tu terminal y ejecuta los siguientes comandos para descargar los modelos de Visión-Lenguaje utilizados en este proyecto.
-
-*Nota: La primera vez que ejecutes estos comandos, Ollama descargará los pesos de los modelos (aprox. 4GB a 5GB cada uno). El tiempo dependerá de tu conexión a internet.*
-
-**Descargar el modelo base (LLaVA):**
-```bash
-ollama run llava
-```
-*(Para salir del chat interactivo que se abre al terminar la descarga, escribe `/bye` o presiona `Ctrl + D`).*
-
-**Descargar el modelo optimizado (BakLLaVA):**
-```bash
-ollama run bakllava
-```
-*(Igualmente, escribe `/bye` para salir una vez descargado).*
 
 ---
 
-### 3. Verificación del Entorno
+## Configuración de Ollama (modelos VLM)
 
-Para confirmar que los modelos se han descargado correctamente y están listos para que el script de Python los utilice, ejecuta el siguiente comando en tu terminal:
+La fase de análisis de imágenes requiere **Ollama** ejecutándose localmente.
+
+### Instalación de Ollama
+
+| SO | Instrucciones |
+|---|---|
+| **Windows** | Descarga el instalador en [ollama.com/download](https://ollama.com/download) y ejecuta el `.exe` |
+| **macOS** | Descarga en [ollama.com/download](https://ollama.com/download) o usa `brew install ollama` |
+| **Linux** | `curl -fsSL https://ollama.com/install.sh \| sh` |
+
+### Descarga de modelos
+
+```bash
+# Modelo base (LLaVA) — aprox. 4-5 GB
+ollama run llava
+
+# Modelo optimizado (BakLLaVA) — aprox. 4-5 GB
+ollama run bakllava
+```
+
+> Escribe `/bye` o presiona `Ctrl+D` para salir del chat interactivo tras la descarga.
+
+### Verificación
 
 ```bash
 ollama list
+# Deberías ver: llava:latest  bakllava:latest
 ```
 
-Deberías ver `llava:latest` y `bakllava:latest` en la lista de modelos disponibles. ¡Tu servidor de inferencia local ya está configurado y listo para clasificar imágenes!
-
-
-### 6 Evaluacion
-
-#### 💰 Precios
-```bash
-uv run -m src.6.Evaluacion.1_Precios
-```
 ---
+
+## Equipo de desarrollo
+
+Proyecto desarrollado para la asignatura **Proyecto de Datos I (PD1)** — Universidad Complutense de Madrid (UCM), Grado en Ingeniería de Datos e Inteligencia Artificial.
+
+| GitHub |
+|---|
+| [@iisma-ai](https://github.com/iisma-ai) |
+| [@kauan287](https://github.com/kauan287) |
+| [@sperezplaza](https://github.com/sperezplaza) |
+| [@arthur-112](https://github.com/arthur-112) |
+| [@ouyang157](https://github.com/ouyang157) |
+| [@Oscmarin715](https://github.com/Oscmarin715) |
+
+> *Grupo 2 — Repositorio: `c2526-R2`*
