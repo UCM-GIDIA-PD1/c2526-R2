@@ -25,8 +25,7 @@ from shapely.geometry import Point
 from dotenv import load_dotenv
 from utils.funciones_minio import crear_cliente_minio, minio_subir_memoria
 from utils.config import (
-    MINIO_RAW_SECUNDARIOS, URL_BUS, URL_METRO_BASE, METRO_LAYER_IDS,
-    METRO_LAYER_LINEAS, OBJ_BUS, OBJ_METRO,
+    MINIO_RAW_SECUNDARIOS, URL_BUS, URL_METRO, OBJ_BUS, OBJ_METRO,
 )
 
 
@@ -75,35 +74,25 @@ def descargar_bus() -> io.BytesIO:
 
 
 def descargar_metro() -> io.BytesIO:
-    """Descarga estaciones de metro de todas las líneas y las combina en un Parquet.
-
-    Consulta las 16 capas de estaciones (una por línea) del servicio Lineas_Metro,
-    las combina en un solo GeoDataFrame y elimina duplicados por nombre de estación
-    (las estaciones de transbordo aparecen en varias líneas).
+    """Descarga estaciones de metro y las convierte a Parquet en memoria.
 
     Returns:
         Buffer en memoria con el contenido en formato Parquet.
     """
-    print("  Descargando estaciones de metro (todas las líneas)...")
-    todos = []
+    print("  Descargando estaciones de metro...")
 
-    for layer_id in METRO_LAYER_IDS:
-        url = (
-            f"{URL_METRO_BASE}/{layer_id}/query?where=1%3D1"
-            f"&outFields=*&outSR=4326&f=json"
-        )
-        response = requests.get(url)
-        response.raise_for_status()
-        gdf_linea = _parsear_arcgis_json(response.json())
-        if len(gdf_linea) > 0:
-            gdf_linea["LINEAS"] = METRO_LAYER_LINEAS.get(layer_id, "")
-            todos.append(gdf_linea)
-    # Combinar todas las líneas y eliminar estaciones duplicadas (transbordos)
-    gdf = pd.concat(todos, ignore_index=True)
-    gdf = gdf.drop_duplicates(subset = ["DENOMINACION","LINEAS"],keep = 'first')
-    gdf = gdf[["DENOMINACION","geometry","Y","X","LINEAS"]].copy()
+    response = requests.get(URL_METRO)
+    response.raise_for_status()
+    gdf = _parsear_arcgis_json(response.json())
+
+    # Seleccionar solo las columnas necesarias según la nueva API
+    if "X" in gdf.columns and "Y" in gdf.columns:
+        gdf = gdf[["DENOMINACION","geometry","Y","X","LINEAS"]].copy()
+    else:
+        gdf = gdf[["DENOMINACION","geometry","LINEAS"]].copy()
+
     print(gdf.columns)
-    print(f"  Estaciones de metro únicas: {len(gdf)}")
+    print(f"  Estaciones de metro extraídas: {len(gdf)}")
     buffer = io.BytesIO()
     gdf.to_parquet(buffer, index=False)
     buffer.seek(0)
