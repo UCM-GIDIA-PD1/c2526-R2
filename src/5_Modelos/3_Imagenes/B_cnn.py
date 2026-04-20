@@ -545,60 +545,108 @@ def probar_cnn(configuracion, cliente_minio=None):
 
 def menu_interactivo():
     """
-    Menú de consola para configurar el origen de datos y la arquitectura de la CNN.
+    Menú de consola para configurar el origen de datos, arquitectura de la CNN 
+    o la generación de embeddings.
     """
     configuracion = {}
     
     print("\n" + "="*50)
-    print(" SISTEMA DE ENTRENAMIENTO CNN")
+    print(" SISTEMA DE ENTRENAMIENTO Y EXTRACCIÓN CNN")
     print("="*50)
 
-    print("\n[1] ORIGEN DE DATOS")
-    print("  1. Descargar datos a LOCAL (TFRecords) y entrenar")
-    print("  2. Entrenar con TFRecords LOCALES ya existentes")
-    print("  3. Entrenar leyendo en streaming desde MINIO")
+    print("\n[0] MODO DE EJECUCIÓN")
+    print("  1. Entrenar un nuevo modelo CNN")
+    print("  2. Generar Embeddings con un modelo existente (Extraer características)")
     
     while True:
-        op_datos = input("Elige una opción (1-3): ").strip()
-        if op_datos == '1':
-            configuracion['origen_datos'] = 'descargar_y_local'
+        op_modo = input("Elige una opción (1-2): ").strip()
+        if op_modo == '1':
+            configuracion['modo'] = 'entrenar'
             break
-        elif op_datos == '2':
-            configuracion['origen_datos'] = 'local'
-            break
-        elif op_datos == '3':
-            configuracion['origen_datos'] = 'minio'
+        elif op_modo == '2':
+            configuracion['modo'] = 'embeddings'
             break
         print(" Opción inválida.")
 
-    print("\n[2] ARQUITECTURA DE LA CNN")
-    print("Recomendaciones de estructuras:")
-    print("  1. Básica    (3 capas, 32 filtros, 0.2 dropout)")
-    print("  2. Mejorada  (3 capas, 32 filtros, 0.3 dropout)")
-    print("  3. Mejorada+ (4 capas, 64 filtros, 0.5 dropout)")
-    print("  4. Personalizada (Configurar manualmente)")
-    
-    while True:
-        op_red = input("Elige una arquitectura (1-4): ").strip()
-        if op_red == '1':
-            configuracion.update({"tipo": "basica", "capas": 3, "filtros": 32, "dropout": 0.2})
-            break
-        elif op_red == '2':
-            configuracion.update({"tipo": "mejorada", "capas": 3, "filtros": 32, "dropout": 0.3})
-            break
-        elif op_red == '3':
-            configuracion.update({"tipo": "mejorada", "capas": 4, "filtros": 64, "dropout": 0.5})
-            break
-        elif op_red == '4':
-            tipo = input("  ¿Tipo de bloques? (basica/mejorada): ").strip().lower()
-            capas = int(input("  ¿Cantidad de capas convolucionales? (ej. 3): "))
-            filtros = int(input("  ¿Filtros iniciales? (ej. 32): "))
-            dropout = float(input("  ¿Tasa de dropout? (ej. 0.3): "))
-            configuracion.update({"tipo": tipo, "capas": capas, "filtros": filtros, "dropout": dropout})
-            break
-        print(" Opción inválida.")
+    if configuracion['modo'] == 'entrenar':
+        print("\n[1] ORIGEN DE DATOS")
+        print("  1. Descargar datos a LOCAL (TFRecords) y entrenar")
+        print("  2. Entrenar con TFRecords LOCALES ya existentes")
+        print("  3. Entrenar leyendo en streaming desde MINIO")
         
+        while True:
+            op_datos = input("Elige una opción (1-3): ").strip()
+            if op_datos == '1':
+                configuracion['origen_datos'] = 'descargar_y_local'
+                break
+            elif op_datos == '2':
+                configuracion['origen_datos'] = 'local'
+                break
+            elif op_datos == '3':
+                configuracion['origen_datos'] = 'minio'
+                break
+            print(" Opción inválida.")
+
+        print("\n[2] ARQUITECTURA DE LA CNN")
+        print("Recomendaciones de estructuras:")
+        print("  1. Básica    (3 capas, 32 filtros, 0.2 dropout)")
+        print("  2. Mejorada  (3 capas, 32 filtros, 0.3 dropout)")
+        print("  3. Mejorada+ (5 capas, 64 filtros, 0.6 dropout) [TU MEJOR MODELO]")
+        print("  4. Personalizada (Configurar manualmente)")
+        
+        while True:
+            op_red = input("Elige una arquitectura (1-4): ").strip()
+            if op_red == '1':
+                configuracion.update({"tipo": "basica", "capas": 3, "filtros": 32, "dropout": 0.2})
+                break
+            elif op_red == '2':
+                configuracion.update({"tipo": "mejorada", "capas": 3, "filtros": 32, "dropout": 0.3})
+                break
+            elif op_red == '3':
+                configuracion.update({"tipo": "mejorada", "capas": 5, "filtros": 64, "dropout": 0.6})
+                break
+            elif op_red == '4':
+                tipo = input("  ¿Tipo de bloques? (basica/mejorada): ").strip().lower()
+                capas = int(input("  ¿Cantidad de capas convolucionales? (ej. 5): "))
+                filtros = int(input("  ¿Filtros iniciales? (ej. 64): "))
+                dropout = float(input("  ¿Tasa de dropout? (ej. 0.6): "))
+                configuracion.update({"tipo": tipo, "capas": capas, "filtros": filtros, "dropout": dropout})
+                break
+            print(" Opción inválida.")
+            
+    elif configuracion['modo'] == 'embeddings':
+        print("\n[1] CONFIGURACIÓN DE EMBEDDINGS")
+        print("  Pulsa ENTER para usar los valores por defecto (tu mejor modelo actual) o escribe los tuyos.")
+        
+        default_keras = "mejor_CNN_mejorada_C5.keras" 
+        nombre_keras = input(f"  Nombre del modelo Keras [{default_keras}]: ").strip()
+        configuracion['nombre_modelo_keras'] = nombre_keras if nombre_keras else default_keras
+        
+        default_wandb = "pd1-c2526-team2/CNN_imagenes/jm8fm8mb"
+        ruta_wandb = input(f"  Ruta del run en WandB [{default_wandb}]: ").strip()
+        configuracion['wandb_run_path'] = ruta_wandb if ruta_wandb else default_wandb
+
     return configuracion
 
 if __name__ == "__main__":
-    embeddings_cnn_propia(crear_cliente_minio(),"mejor_CNN_mejorada_C5.keras")
+    dispositivo = configurar_hardware()
+    
+    config_elegida = menu_interactivo()
+    
+    cliente = crear_cliente_minio()
+    
+    if config_elegida['modo'] == 'entrenar':
+        if config_elegida['origen_datos'] == 'descargar_y_local':
+            print("\n Iniciando proceso de descarga y empaquetado de TFRecords...")
+            descargar_y_preparar_tfrecords(cliente)
+            config_elegida['origen_datos'] = 'local'
+        
+        probar_cnn(config_elegida, cliente_minio=cliente)
+        
+    elif config_elegida['modo'] == 'embeddings':
+        embeddings_cnn_propia(
+            cliente=cliente,
+            nombre_modelo_keras=config_elegida['nombre_modelo_keras'],
+            wandb_run_path=config_elegida['wandb_run_path']
+        )
+        print("\n Proceso de generación de embeddings completado con éxito.")

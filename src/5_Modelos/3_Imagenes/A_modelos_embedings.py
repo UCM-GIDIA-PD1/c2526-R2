@@ -51,7 +51,7 @@ def embeddings_imagenes(cliente, batch_size=32):
         batch_size (int, optional): cantidad de imagenes que se pasan por la red de una. Defaults to 32.
     """
     print("  Inicio del proceso de transofmración y vectorización de las imágenes con resnet50")
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = torch.device("cuda" if torch.cuda.is_available() else "mps" if torch.mps.is_available() else "cpu")
     print(f"  Usando {device}")
     pesos = models.ResNet50_Weights.DEFAULT
     modelo_resnet = models.resnet50(weights=pesos)

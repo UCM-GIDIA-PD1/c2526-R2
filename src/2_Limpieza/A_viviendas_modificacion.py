@@ -296,10 +296,7 @@ def aportar_coordenadas(df_venta:pd.DataFrame,df_alquiler:pd.DataFrame,cliente:M
                 lat = loc.latitude
                 lon = loc.longitude
                     
-                # Opción A: Lo que nos dice Nominatim (ej: 'residential', 'pedestrian', 'secondary')
                 tipo_nominatim = loc.raw.get('type', 'desconocido')
-                    
-                # Opción B: El tipo real español que limpiamos (ej: 'CALLE', 'PASEO')
                 
                 return pd.Series([lat, lon, tipo_nominatim, tipo_espanol])
             else:
