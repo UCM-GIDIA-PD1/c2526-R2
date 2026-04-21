@@ -25,6 +25,16 @@ def home() -> FileResponse:
     return FileResponse(WEB_DIR / "index.html")
 
 
+@app.get("/precios", include_in_schema=False)
+def precios() -> FileResponse:
+    return FileResponse(WEB_DIR / "precios.html")
+
+
+@app.get("/analisis", include_in_schema=False)
+def analisis() -> FileResponse:
+    return FileResponse(WEB_DIR / "analisis.html")
+
+
 @app.get("/health", tags=["system"])
 def health() -> dict[str, str]:
     return {"status": "ok"}

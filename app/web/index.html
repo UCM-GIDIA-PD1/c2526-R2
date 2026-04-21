@@ -3,57 +3,36 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>MAiDay - Predicciones</title>
+  <title>MAiDay | Home</title>
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
+  <div class="bg-glow bg-glow-1"></div>
+  <div class="bg-glow bg-glow-2"></div>
+
   <main class="container">
-    <h1>MAiDay - Servicio de Prediccion</h1>
-    <p>Interfaz unificada para modelos de venta, alquiler, texto e imagen.</p>
+    <header class="hero">
+      <span class="badge">MAiDay</span>
+      <h1>Plataforma Inteligente de Prediccion Inmobiliaria</h1>
+      <p>
+        Explora tus modelos de machine learning desde una interfaz moderna.
+        Accede a prediccion de precios y analisis avanzado de texto e imagen.
+      </p>
+    </header>
 
-    <section class="card">
-      <h2>Prediccion de Venta</h2>
-      <form id="venta-form">
-        <input name="m2" type="number" step="0.01" placeholder="m2" required>
-        <input name="habitaciones" type="number" placeholder="Habitaciones" required>
-        <input name="banos" type="number" placeholder="Banos" required>
-        <input name="codigo_postal" type="text" placeholder="Codigo Postal" required>
-        <button type="submit">Predecir venta</button>
-      </form>
-      <pre id="venta-result"></pre>
-    </section>
+    <section class="nav-grid">
+      <a class="nav-card nav-card-prices" href="/precios">
+        <h2>Prediccion de Precios</h2>
+        <p>Modelos de venta y alquiler con formularios claros y resultados visuales.</p>
+        <span class="nav-link">Ir a precios</span>
+      </a>
 
-    <section class="card">
-      <h2>Prediccion de Alquiler</h2>
-      <form id="alquiler-form">
-        <input name="m2" type="number" step="0.01" placeholder="m2" required>
-        <input name="habitaciones" type="number" placeholder="Habitaciones" required>
-        <input name="banos" type="number" placeholder="Banos" required>
-        <input name="codigo_postal" type="text" placeholder="Codigo Postal" required>
-        <button type="submit">Predecir alquiler</button>
-      </form>
-      <pre id="alquiler-result"></pre>
-    </section>
-
-    <section class="card">
-      <h2>Clasificacion de Texto</h2>
-      <form id="texto-form">
-        <textarea name="texto" rows="4" placeholder="Escribe una descripcion..." required></textarea>
-        <button type="submit">Clasificar texto</button>
-      </form>
-      <pre id="texto-result"></pre>
-    </section>
-
-    <section class="card">
-      <h2>Clasificacion de Imagen</h2>
-      <form id="imagen-form">
-        <input name="file" type="file" accept="image/*" required>
-        <button type="submit">Clasificar imagen</button>
-      </form>
-      <pre id="imagen-result"></pre>
+      <a class="nav-card nav-card-analysis" href="/analisis">
+        <h2>Analisis Avanzado</h2>
+        <p>Clasificador de texto y clasificador de imagen con experiencia guiada.</p>
+        <span class="nav-link">Ir a analisis</span>
+      </a>
     </section>
   </main>
-
-  <script src="/static/app.js"></script>
 </body>
 </html>

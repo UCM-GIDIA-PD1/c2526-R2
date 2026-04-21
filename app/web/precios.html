@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MAiDay | Prediccion de Precios</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="bg-glow bg-glow-1"></div>
+  <div class="bg-glow bg-glow-2"></div>
+
+  <main class="container">
+    <nav class="top-nav">
+      <a href="/" class="small-link">Home</a>
+      <a href="/analisis" class="small-link">Analisis avanzado</a>
+    </nav>
+
+    <header class="page-header">
+      <h1>Prediccion de Precios</h1>
+      <p>Selecciona el modelo que quieres usar y completa los datos del inmueble.</p>
+    </header>
+
+    <section class="tabs">
+      <button class="tab-btn active" data-tab="venta-card">Predictor de venta</button>
+      <button class="tab-btn" data-tab="alquiler-card">Predictor de alquiler</button>
+    </section>
+
+    <section id="venta-card" class="model-card">
+      <h2>Predictor de venta</h2>
+      <form id="venta-form" class="form-grid">
+        <label>
+          Metros cuadrados
+          <input name="m2" type="number" step="0.01" placeholder="Ej: 95" required>
+        </label>
+        <label>
+          Habitaciones
+          <input name="habitaciones" type="number" placeholder="Ej: 3" required>
+        </label>
+        <label>
+          Banos
+          <input name="banos" type="number" placeholder="Ej: 2" required>
+        </label>
+        <label>
+          Codigo postal
+          <input name="codigo_postal" type="text" placeholder="Ej: 28001" required>
+        </label>
+        <button type="submit">Predecir precio de venta</button>
+      </form>
+      <article class="result-card" id="venta-result-card">
+        <p class="result-label">Resultado</p>
+        <p id="venta-result" class="result-value">Completa el formulario para obtener una prediccion.</p>
+      </article>
+    </section>
+
+    <section id="alquiler-card" class="model-card hidden">
+      <h2>Predictor de alquiler</h2>
+      <form id="alquiler-form" class="form-grid">
+        <label>
+          Metros cuadrados
+          <input name="m2" type="number" step="0.01" placeholder="Ej: 80" required>
+        </label>
+        <label>
+          Habitaciones
+          <input name="habitaciones" type="number" placeholder="Ej: 2" required>
+        </label>
+        <label>
+          Banos
+          <input name="banos" type="number" placeholder="Ej: 1" required>
+        </label>
+        <label>
+          Codigo postal
+          <input name="codigo_postal" type="text" placeholder="Ej: 28015" required>
+        </label>
+        <button type="submit">Predecir precio de alquiler</button>
+      </form>
+      <article class="result-card" id="alquiler-result-card">
+        <p class="result-label">Resultado</p>
+        <p id="alquiler-result" class="result-value">Completa el formulario para obtener una prediccion.</p>
+      </article>
+    </section>
+  </main>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
