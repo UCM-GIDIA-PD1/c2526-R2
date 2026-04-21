@@ -1,18 +1,18 @@
 import pandas as pd
 import numpy as np
 import wandb
+import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
 from sklearn.compose import ColumnTransformer,TransformedTargetRegressor
 from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import StandardScaler, OneHotEncoder
 from xgboost import XGBRegressor
-from sklearn.metrics import mean_absolute_error, root_mean_squared_error, r2_score
+from sklearn.metrics import mean_absolute_error, root_mean_squared_error, r2_score, mean_absolute_percentage_error
 
 from utils.funciones_minio import crear_cliente_minio, bajar_minio
 
 # Mejores parametros según la fase de tuning (copiados manualmente desde los resultados de W&B)
-
 MEJORES_PARAMS_XGB = {
     "venta": {
         "n_estimators": 895, 
@@ -35,7 +35,6 @@ MEJORES_PARAMS_XGB = {
 def evaluar_xgb_final_hibrido(df, nombre_mercado):
     print(f"EVALUACIÓN FINAL XGBOOST: {nombre_mercado.upper()}")
 
-    # 1. Separación de variables (Para venta es mejor predecir precio/m2 y luego reconvertir, para alquiler predecimos precio total)
     X = df.drop(columns=['Precio'])
     
     if nombre_mercado == 'venta':
@@ -50,17 +49,14 @@ def evaluar_xgb_final_hibrido(df, nombre_mercado):
     
     X[cat_cols] = X[cat_cols].fillna('Desconocido').astype(str)
 
-    # 2. Partición Estratificada
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.20, random_state=42, stratify=X['Distrito']
     )
 
-    # 3. Preprocesamiento
     num_transformer = Pipeline(steps=[('imputer', SimpleImputer(strategy='median')),('scaler', StandardScaler())])
     cat_transformer = Pipeline(steps=[('onehot', OneHotEncoder(handle_unknown='ignore', sparse_output=False))])
     preprocessor = ColumnTransformer(transformers=[('num', num_transformer, num_cols),('cat', cat_transformer, cat_cols)])
 
-    # 4. Extraemos los mejores parámetros y montamos el Pipeline final
     params = MEJORES_PARAMS_XGB[nombre_mercado]
     modelo_final = Pipeline(steps=[
         ('preprocessor', preprocessor),
@@ -83,42 +79,62 @@ def evaluar_xgb_final_hibrido(df, nombre_mercado):
     print("Entrenando modelo definitivo...")
     modelo_final.fit(X_train, y_train)
 
-    # 5. Predicciones
     y_pred_crudo = modelo_final.predict(X_test)
 
     if nombre_mercado == 'venta':
-        # Reconvertimos multiplicando por la superficie
         y_pred_final = y_pred_crudo * X_test['Superficie'].values
         y_test_final = y_test * X_test['Superficie'].values
     else:
         y_pred_final = y_pred_crudo
         y_test_final = y_test
 
-    # 6. Métricas globales
+    # 2. CÁLCULO DE MÉTRICAS GLOBALES (Incluyendo MAPE)
     mae = mean_absolute_error(y_test_final, y_pred_final)
     rmse = root_mean_squared_error(y_test_final, y_pred_final)
     r2 = r2_score(y_test_final, y_pred_final)
+    
+    # Lo multiplicamos por 100 para que sea %
+    mape = mean_absolute_percentage_error(y_test_final, y_pred_final) * 100
 
-    print("\nMÉTRICAS GLOBALES EN TEST (EUROS TOTALES):")
+    print("\nMÉTRICAS GLOBALES EN TEST:")
     print(f"   · MAE:  {mae:,.2f} €")
     print(f"   · RMSE: {rmse:,.2f} €")
     print(f"   · R2:   {r2:.4f}")
+    print(f"   · MAPE: {mape:.2f} %")
 
-    # 7. Métricas por distrito
+    # 3. MÉTRICAS POR DISTRITO
     X_test_eval = X_test.copy()
     X_test_eval['Precio_Real'] = y_test_final
     X_test_eval['Precio_Predicho'] = y_pred_final
     X_test_eval['Error_Absoluto'] = abs(X_test_eval['Precio_Real'] - X_test_eval['Precio_Predicho'])
+    X_test_eval['Error_Porcentual'] = (X_test_eval['Error_Absoluto'] / X_test_eval['Precio_Real']) * 100
     
-    error_por_distrito = X_test_eval.groupby('Distrito')['Error_Absoluto'].mean().sort_values(ascending=False)
+    # Calculamos el MAPE por distrito para TODOS
+    mape_por_distrito = X_test_eval.groupby('Distrito')['Error_Porcentual'].mean().sort_values(ascending=False)
 
-    print("\nMAE POR DISTRITOS (Peores predicciones):")
-    print(error_por_distrito.head(5).apply(lambda x: f"   {x:,.2f} €"))
+    print(f"\nMAPE POR DISTRITOS - LISTADO COMPLETO ({len(mape_por_distrito)} distritos):")
+    for distrito, valor in mape_por_distrito.items():
+        print(f"   · {distrito:<20}: {valor:.2f} %")
 
-    print("\nMAE POR DISTRITOS (Mejores predicciones):")
-    print(error_por_distrito.tail(5).sort_values().apply(lambda x: f"   {x:,.2f} €"))
+    # Gráfica de barras del MAPE por distrito
+    plt.figure(figsize=(12, 10))
+    
+    mape_ordenado = mape_por_distrito.sort_values(ascending=True)
+    
+    cmap = plt.cm.get_cmap('RdYlGn').reversed()
+    colors = cmap(np.linspace(0, 1, len(mape_ordenado)))
+    
+    mape_por_distrito.plot(kind='barh', color=colors)
+    plt.title(f'MAPE por Distrito - Mercado de {nombre_mercado.capitalize()}', fontsize=14)
+    plt.xlabel('Error Porcentual Medio (MAPE %)', fontsize=12)
+    plt.ylabel('Distrito', fontsize=12)
+    plt.grid(axis='x', linestyle='--', alpha=0.7)
+    plt.tight_layout()
+    
+    # Mostrar la gráfica
+    plt.show()
 
-    # 8. Importancia de las variables
+    # Importancia de las variables
     importancias = modelo_final.named_steps['regressor'].regressor_.feature_importances_
     nombres_cat = modelo_final.named_steps['preprocessor'].named_transformers_['cat'].named_steps['onehot'].get_feature_names_out(cat_cols)
     nombres_todas = num_cols + list(nombres_cat)
@@ -130,7 +146,7 @@ def evaluar_xgb_final_hibrido(df, nombre_mercado):
     for idx, row in top_importantes.iterrows():
         print(f"   {row['Variable']}: {row['Importancia']*100:.2f}%")
 
-    # 9. Registro en W&B
+    # Registro en W&B
     run = wandb.init(
         entity="pd1-c2526-team2",
         project=f"modelo-precio-viviendas-{nombre_mercado}",
@@ -138,12 +154,13 @@ def evaluar_xgb_final_hibrido(df, nombre_mercado):
         job_type="model-evaluation", 
         group=nombre_mercado
     )
-    
+
     wandb.log({
         "estrategia_target": "Precio/m2" if nombre_mercado == 'venta' else "Precio Total",
         "test_mae": mae,
         "test_rmse": rmse,
         "test_r2": r2,
+        "test_mape": mape,
         "n_estimators_usado": params["n_estimators"],
         "mercado": nombre_mercado,
         "modelo": "XGBoost (Híbrido Final)"
