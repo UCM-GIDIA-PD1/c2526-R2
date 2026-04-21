@@ -15,20 +15,20 @@ from utils.funciones_minio import crear_cliente_minio, bajar_minio
 # Mejores parametros según la fase de tuning (copiados manualmente desde los resultados de W&B)
 MEJORES_PARAMS_XGB = {
     "venta": {
-        "n_estimators": 895, 
-        "learning_rate": 0.09869010575131419, 
-        "max_depth": 7,
-        "min_child_weight":6,
-        "subsample": 0.9018360384495572,
-        "colsample_bytree": 0.8121770240668966
+        "n_estimators": 849, 
+        "learning_rate": 0.043396975107577444, 
+        "max_depth": 8,
+        "min_child_weight":7,
+        "subsample": 0.8281908057671924,
+        "colsample_bytree": 0.8572025726581108
     },
     "alquiler": {
-        "n_estimators": 472, 
-        "learning_rate": 0.039992474745400866, 
-        "max_depth": 13,
-        "min_child_weight": 8,
-        "subsample": 0.8005575058716043,
-        "colsample_bytree": 0.7229163764267956
+        "n_estimators": 915, 
+        "learning_rate": 0.05175244756697071, 
+        "max_depth": 7,
+        "min_child_weight": 5,
+        "subsample": 0.6685717435581119,
+        "colsample_bytree": 0.5846115448733098
     }
 }
 
@@ -119,12 +119,12 @@ def evaluar_xgb_final_hibrido(df, nombre_mercado):
     # Gráfica de barras del MAPE por distrito
     plt.figure(figsize=(12, 10))
     
-    mape_ordenado = mape_por_distrito.sort_values(ascending=True)
+    mape_grafica = mape_por_distrito.sort_values(ascending=True)
     
-    cmap = plt.cm.get_cmap('RdYlGn').reversed()
-    colors = cmap(np.linspace(0, 1, len(mape_ordenado)))
+    cmap = plt.get_cmap('RdYlGn_r')
+    colors = cmap(np.linspace(0, 1, len(mape_grafica)))
     
-    mape_por_distrito.plot(kind='barh', color=colors)
+    mape_grafica.plot(kind='barh', color=colors)
     plt.title(f'MAPE por Distrito - Mercado de {nombre_mercado.capitalize()}', fontsize=14)
     plt.xlabel('Error Porcentual Medio (MAPE %)', fontsize=12)
     plt.ylabel('Distrito', fontsize=12)
