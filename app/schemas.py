@@ -1,1 +1,136 @@
-from pydantic import BaseModel\nfrom typing import Any, Optional\n\nclass VentaInput(BaseModel):\n    Distrito: str\n    Superficie: float\n    Num_habitaciones: float\n    Banyos: float\n    Planta: float\n    Ventanas: str\n    Ascensor: float\n    Terraza: float\n    Balcon: float\n    Orientacion: str\n    Consumo: str\n    Anuncia: str\n    lat: float\n    lon: float\n    dist_min_alimentacion: float\n    dist_min_bibliotecas: float\n    cantidad_bibliotecas_cerca: float\n    dist_min_bomberos: float\n    cantidad_bomberos_cerca: float\n    dist_min_cementerios: float\n    cantidad_cementerios_cerca: float\n    dist_min_centros_dia: float\n    cantidad_centros_dia_cerca: float\n    dist_min_centros_educativos: float\n    cantidad_centros_educativos_cerca: float\n    dist_min_centros_mayores: float\n    cantidad_centros_mayores_cerca: float\n    dist_min_centros_sociales: float\n    cantidad_centros_sociales_cerca: float\n    dist_min_comercios: float\n    cantidad_comercios_cerca: float\n    dist_min_comisarias: float\n    cantidad_comisarias_cerca: float\n    dist_min_hospitales: float\n    cantidad_hospitales_cerca: float\n    dist_min_iglesias: float\n    cantidad_iglesias_cerca: float\n    dist_min_negativos: float\n    cantidad_negativos_cerca: float\n    dist_min_parques: float\n    cantidad_parques_cerca: float\n    dist_min_parques_bomberos: float\n    cantidad_parques_bomberos_cerca: float\n    dist_min_polideportivos: float\n    cantidad_polideportivos_cerca: float\n    dist_min_puntos_limpios: float\n    cantidad_puntos_limpios_cerca: float\n    dist_min_servicios_sociales: float\n    cantidad_servicios_sociales_cerca: float\n    dist_min_universidades: float\n    cantidad_universidades_cerca: float\n    dist_min_paradas: float\n    paradas_cerca: float\n    lineas_distintas_paradas_cerca: float\n    dist_min_estaciones: float\n    lineas_distintas_estaciones_cerca: float\n    anio_construccion: float\n    poblacion_total: float\n    pct_extranjeros: float\n    pct_mayores_65: float\n    pct_jovenes_30: float\n\nclass AlquilerInput(BaseModel):\n    Distrito: str\n    Superficie: float\n    Num_habitaciones: float\n    Banyos: float\n    Planta: float\n    Ventanas: str\n    Ascensor: float\n    Terraza: float\n    Balcon: float\n    Equipamiento: float\n    Orientacion: str\n    Consumo: str\n    Anuncia: str\n    lat: float\n    lon: float\n    dist_min_alimentacion: float\n    dist_min_bibliotecas: float\n    cantidad_bibliotecas_cerca: float\n    dist_min_bomberos: float\n    cantidad_bomberos_cerca: float\n    dist_min_cementerios: float\n    cantidad_cementerios_cerca: float\n    dist_min_centros_dia: float\n    cantidad_centros_dia_cerca: float\n    dist_min_centros_educativos: float\n    cantidad_centros_educativos_cerca: float\n    dist_min_centros_mayores: float\n    cantidad_centros_mayores_cerca: float\n    dist_min_centros_sociales: float\n    cantidad_centros_sociales_cerca: float\n    dist_min_comercios: float\n    cantidad_comercios_cerca: float\n    dist_min_comisarias: float\n    cantidad_comisarias_cerca: float\n    dist_min_hospitales: float\n    cantidad_hospitales_cerca: float\n    dist_min_iglesias: float\n    cantidad_iglesias_cerca: float\n    dist_min_negativos: float\n    cantidad_negativos_cerca: float\n    dist_min_parques: float\n    cantidad_parques_cerca: float\n    dist_min_parques_bomberos: float\n    cantidad_parques_bomberos_cerca: float\n    dist_min_polideportivos: float\n    cantidad_polideportivos_cerca: float\n    dist_min_puntos_limpios: float\n    cantidad_puntos_limpios_cerca: float\n    dist_min_servicios_sociales: float\n    cantidad_servicios_sociales_cerca: float\n    dist_min_universidades: float\n    cantidad_universidades_cerca: float\n    dist_min_paradas: float\n    paradas_cerca: float\n    lineas_distintas_paradas_cerca: float\n    dist_min_estaciones: float\n    lineas_distintas_estaciones_cerca: float\n    anio_construccion: float\n    poblacion_total: float\n    pct_extranjeros: float\n    pct_mayores_65: float\n    pct_jovenes_30: float\n\nclass TextoInput(BaseModel):\n    texto: str\n\nclass PredictionResponse(BaseModel):\n    model_name: str\n    prediction: float | str | int\n
+from pydantic import BaseModel
+from typing import Any, Optional
+
+class VentaInput(BaseModel):
+    Distrito: str
+    Superficie: float
+    Num_habitaciones: float
+    Banyos: float
+    Planta: float
+    Ventanas: str
+    Ascensor: float
+    Terraza: float
+    Balcon: float
+    Orientacion: str
+    Consumo: str
+    Anuncia: str
+    lat: float
+    lon: float
+    dist_min_alimentacion: float
+    dist_min_bibliotecas: float
+    cantidad_bibliotecas_cerca: float
+    dist_min_bomberos: float
+    cantidad_bomberos_cerca: float
+    dist_min_cementerios: float
+    cantidad_cementerios_cerca: float
+    dist_min_centros_dia: float
+    cantidad_centros_dia_cerca: float
+    dist_min_centros_educativos: float
+    cantidad_centros_educativos_cerca: float
+    dist_min_centros_mayores: float
+    cantidad_centros_mayores_cerca: float
+    dist_min_centros_sociales: float
+    cantidad_centros_sociales_cerca: float
+    dist_min_comercios: float
+    cantidad_comercios_cerca: float
+    dist_min_comisarias: float
+    cantidad_comisarias_cerca: float
+    dist_min_hospitales: float
+    cantidad_hospitales_cerca: float
+    dist_min_iglesias: float
+    cantidad_iglesias_cerca: float
+    dist_min_negativos: float
+    cantidad_negativos_cerca: float
+    dist_min_parques: float
+    cantidad_parques_cerca: float
+    dist_min_parques_bomberos: float
+    cantidad_parques_bomberos_cerca: float
+    dist_min_polideportivos: float
+    cantidad_polideportivos_cerca: float
+    dist_min_puntos_limpios: float
+    cantidad_puntos_limpios_cerca: float
+    dist_min_servicios_sociales: float
+    cantidad_servicios_sociales_cerca: float
+    dist_min_universidades: float
+    cantidad_universidades_cerca: float
+    dist_min_paradas: float
+    paradas_cerca: float
+    lineas_distintas_paradas_cerca: float
+    dist_min_estaciones: float
+    lineas_distintas_estaciones_cerca: float
+    anio_construccion: float
+    poblacion_total: float
+    pct_extranjeros: float
+    pct_mayores_65: float
+    pct_jovenes_30: float
+
+class AlquilerInput(BaseModel):
+    Distrito: str
+    Superficie: float
+    Num_habitaciones: float
+    Banyos: float
+    Planta: float
+    Ventanas: str
+    Ascensor: float
+    Terraza: float
+    Balcon: float
+    Equipamiento: float
+    Orientacion: str
+    Consumo: str
+    Anuncia: str
+    lat: float
+    lon: float
+    dist_min_alimentacion: float
+    dist_min_bibliotecas: float
+    cantidad_bibliotecas_cerca: float
+    dist_min_bomberos: float
+    cantidad_bomberos_cerca: float
+    dist_min_cementerios: float
+    cantidad_cementerios_cerca: float
+    dist_min_centros_dia: float
+    cantidad_centros_dia_cerca: float
+    dist_min_centros_educativos: float
+    cantidad_centros_educativos_cerca: float
+    dist_min_centros_mayores: float
+    cantidad_centros_mayores_cerca: float
+    dist_min_centros_sociales: float
+    cantidad_centros_sociales_cerca: float
+    dist_min_comercios: float
+    cantidad_comercios_cerca: float
+    dist_min_comisarias: float
+    cantidad_comisarias_cerca: float
+    dist_min_hospitales: float
+    cantidad_hospitales_cerca: float
+    dist_min_iglesias: float
+    cantidad_iglesias_cerca: float
+    dist_min_negativos: float
+    cantidad_negativos_cerca: float
+    dist_min_parques: float
+    cantidad_parques_cerca: float
+    dist_min_parques_bomberos: float
+    cantidad_parques_bomberos_cerca: float
+    dist_min_polideportivos: float
+    cantidad_polideportivos_cerca: float
+    dist_min_puntos_limpios: float
+    cantidad_puntos_limpios_cerca: float
+    dist_min_servicios_sociales: float
+    cantidad_servicios_sociales_cerca: float
+    dist_min_universidades: float
+    cantidad_universidades_cerca: float
+    dist_min_paradas: float
+    paradas_cerca: float
+    lineas_distintas_paradas_cerca: float
+    dist_min_estaciones: float
+    lineas_distintas_estaciones_cerca: float
+    anio_construccion: float
+    poblacion_total: float
+    pct_extranjeros: float
+    pct_mayores_65: float
+    pct_jovenes_30: float
+
+class TextoInput(BaseModel):
+    texto: str
+
+class PredictionResponse(BaseModel):
+    model_name: str
+    prediction: float | str | int

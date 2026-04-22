@@ -23,10 +23,10 @@ def build_fields_and_html(X, form_id, btn_text):
           {label_text}
           <input name="{col}" type="{html_type}" placeholder="Ej: val" required>
         </label>'''
-        js_parse += f'\\n    {col}: {js},'
+        js_parse += f'\n    {col}: {js},'
         
-    class_def = '\\n'.join(py_fields)
-    form_html = f'<form id="{form_id}" class="form-grid" style="grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));">{html_fields}\\n        <button type="submit" style="grid-column: 1 / -1;">{btn_text}</button>\\n      </form>'
+    class_def = '\n'.join(py_fields)
+    form_html = f'<form id="{form_id}" class="form-grid" style="grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));">{html_fields}\n        <button type="submit" style="grid-column: 1 / -1;">{btn_text}</button>\n      </form>'
     return class_def, form_html, js_parse
 
 def generate_code():
@@ -42,7 +42,7 @@ def generate_code():
     
     # 1. Generate schemas.py
     with open('app/schemas.py', 'w') as f:
-        f.write(f"from pydantic import BaseModel\\nfrom typing import Any, Optional\\n\\nclass VentaInput(BaseModel):\\n{v_class}\\n\\nclass AlquilerInput(BaseModel):\\n{a_class}\\n\\nclass TextoInput(BaseModel):\\n    texto: str\\n\\nclass PredictionResponse(BaseModel):\\n    model_name: str\\n    prediction: float | str | int\\n")
+        f.write(f"from pydantic import BaseModel\nfrom typing import Any, Optional\n\nclass VentaInput(BaseModel):\n{v_class}\n\nclass AlquilerInput(BaseModel):\n{a_class}\n\nclass TextoInput(BaseModel):\n    texto: str\n\nclass PredictionResponse(BaseModel):\n    model_name: str\n    prediction: float | str | int\n")
         
     # 2. Update routes
     routes_code = '''from fastapi import APIRouter
@@ -82,13 +82,13 @@ def predict_alquiler(data: AlquilerInput) -> PredictionResponse:
     for col in all_cols:
         col_type = df_a[col].dtype if col in df_a.columns else df_v[col].dtype
         js = f'Number(data.get("{col}"))' if pd.api.types.is_numeric_dtype(col_type) else f'String(data.get("{col}"))'
-        js_parse += f'\\n    {col}: {js},'
+        js_parse += f'\n    {col}: {js},'
         
     with open('app/web/app.js', 'r', encoding='utf-8') as f:
         app_js = f.read()
         
     app_js = re.sub(r'function parseHousingForm\\(form\\) \\{.*?\\};\\n\\}', 
-                    f'function parseHousingForm(form) {{\\n  const data = new FormData(form);\\n  return {{{js_parse}\\n  }};\\n}}', 
+                    f'function parseHousingForm(form) {{\n  const data = new FormData(form);\n  return {{{js_parse}\n  }};\n}}', 
                     app_js, flags=re.DOTALL)
                     
     with open('app/web/app.js', 'w', encoding='utf-8') as f:
