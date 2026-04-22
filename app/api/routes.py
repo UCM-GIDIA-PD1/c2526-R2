@@ -2,11 +2,10 @@ from fastapi import APIRouter, File, UploadFile
 
 from app.schemas import AlquilerInput, PredictionResponse, TextoInput, VentaInput
 from app.services.demo_predictors import (
-    predict_alquiler_demo,
     predict_imagen_demo,
     predict_texto_demo,
-    predict_venta_demo,
 )
+from app.services.predictors import predict_tabular
 
 
 router = APIRouter(prefix="/predict", tags=["predictions"])
@@ -14,24 +13,14 @@ router = APIRouter(prefix="/predict", tags=["predictions"])
 
 @router.post("/venta", response_model=PredictionResponse)
 def predict_venta(data: VentaInput) -> PredictionResponse:
-    prediction = predict_venta_demo(
-        m2=data.m2,
-        habitaciones=data.habitaciones,
-        banos=data.banos,
-        codigo_postal=data.codigo_postal,
-    )
-    return PredictionResponse(model_name="venta-demo", prediction=prediction)
+    prediction = predict_tabular("venta", data.model_dump())
+    return PredictionResponse(model_name="venta-xgboost", prediction=prediction)
 
 
 @router.post("/alquiler", response_model=PredictionResponse)
 def predict_alquiler(data: AlquilerInput) -> PredictionResponse:
-    prediction = predict_alquiler_demo(
-        m2=data.m2,
-        habitaciones=data.habitaciones,
-        banos=data.banos,
-        codigo_postal=data.codigo_postal,
-    )
-    return PredictionResponse(model_name="alquiler-demo", prediction=prediction)
+    prediction = predict_tabular("alquiler", data.model_dump())
+    return PredictionResponse(model_name="alquiler-xgboost", prediction=prediction)
 
 
 @router.post("/texto", response_model=PredictionResponse)

@@ -22,6 +22,12 @@ def _normalize_result(result: Any) -> str | float | int:
 def predict_tabular(model_key: str, payload: dict[str, Any]) -> str | float | int:
     model = model_loader.get(model_key)
     df = pd.DataFrame([payload])
+    
+    # Preprocesamiento de inferencia consistente con el entrenamiento
+    cat_cols = df.select_dtypes(exclude=['int64', 'float64', 'int32', 'float32']).columns.tolist()
+    if cat_cols:
+        df[cat_cols] = df[cat_cols].fillna('Desconocido').astype(str)
+        
     prediction = model.predict(df)
     return _normalize_result(prediction)
 

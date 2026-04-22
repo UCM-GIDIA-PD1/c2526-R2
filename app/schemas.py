@@ -2,17 +2,10 @@ from pydantic import BaseModel, Field
 
 
 class VentaInput(BaseModel):
-    m2: float = Field(..., gt=0)
-    habitaciones: int = Field(..., ge=0)
-    banos: int = Field(..., ge=0)
-    codigo_postal: str
-
+    model_config = {"extra": "allow"}
 
 class AlquilerInput(BaseModel):
-    m2: float = Field(..., gt=0)
-    habitaciones: int = Field(..., ge=0)
-    banos: int = Field(..., ge=0)
-    codigo_postal: str
+    model_config = {"extra": "allow"}
 
 
 class TextoInput(BaseModel):
