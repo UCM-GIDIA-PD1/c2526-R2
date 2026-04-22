@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import joblib
 import wandb
+import os
 from sklearn.pipeline import Pipeline
 from sklearn.compose import ColumnTransformer, TransformedTargetRegressor
 from sklearn.impute import SimpleImputer
@@ -13,25 +14,25 @@ from utils.funciones_minio import crear_cliente_minio, bajar_minio
 # Hiperparámetros ganadores de la fase de Tuning
 MEJORES_PARAMS_XGB = {
     "venta": {
-        "n_estimators": 895, 
-        "learning_rate": 0.09869010575131419, 
-        "max_depth": 7,
-        "min_child_weight":6,
-        "subsample": 0.9018360384495572,
-        "colsample_bytree": 0.8121770240668966
+        "n_estimators": 849, 
+        "learning_rate": 0.043396975107577444, 
+        "max_depth": 8,
+        "min_child_weight":7,
+        "subsample": 0.8281908057671924,
+        "colsample_bytree": 0.8572025726581108
     },
     "alquiler": {
-        "n_estimators": 472, 
-        "learning_rate": 0.039992474745400866, 
-        "max_depth": 13,
-        "min_child_weight": 8,
-        "subsample": 0.8005575058716043,
-        "colsample_bytree": 0.7229163764267956
+        "n_estimators": 915, 
+        "learning_rate": 0.05175244756697071, 
+        "max_depth": 7,
+        "min_child_weight": 5,
+        "subsample": 0.6685717435581119,
+        "colsample_bytree": 0.5846115448733098
     }
 }
 
 def entrenar_y_guardar_produccion(df, nombre_mercado):
-    print(f"ENTRENANDO MODELO DE PRODUCCIÓN: {nombre_mercado.upper()}")
+    print(f"\nENTRENANDO MODELO DE PRODUCCIÓN: {nombre_mercado.upper()}")
     print(f"Usando el 100% de los datos: {len(df)} registros.")
 
     # 1. Separación de variables
@@ -75,35 +76,43 @@ def entrenar_y_guardar_produccion(df, nombre_mercado):
     ])
 
     # 4. ENTRENAMIENTO (100% de los datos)
-    print("Entrenando el modelo definitivo... (Esto puede tardar un poco)")
+    print("Entrenando el modelo definitivo...")
     modelo_produccion.fit(X, y)
 
-    # 5. Guardado local
+    # 5. Guardado temporal y subida a W&B
     nombre_archivo = f"modelo_produccion_{nombre_mercado}.pkl"
-    joblib.dump(modelo_produccion, nombre_archivo)
-    print(f"Modelo local guardado en disco como: {nombre_archivo}")
+    
+    try:
+        # Guardamos en disco de forma temporal
+        joblib.dump(modelo_produccion, nombre_archivo)
+        
+        # 6. Registro en Weights & Biases
+        print("Subiendo el modelo al Model Registry de W&B...")
+        run = wandb.init(
+            entity="pd1-c2526-team2", 
+            project=f"modelo-precio-viviendas-{nombre_mercado}",
+            name=f"produccion-final-{nombre_mercado}",
+            job_type="model-registry"
+        )
+        
+        # Creamos el artefacto
+        artefacto = wandb.Artifact(
+            name=f"xgboost-hibrido-{nombre_mercado}", 
+            type='model',
+            description=f"Modelo de producción para {nombre_mercado} entrenado con el 100% de los datos."
+        )
+        
+        # Adjuntamos el archivo .pkl y lo subimos
+        artefacto.add_file(nombre_archivo)
+        run.log_artifact(artefacto)
+        run.finish()
+        print(f"¡Artefacto subido con éxito a W&B!")
 
-    # 6. MLOps: Registro en Weights & Biases
-    print("Subiendo el modelo al Model Registry de W&B...")
-    run = wandb.init(
-        entity="pd1-c2526-team2", 
-        project=f"modelo-precio-viviendas-{nombre_mercado}",
-        name=f"produccion-final-{nombre_mercado}",
-        job_type="model-registry"
-    )
-    
-    # Creamos el artefacto
-    artefacto = wandb.Artifact(
-        name=f"xgboost-hibrido-{nombre_mercado}", 
-        type='model',
-        description=f"Modelo de producción para {nombre_mercado} entrenado con el 100% de los datos."
-    )
-    
-    # Adjuntamos el archivo .pkl que acabamos de crear y lo subimos
-    artefacto.add_file(nombre_archivo)
-    run.log_artifact(artefacto)
-    run.finish()
-    print(f"¡Artefacto subido con éxito a W&B!")
+    finally:
+        # 7. Limpieza del archivo temporal
+        if os.path.exists(nombre_archivo):
+            os.remove(nombre_archivo)
+            print(f"El archivo temporal '{nombre_archivo}' ha sido eliminado de tu equipo.")
 
 if __name__ == "__main__":
     cliente = crear_cliente_minio()
