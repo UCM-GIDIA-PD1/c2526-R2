@@ -50,14 +50,22 @@ def entrenar_y_guardar_produccion(df, nombre_mercado):
     
     X[cat_cols] = X[cat_cols].fillna('Desconocido').astype(str)
 
-    # 2. Preprocesamiento
+    # 2. Partición 80/20 estratificada por 'Distrito' según la regla de negocio
+    from sklearn.model_selection import train_test_split, cross_val_score
+    from sklearn.metrics import mean_absolute_percentage_error
+    
+    print("Realizando partición 80% entrenamiento y 20% test, estratificada por 'Distrito'...")
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.20, random_state=42, stratify=X['Distrito'])
+
+    # 3. Preprocesamiento
     num_transformer = Pipeline(steps=[('imputer', SimpleImputer(strategy='median')),('scaler', StandardScaler())])
     cat_transformer = Pipeline(steps=[('onehot', OneHotEncoder(handle_unknown='ignore', sparse_output=False))])
     preprocessor = ColumnTransformer(transformers=[('num', num_transformer, num_cols),('cat', cat_transformer, cat_cols)])
 
-    # 3. Ensamblaje del Modelo Final
+    # 4. Ensamblaje del Modelo Final
     params = MEJORES_PARAMS_XGB[nombre_mercado]
     modelo_produccion = Pipeline(steps=[
+
         ('preprocessor', preprocessor),
         ('regressor', TransformedTargetRegressor(
             regressor=XGBRegressor(
@@ -75,9 +83,27 @@ def entrenar_y_guardar_produccion(df, nombre_mercado):
         ))
     ])
 
-    # 4. ENTRENAMIENTO (100% de los datos)
-    print("Entrenando el modelo definitivo...")
+    # 5. CROSS VALIDATION EN TRAINING (80%)
+    print("Aplicando 5-Fold Cross Validation sobre conjunto de entrenamiento...")
+    scores = cross_val_score(modelo_produccion, X_train, y_train, cv=5, scoring='neg_mean_absolute_percentage_error', n_jobs=-1)
+    print(f"-> [CV 5-Folds] MAPE Promedio: {-scores.mean()*100:.2f}%")
+    
+    # 6. EVALUACIÓN EN HOLD-OUT (20%)
+    print("Entrenando temporalmente para hold-out...")
+    modelo_produccion.fit(X_train, y_train)
+    y_pred_test = modelo_produccion.predict(X_test)
+    test_mape = mean_absolute_percentage_error(y_test, y_pred_test) * 100
+    print(f"-> [Test] MAPE en Test dataset (20%): {test_mape:.2f}%\n")
+
+    # 7. ENTRENAMIENTO DEFINTIVO (100% de los datos)
+    print("Entrenando el modelo definitivo con el 100% de los datos para producción...")
     modelo_produccion.fit(X, y)
+    
+    # También asegurar la persistencia en local para FastAPI
+    import pathlib
+    local_artifacts_dir = pathlib.Path(__file__).resolve().parents[3] / "src" / "model_artifacts"
+    local_artifacts_dir.mkdir(parents=True, exist_ok=True)
+    joblib.dump(modelo_produccion, local_artifacts_dir / f"{nombre_mercado}_model.pkl")
 
     # 5. Guardado temporal y subida a W&B
     nombre_archivo = f"modelo_produccion_{nombre_mercado}.pkl"

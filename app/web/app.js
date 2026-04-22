@@ -82,7 +82,6 @@ function parseHousingForm(form) {
     pct_mayores_65: Number(data.get("pct_mayores_65")),
     pct_jovenes_30: Number(data.get("pct_jovenes_30")),
   };
-};
 }
 
 function initPrecioTabs() {
