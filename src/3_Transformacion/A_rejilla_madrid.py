@@ -445,8 +445,8 @@ def inicio_rejillas():
     cliente = crear_cliente_minio()
     df_coorenadas = obtener_coordenadas_procesadas(cliente)
     df_coorenadas = limpiar_coordenadas_lejanas(df_coorenadas)
-    df_viviendas_venta = descargar_datos(cliente,"datos_primarios","viviendas_venta.parquet")
-    df_viviendas_alquiler = descargar_datos(cliente,"datos_primarios","viviendas_alquiler.parquet")
+    df_viviendas_venta = descargar_datos(cliente,PATH_PRIMARIOS_LIMPIO,"viviendas_venta.parquet")
+    df_viviendas_alquiler = descargar_datos(cliente,PATH_PRIMARIOS_LIMPIO,"viviendas_alquiler.parquet")
     diccionario_transporte = {}
     for transporte in COMPONENTES_TRANSPORTE:
         df = descargar_datos(cliente,"cleaned/transporte",transporte["fichero"])

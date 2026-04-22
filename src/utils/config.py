@@ -68,7 +68,7 @@ COLUMNAS_CARACTERISTICAS = ['id','Nombre','Barrio','Distrito','Calle','Precio','
 
 COLUMNAS_IMAGENES = ['id','Imagenes']
 MODOS = ['venta','alquiler']
-PATH_PRIMARIOS_LIMPIO = "datos_primarios"
+PATH_PRIMARIOS_LIMPIO = "cleaned/datos_primarios"
 PATH_PRIMARIOS_RAW = "raw/datos_primarios/"
 ARCHIVOS_COORDENADAS = "coordenadas.parquet"
 ARCHIVOS_VIVIENDAS = "viviendas"

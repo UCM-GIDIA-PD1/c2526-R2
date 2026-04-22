@@ -4,6 +4,7 @@ from utils.config import COMPONENTES_TRANSPORTE, MODOS
 from scipy.spatial import cKDTree
 import numpy as np
 from utils.funciones_minio import bajar_mapa_minio, bajar_minio, buscar_todos_los_archivos, crear_cliente_minio, subir_mapa_minio
+from utils.config import PATH_PRIMARIOS_LIMPIO
 from minio import Minio
 import folium
 import tempfile
@@ -233,8 +234,8 @@ def inicio_viviendas():
     Se encarga de descargar todos los datasets y subirlos a rejillas
     """
     cliente = crear_cliente_minio()
-    df_viviendas_venta = descargar_datos(cliente,"datos_primarios","viviendas_venta.parquet")
-    df_viviendas_alquiler = descargar_datos(cliente,"datos_primarios","viviendas_alquiler.parquet")
+    df_viviendas_venta = descargar_datos(cliente,PATH_PRIMARIOS_LIMPIO,"viviendas_venta.parquet")
+    df_viviendas_alquiler = descargar_datos(cliente,PATH_PRIMARIOS_LIMPIO,"viviendas_alquiler.parquet")
     diccionario_viviendas = {
         "venta": df_viviendas_venta,
         "alquiler": df_viviendas_alquiler
