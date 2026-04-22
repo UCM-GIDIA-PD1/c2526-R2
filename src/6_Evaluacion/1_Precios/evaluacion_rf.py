@@ -7,7 +7,7 @@ from sklearn.compose import ColumnTransformer
 from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import StandardScaler, OneHotEncoder
 from sklearn.ensemble import RandomForestRegressor
-from sklearn.metrics import mean_absolute_error, root_mean_squared_error, r2_score
+from sklearn.metrics import mean_absolute_error, root_mean_squared_error, r2_score, mean_absolute_percentage_error
 
 from utils.funciones_minio import crear_cliente_minio, bajar_minio
 
@@ -75,25 +75,22 @@ def evaluar_rf_final(df, nombre_mercado):
     mae = mean_absolute_error(y_test, y_pred)
     rmse = root_mean_squared_error(y_test, y_pred)
     r2 = r2_score(y_test, y_pred)
-
-    print("\n MÉTRICAS GLOBALES EN TEST:")
-    print(f"   MAE:  {mae:,.2f} €")
-    print(f"   RMSE: {rmse:,.2f} €")
-    print(f"   R2:   {r2:.4f}")
+    mape = mean_absolute_percentage_error(y_test, y_pred) * 100
 
     # Métricas por distrito
     X_test_eval = X_test.copy()
     X_test_eval['Precio_Real'] = y_test
     X_test_eval['Precio_Predicho'] = y_pred
     X_test_eval['Error_Absoluto'] = abs(X_test_eval['Precio_Real'] - X_test_eval['Precio_Predicho'])
+    X_test_eval['Error_Porcentual'] = (X_test_eval['Error_Absoluto'] / X_test_eval['Precio_Real']) * 100
 
-    error_por_distrito = X_test_eval.groupby('Distrito')['Error_Absoluto'].mean().sort_values(ascending=False)
+    mape_por_distrito = X_test_eval.groupby('Distrito')['Error_Porcentual'].mean().sort_values(ascending=False)
 
-    print("\n MAE POR DISTRITOS (Top 5 con MAYOR error - Peores predicciones):")
-    print(error_por_distrito.head(5).apply(lambda x: f"   {x:,.2f} €"))
+    print("\n MAPE POR DISTRITOS (Top 5 con MAYOR error - Peores predicciones):")
+    print(mape_por_distrito.head(5).apply(lambda x: f"   {x:.2f} %"))
 
-    print("\n MAE POR DISTRITOS (Top 5 con MENOR error - Mejores predicciones):")
-    print(error_por_distrito.tail(5).sort_values().apply(lambda x: f"   {x:,.2f} €"))
+    print("\n MAPE POR DISTRITOS (Top 5 con MENOR error - Mejores predicciones):")
+    print(mape_por_distrito.tail(5).sort_values().apply(lambda x: f"   {x:.2f} %"))
 
     # Importancia de las variables (Específico de Random Forest)
     print("\n IMPORTANCIA DE LAS VARIABLES (Top 10):")
@@ -123,6 +120,7 @@ def evaluar_rf_final(df, nombre_mercado):
         "test_mae": mae,
         "test_rmse": rmse,
         "test_r2": r2,
+        "test_mape": mape,
         "n_estimators_usado": params["n_estimators"],
         "max_depth_usado": params["max_depth"] if params["max_depth"] is not None else 0, # W&B no traga None
         "mercado": nombre_mercado,

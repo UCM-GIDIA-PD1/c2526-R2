@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 import wandb
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import mean_absolute_error, root_mean_squared_error, r2_score
+from sklearn.metrics import mean_absolute_error, root_mean_squared_error, r2_score, mean_absolute_percentage_error
 
 from utils.funciones_minio import crear_cliente_minio, bajar_minio
 
@@ -33,6 +33,7 @@ def calculo_medias_por_distrito(df, nombre_mercado):
     mae_base = mean_absolute_error(y_test, y_pred_baseline)
     rmse_base = root_mean_squared_error(y_test, y_pred_baseline)
     r2_base = r2_score(y_test, y_pred_baseline)
+    mape_base = mean_absolute_percentage_error(y_test, y_pred_baseline) * 100
 
     # 4. Registramos en W&B
     run = wandb.init(
@@ -47,6 +48,7 @@ def calculo_medias_por_distrito(df, nombre_mercado):
         "test_mae": mae_base,
         "test_rmse": rmse_base,
         "test_r2": r2_base,
+        "test_mape": mape_base,
         "mercado": nombre_mercado,
         "modelo": "Baseline (Distrito)"
     })

@@ -11,7 +11,7 @@ from sklearn.neighbors import KNeighborsRegressor
 from sklearn.feature_selection import SelectKBest, mutual_info_regression
 from sklearn.decomposition import PCA
 from sklearn.inspection import permutation_importance
-from sklearn.metrics import mean_absolute_error, root_mean_squared_error, r2_score
+from sklearn.metrics import mean_absolute_error, root_mean_squared_error, r2_score, mean_absolute_percentage_error
 
 from utils.funciones_minio import crear_cliente_minio, bajar_minio
 
@@ -162,23 +162,26 @@ def evaluar_knn_final(df, nombre_mercado):
     mae = mean_absolute_error(y_test, y_pred)
     rmse = root_mean_squared_error(y_test, y_pred)
     r2 = r2_score(y_test, y_pred)
+    mape = mean_absolute_percentage_error(y_test, y_pred) * 100
 
     print("\n Métricas globales en test:")
     print(f"MAE: {mae:.2f}")
     print(f"RMSE: {rmse:.2f}")
     print(f"R2: {r2:.4f}")
+    print(f"MAPE: {mape:.2f} %")
 
     #10. Métricas por distrito
     X_test_eval = X_test.copy()
     X_test_eval["Precio_Real"] = y_test.values
     X_test_eval["Precio_Predicho"] = y_pred
     X_test_eval["Error_Absoluto"] = np.abs(X_test_eval["Precio_Real"] - X_test_eval["Precio_Predicho"])
-    error_por_distrito = X_test_eval.groupby("Distrito")["Error_Absoluto"].mean().sort_values(ascending=False)
+    X_test_eval["Error_Porcentual"] = X_test_eval["Error_Absoluto"] / X_test_eval["Precio_Real"].replace(0, np.nan) * 100
+    mape_por_distrito = X_test_eval.groupby("Distrito")["Error_Porcentual"].mean().sort_values(ascending=False)
 
-    print("\n MAE por distrito (top 5 con mayor error - peores predicciones):")
-    print(error_por_distrito.head(5).apply(lambda x: f"{x:.2f} €"))
-    print("\n MAE por distrito (top 5 con menor error - mejores predicciones):")
-    print(error_por_distrito.tail(5).sort_values().apply(lambda x: f"{x:.2f} €"))
+    print("\n MAPE por distrito (top 5 con mayor error - peores predicciones):")
+    print(mape_por_distrito.head(5).apply(lambda x: f"{x:.2f} %"))
+    print("\n MAPE por distrito (top 5 con menor error - mejores predicciones):")
+    print(mape_por_distrito.tail(5).sort_values().apply(lambda x: f"{x:.2f} %"))
 
     #11. Importancia de variables
     print("\n Importancia de variables (top 10):")
@@ -218,6 +221,7 @@ def evaluar_knn_final(df, nombre_mercado):
         "test_mae": mae,
         "test_rmse": rmse,
         "test_r2": r2,
+        "test_mape": mape,
         "mercado": nombre_mercado,
         "modelo": "KNN (Final)",
         "scaler_usado": params["scaler"],

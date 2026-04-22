@@ -7,7 +7,7 @@ from sklearn.compose import ColumnTransformer
 from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import StandardScaler, OneHotEncoder
 from sklearn.linear_model import Lasso
-from sklearn.metrics import mean_absolute_error, root_mean_squared_error, r2_score
+from sklearn.metrics import mean_absolute_error, root_mean_squared_error, r2_score, mean_absolute_percentage_error
 
 from utils.funciones_minio import crear_cliente_minio, bajar_minio
 
@@ -59,43 +59,36 @@ def evaluar_modelo_final(df, nombre_mercado):
     mae = mean_absolute_error(y_test, y_pred)
     rmse = root_mean_squared_error(y_test, y_pred)
     r2 = r2_score(y_test, y_pred)
+    mape = mean_absolute_percentage_error(y_test, y_pred) * 100
 
     # Métricas por distrito
     X_test_eval = X_test.copy()
     X_test_eval['Precio_Real'] = y_test
     X_test_eval['Precio_Predicho'] = y_pred
     X_test_eval['Error_Absoluto'] = abs(X_test_eval['Precio_Real'] - X_test_eval['Precio_Predicho'])
-    
+    X_test_eval['Error_Porcentual'] = (X_test_eval['Error_Absoluto'] / X_test_eval['Precio_Real']) * 100
+
     # Calculamos la media de error por distrito y ordenamos de peor a mejor
-    error_por_distrito = X_test_eval.groupby('Distrito')['Error_Absoluto'].mean().sort_values(ascending=False)
+    mape_por_distrito = X_test_eval.groupby('Distrito')['Error_Porcentual'].mean().sort_values(ascending=False)
 
-    print("\n MAE POR DISTRITOS (Top 5 con MAYOR error - Peores predicciones):")
-    print(error_por_distrito.head(5).apply(lambda x: f"   {x:,.2f} €"))
+    print("\nMAPE POR DISTRITOS (Peores predicciones en %):")
+    print(mape_por_distrito.head(5).apply(lambda x: f"   {x:.2f} %"))
 
-    print("\n MAE POR DISTRITOS (Top 5 con MENOR error - Mejores predicciones):")
-    # Cogemos los últimos 5, los ordenamos de menor a mayor y los imprimimos
-    print(error_por_distrito.tail(5).sort_values().apply(lambda x: f"   {x:,.2f} €"))
+    print("\nMAPE POR DISTRITOS (Mejores predicciones en %):")
+    print(mape_por_distrito.tail(5).sort_values().apply(lambda x: f"   {x:.2f} %"))
 
-    # -Influencia de las variables (coeficientes del Lasso)
-    print("\n Variables que más influyen en el precio:")
-    print("\n Top 5 que más SUMAN al precio:")
-
-    # Extraemos los nombres de las columnas tras el OneHotEncoder
+    # 8. Influencia de las variables (coeficientes del Lasso)
+    print("\nTop 5 variables que más SUMAN al precio:")
     nombres_cat = modelo_final.named_steps['preprocessor'].named_transformers_['cat'].named_steps['onehot'].get_feature_names_out(cat_cols)
     nombres_todas = num_cols + list(nombres_cat)
-    
-    # Extraemos los coeficientes del Lasso
     coeficientes = modelo_final.named_steps['regressor'].coef_
-    
-    # Juntamos nombres y coeficientes en un DataFrame
     df_coef = pd.DataFrame({'Variable': nombres_todas, 'Impacto_Euros': coeficientes})
     
-    # Variables que más encarecen
     top_positivas = df_coef.sort_values(by='Impacto_Euros', ascending=False).head(5)
     for idx, row in top_positivas.iterrows():
         print(f"   {row['Variable']}: +{row['Impacto_Euros']:,.2f} €")
 
-    print("\n Top 5 que más RESTAN al precio:")
+    print("\nTop 5 variables que más RESTAN al precio:")
     top_negativas = df_coef.sort_values(by='Impacto_Euros', ascending=True).head(5)
     for idx, row in top_negativas.iterrows():
         print(f"   {row['Variable']}: {row['Impacto_Euros']:,.2f} €")
@@ -113,6 +106,7 @@ def evaluar_modelo_final(df, nombre_mercado):
         "test_mae": mae,
         "test_rmse": rmse,
         "test_r2": r2,
+        "test_mape": mape,
         "alpha_usado": mejor_alpha,
         "mercado": nombre_mercado,
         "modelo": "Lasso (Final)"
