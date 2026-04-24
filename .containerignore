@@ -1,0 +1,36 @@
+# Control de versiones
+.git/
+.gitignore
+
+# Entornos virtuales y dependencias locales
+.venv/
+__pycache__/
+*.pyc
+.python-version
+uv.lock
+
+# Configuraciones y logs
+.env
+.idea/
+wandb/
+
+# Archivos de Jupyter y scripts sueltos no relacionados
+*.ipynb
+generate_frontend.py
+
+# Directorios de datos, scraping y entrenamiento (no necesarios para ejecutar el servidor web)
+src/1_Extraccion/
+src/2_Limpieza/
+src/3_Transformacion/
+src/4_Analisis/
+src/5_Modelos/
+src/6_Evaluacion/
+
+# Datasets locales y artefactos de datos pesados
+dataset_ml/
+datos_optimizados_tfrecords/
+datos_locales/
+*.parquet
+*.tfrecord
+*.h5
+*.hdf5
