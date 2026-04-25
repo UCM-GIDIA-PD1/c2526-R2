@@ -30,7 +30,7 @@ def reorganizar_imagenes_por_clase(cliente:Minio, prefijo_destino="cleaned/datas
         contadores_chunks[clase_nombre]+=1
         
     for modo in MODOS:
-        nombre_path = f"datos_primarios/imagenes/{modo}"
+        nombre_path = f"cleaned/datos_primarios/imagenes/{modo}"
         objetos_origen = buscar_todos_los_archivos(cliente,nombre_path)
     
         for obj in tqdm(objetos_origen,desc = f"Dividiendo y transfiriendo imágenes de anuncios de {modo}"):
@@ -84,7 +84,7 @@ def reorganizar_imagenes_train_test(cliente, prefijo_destino="dataset_ml/dataset
         contadores_chunks[split_nombre][clase_nombre] += 1
         
     for modo in MODOS:
-        nombre_path = f"datos_primarios/imagenes/{modo}"
+        nombre_path = f"cleaned/datos_primarios/imagenes/{modo}"
         objetos_origen = buscar_todos_los_archivos(cliente, nombre_path)
     
         for obj in tqdm(objetos_origen, desc=f"Dividiendo (Train/Test) imágenes de {modo}"):
