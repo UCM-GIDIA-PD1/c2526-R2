@@ -134,4 +134,5 @@ def obtener_tamano_imagen(imagen_pil):
     
 if __name__ == "__main__":
     cliente = crear_cliente_minio()
+    reorganizar_imagenes_por_clase(cliente)
     reorganizar_imagenes_train_test(cliente)
