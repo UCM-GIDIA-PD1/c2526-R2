@@ -165,23 +165,27 @@ def decodificar_TfRecord(ejemplo_serializado):
 
 def crear_dataloader_tfrecord(fase, batch_size=32):
     """
-    Carga los TFRecords, los parsea y los pasa al modelo.
+    Carga los TFRecords usando Interleave para mezclar datos de múltiples 
+    archivos simultáneamente.
     """
     carpeta_fase = os.path.join("Dataset_Imagenes", fase)
     patron_archivos = os.path.join(carpeta_fase, "*.tfrecord")
     
-    lista_archivos = tf.data.Dataset.list_files(patron_archivos)
+    lista_archivos = tf.data.Dataset.list_files(patron_archivos, shuffle=(fase == "train"))
     
-    dataset = tf.data.TFRecordDataset(lista_archivos, num_parallel_reads=tf.data.AUTOTUNE)
+    dataset = lista_archivos.interleave(
+        lambda x: tf.data.TFRecordDataset(x, num_parallel_reads=tf.data.AUTOTUNE),
+        cycle_length=4,  
+        num_parallel_calls=tf.data.AUTOTUNE
+    )
     
     dataset = dataset.map(decodificar_TfRecord, num_parallel_calls=tf.data.AUTOTUNE)
     
     if fase == "train":
-        dataset = dataset.shuffle(buffer_size=2000)
+        dataset = dataset.shuffle(buffer_size=4000)
         dataset = dataset.repeat() 
         
     dataset = dataset.batch(batch_size)
-    
     dataset = dataset.prefetch(buffer_size=tf.data.AUTOTUNE)
     
     return dataset
@@ -459,8 +463,8 @@ def probar_cnn(configuracion, cliente_minio=None):
         dataset_entrenamiento = crear_dataloader_tfrecord("train", batch_size=BATCH_SIZE)
         dataset_test = crear_dataloader_tfrecord("test", batch_size=BATCH_SIZE)
         
-        pasos_train = 1000  
-        pasos_test = 200
+        pasos_train = 2000  
+        pasos_test = 500
 
     print(f"  Construyendo modelo: {configuracion['tipo'].upper()} | Capas: {configuracion['capas']} | Filtros: {configuracion['filtros']}")
     if configuracion["tipo"] == "mejorada":

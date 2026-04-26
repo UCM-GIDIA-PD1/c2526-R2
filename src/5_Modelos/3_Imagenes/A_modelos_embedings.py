@@ -3,7 +3,6 @@ import numpy as np
 import joblib
 import wandb
 import os
-import tempfile
 import plotly.express as px
 from PIL import Image, ImageOps
 import io
@@ -19,13 +18,12 @@ from sklearn.manifold import TSNE
 import umap
 from sklearn.svm import LinearSVC
 from sklearn.metrics import accuracy_score, f1_score,recall_score
-from sklearn.model_selection import cross_validate, train_test_split, cross_val_score
+from sklearn.model_selection import cross_validate, train_test_split
 from utils.funciones_minio import crear_cliente_minio,bajar_minio,subir_minio,buscar_todos_los_archivos
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.preprocessing import LabelEncoder
 from sklearn.decomposition import PCA
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.model_selection import StratifiedKFold
 from sklearn.preprocessing import LabelEncoder
 import optuna
 from tqdm import tqdm
