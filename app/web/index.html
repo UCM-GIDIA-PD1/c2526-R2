@@ -8,108 +8,38 @@
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
+  <div class="bg-glow bg-glow-1"></div>
+  <div class="bg-glow bg-glow-2"></div>
 
-  <!-- ── Navigation ── -->
-  <nav class="site-nav" id="site-nav">
-    <a href="/" class="site-nav__logo">M<span>Ai</span>Day</a>
-    <ul class="site-nav__links">
-      <li><a href="/" class="active">Inicio</a></li>
-      <li><a href="/precios">Predicción de Precios</a></li>
-      <li><a href="/analisis">Análisis Avanzado</a></li>
-    </ul>
-  </nav>
-
-  <!-- ── Hero ── -->
-  <section class="hero" id="hero">
-    <div class="hero__bg"></div>
-    <div class="hero__overlay"></div>
-    <div class="hero__content">
-      <span class="hero__badge">Plataforma MAiDay</span>
-      <h1>Inteligencia Inmobiliaria<br>de <em>Precisión</em></h1>
-      <p class="hero__subtitle">
-        Modelos de machine learning entrenados con datos reales de Madrid.
-        Predicción de precios de venta y alquiler, clasificación de texto e imagen.
+  <main class="container">
+    <header class="hero">
+      <span class="badge">MAiDay</span>
+      <h1>Plataforma Inteligente de Prediccion Inmobiliaria</h1>
+      <p>
+        Explora tus modelos de machine learning desde una interfaz moderna.
+        Accede a prediccion de precios y analisis avanzado de texto e imagen.
       </p>
-      <a href="/precios" class="hero__cta">Obtener Valoración</a>
-    </div>
-  </section>
+    </header>
 
-  <!-- ── Stats Bar ── -->
-  <section class="stats-bar animate-in" id="stats-bar">
-    <div class="stat-item">
-      <div class="stat-item__number">4</div>
-      <div class="stat-item__label">Modelos de Machine Learning<br>entrenados y desplegados</div>
-    </div>
-    <div class="stat-item">
-      <div class="stat-item__number">+60</div>
-      <div class="stat-item__label">Variables de entrada<br>por predicción</div>
-    </div>
-    <div class="stat-item">
-      <div class="stat-item__number">XGBoost</div>
-      <div class="stat-item__label">Algoritmo de precisión<br>para precios inmobiliarios</div>
-    </div>
-  </section>
+    <section class="nav-grid">
+      <a class="nav-card nav-card-prices" href="/precios">
+        <h2>Prediccion de Precios</h2>
+        <p>Modelos de venta y alquiler con formularios claros y resultados visuales.</p>
+        <span class="nav-link">Ir a precios</span>
+      </a>
 
-  <!-- ── Services ── -->
-  <section class="section">
-    <div class="container" style="padding-top: 0;">
-      <div class="section__header animate-in">
-        <span class="section__label">Nuestros Servicios</span>
-        <h2 class="section__title">Cada propiedad tiene un valor individual</h2>
-      </div>
-      <div class="nav-grid">
-        <a class="nav-card animate-in" href="/precios">
-          <div class="nav-card__icon">
-            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-              <path d="M12 2L2 7l10 5 10-5-10-5z"/>
-              <path d="M2 17l10 5 10-5"/>
-              <path d="M2 12l10 5 10-5"/>
-            </svg>
-          </div>
-          <h2>Predicción de Precios</h2>
-          <p>Estimaciones precisas de venta y alquiler basadas en ubicación, características del inmueble y datos demográficos del entorno.</p>
-          <span class="nav-card__link">Acceder al predictor</span>
-        </a>
-        <a class="nav-card animate-in" href="/analisis">
-          <div class="nav-card__icon">
-            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-              <polyline points="14 2 14 8 20 8"/>
-              <line x1="16" y1="13" x2="8" y2="13"/>
-              <line x1="16" y1="17" x2="8" y2="17"/>
-            </svg>
-          </div>
-          <h2>Análisis Avanzado</h2>
-          <p>Clasificación inteligente de anuncios inmobiliarios mediante procesamiento de texto natural y reconocimiento de imágenes.</p>
-          <span class="nav-card__link">Acceder al análisis</span>
-        </a>
-      </div>
-    </div>
-  </section>
+      <a class="nav-card nav-card-analysis" href="/analisis">
+        <h2>Analisis Avanzado</h2>
+        <p>Clasificador de texto y clasificador de imagen con experiencia guiada.</p>
+        <span class="nav-link">Ir a analisis</span>
+      </a>
 
-  <!-- ── Footer ── -->
-  <footer class="site-footer">
-    <div class="site-footer__accent"></div>
-    <p>MAiDay — Plataforma de Inteligencia Inmobiliaria · UCM GIDIA</p>
-  </footer>
-
-  <script>
-    // Scroll animations
-    const observer = new IntersectionObserver((entries) => {
-      entries.forEach(entry => {
-        if (entry.isIntersecting) {
-          entry.target.classList.add('visible');
-          observer.unobserve(entry.target);
-        }
-      });
-    }, { threshold: 0.15 });
-    document.querySelectorAll('.animate-in').forEach(el => observer.observe(el));
-
-    // Nav scroll effect
-    window.addEventListener('scroll', () => {
-      document.getElementById('site-nav').classList.toggle('scrolled', window.scrollY > 50);
-    });
-  </script>
-
+      <a class="nav-card nav-card-maps" href="/mapas">
+        <h2>Explorador de Mapas</h2>
+        <p>Visualiza datos inmobiliarios de Madrid sobre mapas interactivos por barrios, secciones y hexágonos.</p>
+        <span class="nav-link">Ir a mapas</span>
+      </a>
+    </section>
+  </main>
 </body>
 </html>

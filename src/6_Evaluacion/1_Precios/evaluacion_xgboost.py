@@ -15,20 +15,20 @@ from utils.funciones_minio import crear_cliente_minio, bajar_minio
 # Mejores parametros según la fase de tuning (copiados manualmente desde los resultados de W&B)
 MEJORES_PARAMS_XGB = {
     "venta": {
-        "n_estimators": 849, 
-        "learning_rate": 0.043396975107577444, 
-        "max_depth": 8,
-        "min_child_weight":7,
-        "subsample": 0.8281908057671924,
-        "colsample_bytree": 0.8572025726581108
+        "n_estimators": 968, 
+        "learning_rate": 0.04787250943393604, 
+        "max_depth": 9,
+        "min_child_weight":3,
+        "subsample": 0.8487331435081997,
+        "colsample_bytree": 0.7242129930701307
     },
     "alquiler": {
-        "n_estimators": 915, 
-        "learning_rate": 0.05175244756697071, 
+        "n_estimators": 814, 
+        "learning_rate": 0.03545499257978169, 
         "max_depth": 7,
-        "min_child_weight": 5,
-        "subsample": 0.6685717435581119,
-        "colsample_bytree": 0.5846115448733098
+        "min_child_weight": 2,
+        "subsample": 0.9123383641803302,
+        "colsample_bytree": 0.5167959070943567
     }
 }
 
