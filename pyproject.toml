@@ -42,6 +42,7 @@ dependencies = [
     "wandb>=0.25.1",
     "xgboost>=3.2.0",
     "uvicorn[standard]>=0.35.0",
+    "sentence-transformers>=5.4.1",
 ]
 
 

@@ -1,10 +1,132 @@
 from utils.funciones_minio import crear_cliente_minio, bajar_minio
 from utils.config import PATH_DATASETS_MODELOS
 import pandas as pd
+import numpy as np
 from sklearn.model_selection import train_test_split
+from sklearn.base import BaseEstimator, TransformerMixin
+from sentence_transformers import SentenceTransformer
+
+
+MODEL_EMBEDDINGS = "paraphrase-multilingual-MiniLM-L12-v2"
+
+
+class SentenceTransformerVectorizer(BaseEstimator, TransformerMixin):
+    """Wrapper sklearn-compatible para sentence-transformers.
+
+    Convierte textos en vectores de embeddings densos (384 dimensiones) usando
+    un modelo pre-entrenado. Compatible con sklearn Pipelines y GridSearchCV.
+
+    Args:
+        model_name (str): Nombre del modelo en HuggingFace / sentence-transformers.
+        batch_size (int): Tamaño de batch para la codificación.
+    """
+
+    def __init__(
+        self,
+        model_name: str = MODEL_EMBEDDINGS,
+        batch_size: int = 32,
+    ):
+        self.model_name = model_name
+        self.batch_size = batch_size
+        self._encoder = None
+
+    def _get_encoder(self) -> SentenceTransformer:
+        """Carga el modelo de forma perezosa (solo la primera vez)."""
+        if self._encoder is None:
+            self._encoder = SentenceTransformer(self.model_name)
+        return self._encoder
+
+    def fit(self, X, y=None):
+        self._get_encoder()
+        return self
+
+    def transform(self, X) -> np.ndarray:
+        encoder = self._get_encoder()
+        return encoder.encode(
+            list(X),
+            batch_size=self.batch_size,
+            show_progress_bar=True,
+            convert_to_numpy=True,
+        )
+
+
+def obtener_o_cargar_embeddings(
+    X_train: pd.Series,
+    X_val: pd.Series,
+    X_test: pd.Series,
+    model_name: str = MODEL_EMBEDDINGS,
+    batch_size: int = 32,
+    cache_dir: str = "embeddings_cache",
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Devuelve los embeddings de los tres splits, usando caché en disco si existe.
+
+    La primera vez que se llama, codifica los textos con sentence-transformers y
+    guarda los arrays en ``cache_dir`` como ficheros ``.npy``. Las siguientes
+    ejecuciones (cualquier script del proyecto) los cargan directamente sin
+    necesidad de volver a descargar el modelo ni re-codificar.
+
+    El nombre de los ficheros incluye el modelo para evitar colisiones si se
+    cambia de modelo sin borrar la caché manualmente.
+
+    Args:
+        X_train:   Textos de entrenamiento.
+        X_val:     Textos de validación.
+        X_test:    Textos de test.
+        model_name: Nombre del modelo de sentence-transformers.
+        batch_size: Tamaño de batch para la codificación.
+        cache_dir:  Directorio donde se guardan/leen los ficheros ``.npy``.
+
+    Returns:
+        tuple: (emb_train, emb_val, emb_test), arrays numpy de shape (n, 384).
+    """
+    import os
+
+    # Sufijo seguro para usar como parte del nombre de fichero
+    model_slug = model_name.replace("/", "_").replace("-", "_")
+    cache_path = os.path.join(cache_dir, model_slug)
+    os.makedirs(cache_path, exist_ok=True)
+
+    paths = {
+        "train": os.path.join(cache_path, "emb_train.npy"),
+        "val":   os.path.join(cache_path, "emb_val.npy"),
+        "test":  os.path.join(cache_path, "emb_test.npy"),
+    }
+
+    cache_completa = all(os.path.exists(p) for p in paths.values())
+
+    if cache_completa:
+        print(f"✅ Cargando embeddings desde caché: {cache_path}")
+        emb_train = np.load(paths["train"])
+        emb_val   = np.load(paths["val"])
+        emb_test  = np.load(paths["test"])
+        print(f"   shape train: {emb_train.shape}")
+    else:
+        print(f"Caché no encontrada. Codificando con '{model_name}'...")
+        encoder = SentenceTransformer(model_name)
+
+        print("  Codificando train...")
+        emb_train = encoder.encode(
+            list(X_train), batch_size=batch_size, show_progress_bar=True, convert_to_numpy=True
+        )
+        print("  Codificando val...")
+        emb_val = encoder.encode(
+            list(X_val), batch_size=batch_size, show_progress_bar=True, convert_to_numpy=True
+        )
+        print("  Codificando test...")
+        emb_test = encoder.encode(
+            list(X_test), batch_size=batch_size, show_progress_bar=True, convert_to_numpy=True
+        )
+
+        np.save(paths["train"], emb_train)
+        np.save(paths["val"],   emb_val)
+        np.save(paths["test"],  emb_test)
+        print(f"💾 Embeddings guardados en: {cache_path}")
+
+    return emb_train, emb_val, emb_test
+
 
 def bajar_df_texto() -> pd.DataFrame:
-    """Baja el dataframe para los modelos de texto
+    """Baja el dataframe para los modelos de texto.
 
     Returns:
         pd.DataFrame: Dataframe con las siguientes columnas
@@ -19,45 +141,41 @@ def bajar_df_texto() -> pd.DataFrame:
     df = bajar_minio(client=cliente, path=PATH_DATASETS_MODELOS, minio_object=objeto)
     return df
 
+
 def x_y_split(df: pd.DataFrame) -> tuple[pd.Series, pd.Series]:
-    """
-    Separa el DataFrame de original en variable de entrada (x) y salida (y)
+    """Separa el DataFrame en variable de entrada (x) y salida (y).
+
     Asume que:
     - La columna 'Descripcion' contiene el texto (features)
     - La columna 'Anuncia' contiene la variable objetivo (labels)
 
     Args:
-        df (pd.DataFrame): DataFrame de entrada con al menos las columnas
-                           'Descripcion' y 'Anuncia'.
+        df (pd.DataFrame): DataFrame con al menos las columnas 'Descripcion' y 'Anuncia'.
 
     Returns:
-        tuple[x: pd.Series, y: pd.Series]: 
-        - x (pd.Series): variable de entrada (textos de los anuncios)
-        - y (pd.Series): variable objetivo
+        tuple[x: pd.Series, y: pd.Series]:
+            - x: textos de los anuncios
+            - y: variable objetivo
     """
     x = df["Descripcion"].astype(str)
     y = df["Anuncia"].astype(str)
     return x, y
 
+
 def train_val_test_split(x: pd.Series, y: pd.Series) -> tuple:
-    """_summary_
+    """Divide los datos en entrenamiento (80%), validación (10%) y test (10%).
 
     Args:
-        x (pd.Series): Textos de anuncios
-        y (pd.Series): Etiquetas (Particular, Intermediario o Promotora)
+        x (pd.Series): Textos de anuncios.
+        y (pd.Series): Etiquetas (Particular, Intermediario o Promotora).
 
     Returns:
         tuple: x_train, x_val, x_test, y_train, y_val, y_test
     """
-    
-
     x_train, x_temp, y_train, y_temp = train_test_split(
         x, y, test_size=0.2, random_state=42, stratify=y
     )
-
     x_val, x_test, y_val, y_test = train_test_split(
         x_temp, y_temp, test_size=0.5, random_state=42, stratify=y_temp
     )
-
-
     return x_train, x_val, x_test, y_train, y_val, y_test
