@@ -1,3 +1,13 @@
+/* ═══════════════════════════════════════════
+   MAiDay — Application Logic
+   ═══════════════════════════════════════════ */
+
+const EUR = new Intl.NumberFormat('es-ES', {
+  style: 'currency',
+  currency: 'EUR',
+  maximumFractionDigits: 0,
+});
+
 async function postJson(url, payload) {
   const response = await fetch(url, {
     method: "POST",
@@ -115,14 +125,13 @@ function initVentaForm() {
 
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
-    setResult("venta-result", "venta-result-card", "Procesando...");
+    setResult("venta-result", "venta-result-card", "Procesando valoración...");
     const payload = parseHousingForm(form);
     const data = await postJson("/predict/venta", payload);
-    setResult(
-      "venta-result",
-      "venta-result-card",
-      `Precio estimado: ${data.prediction} EUR`
-    );
+    const formatted = typeof data.prediction === 'number'
+      ? `Precio estimado: ${EUR.format(data.prediction)}`
+      : `Precio estimado: ${data.prediction} EUR`;
+    setResult("venta-result", "venta-result-card", formatted);
   });
 }
 
@@ -134,14 +143,13 @@ function initAlquilerForm() {
 
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
-    setResult("alquiler-result", "alquiler-result-card", "Procesando...");
+    setResult("alquiler-result", "alquiler-result-card", "Procesando valoración...");
     const payload = parseHousingForm(form);
     const data = await postJson("/predict/alquiler", payload);
-    setResult(
-      "alquiler-result",
-      "alquiler-result-card",
-      `Alquiler estimado: ${data.prediction} EUR/mes`
-    );
+    const formatted = typeof data.prediction === 'number'
+      ? `Alquiler estimado: ${EUR.format(data.prediction)}/mes`
+      : `Alquiler estimado: ${data.prediction} EUR/mes`;
+    setResult("alquiler-result", "alquiler-result-card", formatted);
   });
 }
 
@@ -153,10 +161,10 @@ function initTextoForm() {
 
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
-    setResult("texto-result", "texto-result-card", "Procesando...");
+    setResult("texto-result", "texto-result-card", "Procesando clasificación...");
     const payload = { texto: String(new FormData(form).get("texto")) };
     const data = await postJson("/predict/texto", payload);
-    setResult("texto-result", "texto-result-card", `Categoria: ${data.prediction}`);
+    setResult("texto-result", "texto-result-card", `Categoría: ${data.prediction}`);
   });
 }
 
@@ -203,11 +211,11 @@ function initImagenForm() {
 
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
-    setResult("imagen-result", "imagen-result-card", "Procesando...");
+    setResult("imagen-result", "imagen-result-card", "Procesando clasificación...");
     const formData = new FormData(form);
     const response = await fetch("/predict/imagen", { method: "POST", body: formData });
     const data = await response.json();
-    setResult("imagen-result", "imagen-result-card", `Categoria: ${data.prediction}`);
+    setResult("imagen-result", "imagen-result-card", `Categoría: ${data.prediction}`);
   });
 }
 
