@@ -13,7 +13,7 @@ LIMITE_BYTES = 350 * 1024 * 1024
 
 def reorganizar_imagenes_por_clase(cliente:Minio, prefijo_destino="cleaned/dataset_vision"):
     
-    clases = ['Cocina', 'Dormitorio', 'Salón', 'Banyo']
+    clases = ['Cocina', 'Dormitorio', 'Salón', 'Banyo','Comedor']
     
     buffers = {clase: [] for clase in clases}
     tamaño_buffers = {clase: 0 for clase in clases}
