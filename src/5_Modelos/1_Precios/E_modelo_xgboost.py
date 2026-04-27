@@ -122,8 +122,8 @@ def entrenar_xgboost_tuning(df, nombre_mercado):
 if __name__ == "__main__":
     cliente = crear_cliente_minio()
     
-    df_venta = bajar_minio(cliente, "cleaned/datos_primarios", "viviendas_venta.parquet")
-    df_alquiler = bajar_minio(cliente, "cleaned/datos_primarios", "viviendas_alquiler.parquet")
+    df_venta = bajar_minio(cliente, "dataset_ml/precios/ventas", "df_venta_xgboost.parquet")
+    df_alquiler = bajar_minio(cliente, "dataset_ml/precios/alquiler", "df_alquiler_xgboost.parquet")
 
     entrenar_xgboost_tuning(df_venta, "venta")
     entrenar_xgboost_tuning(df_alquiler, "alquiler")

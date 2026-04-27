@@ -3,12 +3,21 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>MAiDay | Analisis Avanzado</title>
+  <meta name="description" content="MAiDay — Clasificación inteligente de anuncios inmobiliarios por texto e imagen con modelos de machine learning.">
+  <title>MAiDay | Análisis Avanzado</title>
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-  <div class="bg-glow bg-glow-1"></div>
-  <div class="bg-glow bg-glow-2"></div>
+
+  <!-- ── Navigation ── -->
+  <nav class="site-nav" id="site-nav">
+    <a href="/" class="site-nav__logo">M<span>Ai</span>Day</a>
+    <ul class="site-nav__links">
+      <li><a href="/">Inicio</a></li>
+      <li><a href="/precios">Predicción de Precios</a></li>
+      <li><a href="/analisis" class="active">Análisis Avanzado</a></li>
+    </ul>
+  </nav>
 
   <main class="container">
     <nav class="top-nav">
@@ -18,19 +27,22 @@
     </nav>
 
     <header class="page-header">
-      <h1>Analisis Avanzado</h1>
-      <p>Ejecuta clasificadores de texto e imagen desde una interfaz dedicada.</p>
+      <h1>Análisis Avanzado</h1>
+      <p>Clasificación inteligente de anuncios inmobiliarios mediante procesamiento de texto natural y reconocimiento de imágenes.</p>
     </header>
 
-    <section class="analysis-grid">
+    <!-- ── Analysis Grid ── -->
+    <section class="analysis-grid animate-in">
+
+      <!-- Text Classifier -->
       <article class="model-card">
         <h2>Clasificador de texto</h2>
-        <form id="texto-form" class="form-grid">
+        <form id="texto-form" class="form-grid" style="grid-template-columns: 1fr;">
           <label>
-            Descripcion
-            <textarea name="texto" rows="6" placeholder="Describe el anuncio..." required></textarea>
+            Descripción del anuncio
+            <textarea name="texto" rows="8" placeholder="Introduce la descripción del anuncio inmobiliario que deseas clasificar..." required></textarea>
           </label>
-          <button type="submit">Clasificar texto</button>
+          <button type="submit" class="btn-submit">Clasificar texto</button>
         </form>
         <article class="result-card" id="texto-result-card">
           <p class="result-label">Resultado</p>
@@ -38,23 +50,43 @@
         </article>
       </article>
 
+      <!-- Image Classifier -->
       <article class="model-card">
         <h2>Clasificador de imagen</h2>
-        <form id="imagen-form" class="form-grid">
+        <form id="imagen-form" class="form-grid" style="grid-template-columns: 1fr;">
           <label class="dropzone" id="dropzone" for="imagen-file">
             <input id="imagen-file" name="file" type="file" accept="image/*" required>
-            <span id="dropzone-text">Arrastra una imagen aqui o haz click para seleccionar.</span>
+            <span id="dropzone-text">Arrastra una imagen aquí o haz click para seleccionar</span>
           </label>
-          <button type="submit">Clasificar imagen</button>
+          <button type="submit" class="btn-submit">Clasificar imagen</button>
         </form>
         <article class="result-card" id="imagen-result-card">
           <p class="result-label">Resultado</p>
           <p id="imagen-result" class="result-value">Sube una imagen para clasificar.</p>
         </article>
       </article>
+
     </section>
   </main>
 
+  <!-- ── Footer ── -->
+  <footer class="site-footer" style="margin-top: 80px;">
+    <div class="site-footer__accent"></div>
+    <p>MAiDay — Plataforma de Inteligencia Inmobiliaria · UCM GIDIA</p>
+  </footer>
+
   <script src="/static/app.js"></script>
+  <script>
+    // Nav scroll
+    window.addEventListener('scroll', () => {
+      document.getElementById('site-nav').classList.toggle('scrolled', window.scrollY > 50);
+    });
+    // Animate in
+    const obs = new IntersectionObserver((entries) => {
+      entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('visible'); obs.unobserve(e.target); } });
+    }, { threshold: 0.1 });
+    document.querySelectorAll('.animate-in').forEach(el => obs.observe(el));
+  </script>
+
 </body>
 </html>

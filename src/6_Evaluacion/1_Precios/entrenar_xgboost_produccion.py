@@ -165,8 +165,8 @@ if __name__ == "__main__":
     cliente = crear_cliente_minio()
     
     # Descargamos los datos de minio
-    df_venta = bajar_minio(cliente, "cleaned/datos_primarios", "viviendas_venta.parquet")
-    df_alquiler = bajar_minio(cliente, "cleaned/datos_primarios", "viviendas_alquiler.parquet")
+    df_venta = bajar_minio(cliente, "dataset_ml/precios/ventas", "df_venta_xgboost.parquet")
+    df_alquiler = bajar_minio(cliente, "dataset_ml/precios/alquiler", "df_alquiler_xgboost.parquet")
 
     # Ejecutamos para ambos mercados
     entrenar_y_guardar_produccion(df_venta, "venta")

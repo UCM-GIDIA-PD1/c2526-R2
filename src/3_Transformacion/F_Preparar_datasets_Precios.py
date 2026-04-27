@@ -64,8 +64,8 @@ PATH_FUENTE = "rejillas"
 OBJ_VENTA    = "viviendas_venta"
 OBJ_ALQUILER = "viviendas_alquiler"
 
-# Destino: datasets preparados para XGBoost en cleaned/datos_primarios
-PATH_DESTINO = "cleaned/datos_primarios"
+# Destino: Ajustado a dataset/precios/
+PATH_DESTINO_BASE = "dataset_ml/precios"
 
 # Columnas que suponen fuga de datos o son meros identificadores
 COLS_FUGA = [
@@ -74,16 +74,13 @@ COLS_FUGA = [
     "Media_precio_alquiler", "Media_precio_m2_alquiler",
 ]
 
-# Columnas de alta cardinalidad -> no aportan señal útil tras Kruskal
 COLS_ALTA_CARDINALIDAD = ["Calle", "Tipo_Via", "Barrio", "dist_al_edificio"]
 
-# Columnas colineales identificadas mediante matrices Pearson/Spearman/Kendall
-# (correlación > 0.8 con otra variable más informativa)
 COLS_MULTICOLINEALIDAD = [
-    "dist_min_piscinas",          # redundante con cantidad_polideportivos_cerca
-    "cantidad_piscinas_cerca",    # redundante con cantidad_polideportivos_cerca
-    "estaciones_cerca",           # lineas_distintas_estaciones_cerca es más informativo
-    "cantidad_alimentacion_cerca",# dist_min_comercios cubre la señal general
+    "dist_min_piscinas",          
+    "cantidad_piscinas_cerca",    
+    "estaciones_cerca",           
+    "cantidad_alimentacion_cerca",
 ]
 
 
@@ -92,148 +89,92 @@ COLS_MULTICOLINEALIDAD = [
 # ──────────────────────────────────────────────────────────────────────────────
 
 def limpiar_individuos(df: pd.DataFrame, nombre_mercado: str) -> pd.DataFrame:
-    """
-    Paso 1 y 2: Elimina filas con nulos críticos, duplicados y outliers de Precio (>P99).
-    Preserva la distribución real de los datos sin distorsión por valores extremos.
-    """
     print(f"\n[{nombre_mercado.upper()}] Limpieza de individuos...")
     df = df.copy()
     n0 = len(df)
-
-    # 1a. Nulos críticos
     df = df.dropna(subset=["Precio", "lat", "lon", "Superficie"])
     print(f"   -> Nulos críticos eliminados: {n0 - len(df)}")
 
-    # 1b. Duplicados exactos (misma ubicación, precio y superficie)
     n1 = len(df)
     df = df.drop_duplicates(subset=["lat", "lon", "Precio", "Superficie"], keep="first")
     print(f"   -> Duplicados eliminados: {n1 - len(df)}")
 
-    # 2. Outliers de precio: descartar percentil 99
     n2 = len(df)
     p99 = df["Precio"].quantile(0.99)
     df = df[df["Precio"] <= p99]
     print(f"   -> Outliers eliminados (Precio > P99={p99:,.0f} €): {n2 - len(df)}")
-    print(f"   -> Individuos restantes: {len(df)}")
     return df
 
 
 def limpiar_variables(df: pd.DataFrame, nombre_mercado: str) -> pd.DataFrame:
-    """
-    Pasos 3-5: Elimina columnas por:
-      - Fuga de datos e identificadores (Paso 3)
-      - Exceso de nulos >40% (Paso 4a)
-      - Varianza casi nula: >99% mismo valor (Paso 4b) -> Cocina en ambos mercados,
-        Equipamiento en venta
-      - Alta cardinalidad post-Kruskal: Calle, Tipo_Via, Barrio, dist_al_edificio (Paso 5)
-      - Colinealidad alta >0.8 entre predictores (Paso 6)
-      - Cocina en alquiler (tiene varianza, pero el análisis decidió excluirla también)
-    """
     print(f"\n[{nombre_mercado.upper()}] Limpieza de variables...")
     df = df.copy()
     n_cols_inicio = df.shape[1]
 
-    # Paso 3: Fuga de datos e identificadores
     cols_fuga_presentes = [c for c in COLS_FUGA if c in df.columns]
     df = df.drop(columns=cols_fuga_presentes)
-    print(f"   -> Paso 3 – Fuga/identificadores eliminadas ({len(cols_fuga_presentes)}): {cols_fuga_presentes}")
 
-    # Paso 4a: Exceso de nulos (>40%)
     cols_nulos = df.columns[df.isnull().mean() > 0.40].tolist()
     df = df.drop(columns=cols_nulos)
-    if cols_nulos:
-        print(f"   -> Paso 4a – Exceso de nulos eliminadas ({len(cols_nulos)}): {cols_nulos}")
 
-    # Paso 4b: Varianza casi nula (>99% mismo valor)
     cols_zero_var = [
         col for col in df.columns
         if df[col].value_counts(normalize=True).iloc[0] > 0.99
     ]
     df = df.drop(columns=cols_zero_var)
-    print(f"   -> Paso 4b – Varianza nula eliminadas ({len(cols_zero_var)}): {cols_zero_var}")
 
-    # Paso 5: Alta cardinalidad (Kruskal) y ruido
     cols_card_presentes = [c for c in COLS_ALTA_CARDINALIDAD if c in df.columns]
     df = df.drop(columns=cols_card_presentes)
-    if cols_card_presentes:
-        print(f"   -> Paso 5 – Alta cardinalidad eliminadas ({len(cols_card_presentes)}): {cols_card_presentes}")
 
-    # Paso 6: Colinealidad alta entre predictores (>0.8, Pearson/Spearman/Kendall)
     cols_multicol_presentes = [c for c in COLS_MULTICOLINEALIDAD if c in df.columns]
     df = df.drop(columns=cols_multicol_presentes)
-    if cols_multicol_presentes:
-        print(f"   -> Paso 6 – Colineales eliminadas ({len(cols_multicol_presentes)}): {cols_multicol_presentes}")
 
-    # Paso 7 (solo alquiler): Cocina tiene varianza significativa y discrimina
-    # según tamaño del piso (88% pisos <30m² equipados vs 34% en >200m²),
-    # pero la decisión del análisis fue excluirla igualmente.
     if nombre_mercado.lower() == "alquiler" and "Cocina" in df.columns:
         df = df.drop(columns=["Cocina"])
-        print("   -> Paso 7 – 'Cocina' eliminada en alquiler (decisión del análisis estadístico)")
 
-    print(f"   -> Columnas: {n_cols_inicio} -> {df.shape[1]} (eliminadas: {n_cols_inicio - df.shape[1]})")
-    print(f"   -> Columnas finales: {df.columns.tolist()}")
+    print(f"   -> Columnas finales: {df.shape[1]} (eliminadas: {n_cols_inicio - df.shape[1]})")
     return df
 
 
 def preparar_dataset_xgboost(df: pd.DataFrame, nombre_mercado: str) -> pd.DataFrame:
-    """Pipeline completo de preparación para XGBoost."""
-    print(f"\n{'='*70}")
-    print(f"PREPARANDO DATASET XGBOOST: {nombre_mercado.upper()}")
-    print(f"{'='*70}")
-    print(f"Dimensiones iniciales: {df.shape}")
-
+    print(f"\n{'='*70}\nPREPARANDO DATASET XGBOOST: {nombre_mercado.upper()}\n{'='*70}")
     df = limpiar_individuos(df, nombre_mercado)
     df = limpiar_variables(df, nombre_mercado)
-
-    print(f"\n[OK] Dataset final: {df.shape[0]} individuos x {df.shape[1]} variables")
     return df.reset_index(drop=True)
 
 
-def mostrar_resumen(datasets: Dict[str, pd.DataFrame]) -> None:
-    print("\n" + "=" * 80)
-    print("RESUMEN FINAL DE DATASETS GENERADOS")
-    print("=" * 80)
-    for nombre, df in datasets.items():
-        print(f"  {nombre:<30} -> filas={df.shape[0]:>6} | columnas={df.shape[1]:>4}")
-    print("=" * 80)
-    print(f"\nSubidos a MinIO en: {PATH_DESTINO}/")
-
-
 def main() -> None:
-    # Cliente robusto con timeout extendido para archivos grandes
     client_descarga = _crear_cliente_robusto()
     client_subida   = crear_cliente_minio()
 
-    print("Descargando datasets enriquecidos desde MinIO (rejillas/)...")
-    df_venta    = _descargar_geoparquet(client_descarga, PATH_FUENTE, OBJ_VENTA)
-    df_alquiler = _descargar_geoparquet(client_descarga, PATH_FUENTE, OBJ_ALQUILER)
+    print("Descargando datasets desde MinIO...")
+    df_venta_raw    = _descargar_geoparquet(client_descarga, PATH_FUENTE, OBJ_VENTA)
+    df_alquiler_raw = _descargar_geoparquet(client_descarga, PATH_FUENTE, OBJ_ALQUILER)
 
-    print(f"  -> venta:    {df_venta.shape}")
-    print(f"  -> alquiler: {df_alquiler.shape}")
+    # Procesamiento
+    df_venta_proc    = preparar_dataset_xgboost(df_venta_raw, "venta")
+    df_alquiler_proc = preparar_dataset_xgboost(df_alquiler_raw, "alquiler")
 
-    # Preparación
-    df_venta_xgboost    = preparar_dataset_xgboost(df_venta,    "venta")
-    df_alquiler_xgboost = preparar_dataset_xgboost(df_alquiler, "alquiler")
-
+    # Estructura de datos para iterar: {nombre_archivo: (dataframe, subcarpeta)}
     datasets = {
-        "df_venta_xgboost":    df_venta_xgboost,
-        "df_alquiler_xgboost": df_alquiler_xgboost,
+        "df_venta_xgboost": (df_venta_proc, "ventas"),
+        "df_alquiler_xgboost": (df_alquiler_proc, "alquiler")
     }
 
-    # Subida a MinIO
     print("\nSubiendo datasets a MinIO...")
-    for nombre, df in datasets.items():
+    for nombre, (df, mercado) in datasets.items():
+        # La ruta final será: dataset/precios/venta o dataset/precios/alquiler
+        ruta_final = f"{PATH_DESTINO_BASE}/{mercado}"
+        
         subir_minio(
             df=df,
             client=client_subida,
-            path=PATH_DESTINO,
+            path=ruta_final,
             minio_object=f"{nombre}.parquet",
         )
-        print(f"  [OK] {nombre}.parquet subido a {PATH_DESTINO}/")
+        print(f"   [OK] {nombre}.parquet subido a {ruta_final}/")
 
-    mostrar_resumen(datasets)
-
+    print("PROCESO FINALIZADO")
 
 if __name__ == "__main__":
     main()
