@@ -1,6 +1,48 @@
 from pydantic import BaseModel
 from typing import Any, Optional
 
+
+# ─── Simplified input schemas (user only provides what can't be derived) ───
+
+class VentaSimpleInput(BaseModel):
+    """Datos mínimos que el usuario introduce para predecir venta."""
+    Direccion: str                   # Dirección exacta → geocodificación automática
+    Distrito: str                    # Distrito de Madrid
+    Superficie: float                # m²
+    Num_habitaciones: float
+    Banyos: float
+    Planta: float
+    Ventanas: str                    # Tipo de ventanas (Climalit, etc.)
+    Ascensor: float                  # 0 o 1
+    Terraza: float                   # 0 o 1
+    Balcon: float                    # 0 o 1
+    Orientacion: str                 # Sur, Norte, Este, Oeste...
+    Consumo: str                     # Certificado energético (A-G)
+    Anuncia: str                     # Particular / Agencia
+    anio_construccion: Optional[float] = None  # Opcional, se calcula del catastro si no se da
+
+
+class AlquilerSimpleInput(BaseModel):
+    """Datos mínimos que el usuario introduce para predecir alquiler."""
+    Direccion: str
+    Distrito: str
+    Superficie: float
+    Num_habitaciones: float
+    Banyos: float
+    Planta: float
+    Ventanas: str
+    Ascensor: float
+    Terraza: float
+    Balcon: float
+    Equipamiento: float             # 0 o 1 (amueblado)
+    Orientacion: str
+    Consumo: str
+    Anuncia: str
+    anio_construccion: Optional[float] = None
+
+
+# ─── Full input schemas (kept for backward compatibility / direct API) ───
+
 class VentaInput(BaseModel):
     Distrito: str
     Superficie: float
@@ -134,3 +176,10 @@ class TextoInput(BaseModel):
 class PredictionResponse(BaseModel):
     model_name: str
     prediction: float | str | int
+
+class EnrichedPredictionResponse(BaseModel):
+    model_name: str
+    prediction: float | str | int
+    lat: Optional[float] = None
+    lon: Optional[float] = None
+    features_computed: Optional[dict] = None

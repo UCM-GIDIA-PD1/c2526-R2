@@ -5,10 +5,21 @@ WORKDIR /app
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    python3-dev \
+    gdal-bin \
+    libgdal-dev \
+    libgeos-dev \
+    libproj-dev \
+    proj-bin \
+    proj-data \
+    libspatialindex-dev \
+    && rm -rf /var/lib/apt/lists/*
+
 RUN pip install --no-cache-dir uv
 
-# Instalamos únicamente las dependencias estrictamente necesarias para el servidor web.
-# Evitamos instalar las dependencias de scraping, análisis y entrenamiento (geopandas, folium, jupyter, etc.)
+# Instalamos las dependencias necesarias para el servidor web y el servicio de enriquecimiento.
 RUN uv pip install --system \
     "fastapi>=0.116.1" \
     "uvicorn[standard]>=0.35.0" \
@@ -19,7 +30,13 @@ RUN uv pip install --system \
     "scikit-learn>=1.8.0" \
     "xgboost>=3.2.0" \
     "tensorflow>=2.21.0" \
-    "ollama>=0.6.1"
+    "ollama>=0.6.1" \
+    "geopandas>=1.1.2" \
+    "geopy>=2.4.1" \
+    "minio>=7.2.20" \
+    "python-dotenv>=1.0.0" \
+    "scipy>=1.17.1" \
+    "urllib3>=2.0.0"
 
 # Copiamos el resto de los archivos.
 # El archivo .containerignore filtrará automáticamente todas las carpetas pesadas de datos,

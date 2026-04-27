@@ -23,7 +23,7 @@
     <!-- ── Page Header ── -->
     <header class="page-header">
       <h1>Predicción de Precios</h1>
-      <p>Selecciona el modelo y completa los datos del inmueble para obtener una estimación fundamentada.</p>
+      <p>Introduce la dirección y los datos básicos del inmueble. Nuestro sistema calculará automáticamente la ubicación, servicios cercanos, transporte y demografía.</p>
     </header>
 
     <!-- ── Tabs ── -->
@@ -35,231 +35,371 @@
     <!-- ═══ VENTA ═══ -->
     <section id="venta-card" class="model-card animate-in">
       <h2>Predictor de Venta</h2>
+
+      <!-- Info banner -->
+      <div class="enrichment-banner" id="venta-enrichment-banner">
+        <div class="enrichment-banner__icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>
+          </svg>
+        </div>
+        <p>Solo necesitas rellenar la dirección y las características del piso. La ubicación geográfica, distancias a servicios, transporte público y demografía se calculan automáticamente.</p>
+      </div>
+
       <form id="venta-form">
+        <details class="form-section" open>
+          <summary>Ubicación del inmueble</summary>
+          <div class="form-section__content">
+            <div class="form-grid">
+              <label class="form-field--full">
+                Dirección completa
+                <input name="Direccion" type="text" placeholder="Ej: Calle Gran Vía 28, 3º" required id="venta-direccion">
+                <span class="input-hint">Introduce la calle y número. Se geocodificará automáticamente.</span>
+              </label>
+              <label>
+                Distrito
+                <select name="Distrito" required id="venta-distrito">
+                  <option value="" disabled selected>Selecciona distrito</option>
+                  <option value="Centro">Centro</option>
+                  <option value="Arganzuela">Arganzuela</option>
+                  <option value="Retiro">Retiro</option>
+                  <option value="Salamanca">Salamanca</option>
+                  <option value="Chamartín">Chamartín</option>
+                  <option value="Tetuán">Tetuán</option>
+                  <option value="Chamberí">Chamberí</option>
+                  <option value="Fuencarral-El Pardo">Fuencarral-El Pardo</option>
+                  <option value="Moncloa-Aravaca">Moncloa-Aravaca</option>
+                  <option value="Latina">Latina</option>
+                  <option value="Carabanchel">Carabanchel</option>
+                  <option value="Usera">Usera</option>
+                  <option value="Puente de Vallecas">Puente de Vallecas</option>
+                  <option value="Moratalaz">Moratalaz</option>
+                  <option value="Ciudad Lineal">Ciudad Lineal</option>
+                  <option value="Hortaleza">Hortaleza</option>
+                  <option value="Villaverde">Villaverde</option>
+                  <option value="Villa de Vallecas">Villa de Vallecas</option>
+                  <option value="Vicálvaro">Vicálvaro</option>
+                  <option value="San Blas-Canillejas">San Blas-Canillejas</option>
+                  <option value="Barajas">Barajas</option>
+                </select>
+              </label>
+            </div>
+          </div>
+        </details>
 
         <details class="form-section" open>
-          <summary>Datos básicos del inmueble</summary>
+          <summary>Características del inmueble</summary>
           <div class="form-section__content">
             <div class="form-grid">
-              <label>Distrito<input name="Distrito" type="text" placeholder="Ej: Centro" required></label>
-              <label>Superficie (m²)<input name="Superficie" type="number" step="any" placeholder="Ej: 85" required></label>
-              <label>Habitaciones<input name="Num_habitaciones" type="number" step="any" placeholder="Ej: 3" required></label>
-              <label>Baños<input name="Banyos" type="number" step="any" placeholder="Ej: 2" required></label>
-              <label>Planta<input name="Planta" type="number" step="any" placeholder="Ej: 4" required></label>
-              <label>Ventanas<input name="Ventanas" type="text" placeholder="Ej: Climalit" required></label>
-              <label>Ascensor (0/1)<input name="Ascensor" type="number" step="any" placeholder="Ej: 1" required></label>
-              <label>Terraza (0/1)<input name="Terraza" type="number" step="any" placeholder="Ej: 0" required></label>
-              <label>Balcón (0/1)<input name="Balcon" type="number" step="any" placeholder="Ej: 1" required></label>
-              <label>Orientación<input name="Orientacion" type="text" placeholder="Ej: Sur" required></label>
-              <label>Consumo energético<input name="Consumo" type="text" placeholder="Ej: D" required></label>
-              <label>Anunciante<input name="Anuncia" type="text" placeholder="Ej: Particular" required></label>
-              <label>Año de construcción<input name="anio_construccion" type="number" step="any" placeholder="Ej: 1985" required></label>
+              <label>
+                Superficie (m²)
+                <input name="Superficie" type="number" step="any" min="10" placeholder="Ej: 85" required id="venta-superficie">
+              </label>
+              <label>
+                Habitaciones
+                <input name="Num_habitaciones" type="number" step="1" min="0" placeholder="Ej: 3" required id="venta-habitaciones">
+              </label>
+              <label>
+                Baños
+                <input name="Banyos" type="number" step="1" min="1" placeholder="Ej: 2" required id="venta-banyos">
+              </label>
+              <label>
+                Planta
+                <input name="Planta" type="number" step="1" min="0" placeholder="Ej: 4" required id="venta-planta">
+              </label>
+              <label>
+                Tipo de ventanas
+                <select name="Ventanas" required id="venta-ventanas">
+                  <option value="" disabled selected>Selecciona</option>
+                  <option value="Climalit">Climalit</option>
+                  <option value="Doble acristalamiento">Doble acristalamiento</option>
+                  <option value="Simple">Simple</option>
+                  <option value="No determinado">No determinado</option>
+                </select>
+              </label>
+              <label>
+                Orientación
+                <select name="Orientacion" required id="venta-orientacion">
+                  <option value="" disabled selected>Selecciona</option>
+                  <option value="Sur">Sur</option>
+                  <option value="Norte">Norte</option>
+                  <option value="Este">Este</option>
+                  <option value="Oeste">Oeste</option>
+                  <option value="Sureste">Sureste</option>
+                  <option value="Suroeste">Suroeste</option>
+                  <option value="Noreste">Noreste</option>
+                  <option value="Noroeste">Noroeste</option>
+                  <option value="No determinado">No determinado</option>
+                </select>
+              </label>
+              <label>
+                Consumo energético
+                <select name="Consumo" required id="venta-consumo">
+                  <option value="" disabled selected>Selecciona</option>
+                  <option value="A">A</option>
+                  <option value="B">B</option>
+                  <option value="C">C</option>
+                  <option value="D">D</option>
+                  <option value="E">E</option>
+                  <option value="F">F</option>
+                  <option value="G">G</option>
+                  <option value="No indicado">No indicado</option>
+                </select>
+              </label>
+              <label>
+                Anunciante
+                <select name="Anuncia" required id="venta-anuncia">
+                  <option value="" disabled selected>Selecciona</option>
+                  <option value="Particular">Particular</option>
+                  <option value="Agencia">Agencia</option>
+                  <option value="Promotor">Promotor</option>
+                </select>
+              </label>
+            </div>
+
+            <div class="form-grid" style="margin-top: 24px;">
+              <label class="toggle-field">
+                <span class="toggle-label">Ascensor</span>
+                <div class="toggle-switch">
+                  <input type="checkbox" name="Ascensor_check" id="venta-ascensor">
+                  <span class="toggle-slider"></span>
+                </div>
+              </label>
+              <label class="toggle-field">
+                <span class="toggle-label">Terraza</span>
+                <div class="toggle-switch">
+                  <input type="checkbox" name="Terraza_check" id="venta-terraza">
+                  <span class="toggle-slider"></span>
+                </div>
+              </label>
+              <label class="toggle-field">
+                <span class="toggle-label">Balcón</span>
+                <div class="toggle-switch">
+                  <input type="checkbox" name="Balcon_check" id="venta-balcon">
+                  <span class="toggle-slider"></span>
+                </div>
+              </label>
             </div>
           </div>
         </details>
 
         <details class="form-section">
-          <summary>Ubicación geográfica</summary>
+          <summary>Dato adicional (opcional)</summary>
           <div class="form-section__content">
             <div class="form-grid">
-              <label>Latitud<input name="lat" type="number" step="any" placeholder="Ej: 40.4168" required></label>
-              <label>Longitud<input name="lon" type="number" step="any" placeholder="Ej: -3.7038" required></label>
+              <label>
+                Año de construcción
+                <input name="anio_construccion" type="number" step="1" min="1800" max="2030" placeholder="Se calcula automáticamente si no se indica" id="venta-anio">
+                <span class="input-hint">Si lo dejas vacío, se obtendrá del catastro según la ubicación.</span>
+              </label>
             </div>
           </div>
         </details>
 
-        <details class="form-section">
-          <summary>Servicios y equipamientos cercanos</summary>
-          <div class="form-section__content">
-            <div class="form-grid">
-              <label>Dist. alimentación (m)<input name="dist_min_alimentacion" type="number" step="any" placeholder="Ej: 120" required></label>
-              <label>Dist. bibliotecas (m)<input name="dist_min_bibliotecas" type="number" step="any" placeholder="Ej: 450" required></label>
-              <label>Bibliotecas cerca<input name="cantidad_bibliotecas_cerca" type="number" step="any" placeholder="Ej: 2" required></label>
-              <label>Dist. bomberos (m)<input name="dist_min_bomberos" type="number" step="any" placeholder="Ej: 800" required></label>
-              <label>Bomberos cerca<input name="cantidad_bomberos_cerca" type="number" step="any" placeholder="Ej: 1" required></label>
-              <label>Dist. cementerios (m)<input name="dist_min_cementerios" type="number" step="any" placeholder="Ej: 2000" required></label>
-              <label>Cementerios cerca<input name="cantidad_cementerios_cerca" type="number" step="any" placeholder="Ej: 0" required></label>
-              <label>Dist. centros de día (m)<input name="dist_min_centros_dia" type="number" step="any" placeholder="Ej: 600" required></label>
-              <label>Centros de día cerca<input name="cantidad_centros_dia_cerca" type="number" step="any" placeholder="Ej: 1" required></label>
-              <label>Dist. centros educativos (m)<input name="dist_min_centros_educativos" type="number" step="any" placeholder="Ej: 300" required></label>
-              <label>Centros educativos cerca<input name="cantidad_centros_educativos_cerca" type="number" step="any" placeholder="Ej: 3" required></label>
-              <label>Dist. centros mayores (m)<input name="dist_min_centros_mayores" type="number" step="any" placeholder="Ej: 500" required></label>
-              <label>Centros mayores cerca<input name="cantidad_centros_mayores_cerca" type="number" step="any" placeholder="Ej: 1" required></label>
-              <label>Dist. centros sociales (m)<input name="dist_min_centros_sociales" type="number" step="any" placeholder="Ej: 700" required></label>
-              <label>Centros sociales cerca<input name="cantidad_centros_sociales_cerca" type="number" step="any" placeholder="Ej: 2" required></label>
-              <label>Dist. comercios (m)<input name="dist_min_comercios" type="number" step="any" placeholder="Ej: 50" required></label>
-              <label>Comercios cerca<input name="cantidad_comercios_cerca" type="number" step="any" placeholder="Ej: 15" required></label>
-              <label>Dist. comisarías (m)<input name="dist_min_comisarias" type="number" step="any" placeholder="Ej: 400" required></label>
-              <label>Comisarías cerca<input name="cantidad_comisarias_cerca" type="number" step="any" placeholder="Ej: 1" required></label>
-              <label>Dist. hospitales (m)<input name="dist_min_hospitales" type="number" step="any" placeholder="Ej: 900" required></label>
-              <label>Hospitales cerca<input name="cantidad_hospitales_cerca" type="number" step="any" placeholder="Ej: 1" required></label>
-              <label>Dist. iglesias (m)<input name="dist_min_iglesias" type="number" step="any" placeholder="Ej: 200" required></label>
-              <label>Iglesias cerca<input name="cantidad_iglesias_cerca" type="number" step="any" placeholder="Ej: 2" required></label>
-              <label>Dist. puntos negativos (m)<input name="dist_min_negativos" type="number" step="any" placeholder="Ej: 1500" required></label>
-              <label>Puntos negativos cerca<input name="cantidad_negativos_cerca" type="number" step="any" placeholder="Ej: 0" required></label>
-              <label>Dist. parques (m)<input name="dist_min_parques" type="number" step="any" placeholder="Ej: 150" required></label>
-              <label>Parques cerca<input name="cantidad_parques_cerca" type="number" step="any" placeholder="Ej: 3" required></label>
-              <label>Dist. parques bomberos (m)<input name="dist_min_parques_bomberos" type="number" step="any" placeholder="Ej: 1200" required></label>
-              <label>Parques bomberos cerca<input name="cantidad_parques_bomberos_cerca" type="number" step="any" placeholder="Ej: 1" required></label>
-              <label>Dist. polideportivos (m)<input name="dist_min_polideportivos" type="number" step="any" placeholder="Ej: 500" required></label>
-              <label>Polideportivos cerca<input name="cantidad_polideportivos_cerca" type="number" step="any" placeholder="Ej: 1" required></label>
-              <label>Dist. puntos limpios (m)<input name="dist_min_puntos_limpios" type="number" step="any" placeholder="Ej: 2000" required></label>
-              <label>Puntos limpios cerca<input name="cantidad_puntos_limpios_cerca" type="number" step="any" placeholder="Ej: 1" required></label>
-              <label>Dist. servicios sociales (m)<input name="dist_min_servicios_sociales" type="number" step="any" placeholder="Ej: 600" required></label>
-              <label>Servicios sociales cerca<input name="cantidad_servicios_sociales_cerca" type="number" step="any" placeholder="Ej: 1" required></label>
-              <label>Dist. universidades (m)<input name="dist_min_universidades" type="number" step="any" placeholder="Ej: 1000" required></label>
-              <label>Universidades cerca<input name="cantidad_universidades_cerca" type="number" step="any" placeholder="Ej: 1" required></label>
-            </div>
-          </div>
-        </details>
-
-        <details class="form-section">
-          <summary>Transporte público</summary>
-          <div class="form-section__content">
-            <div class="form-grid">
-              <label>Dist. paradas bus (m)<input name="dist_min_paradas" type="number" step="any" placeholder="Ej: 80" required></label>
-              <label>Paradas cerca<input name="paradas_cerca" type="number" step="any" placeholder="Ej: 5" required></label>
-              <label>Líneas de bus distintas<input name="lineas_distintas_paradas_cerca" type="number" step="any" placeholder="Ej: 8" required></label>
-              <label>Dist. estaciones metro (m)<input name="dist_min_estaciones" type="number" step="any" placeholder="Ej: 300" required></label>
-              <label>Líneas de metro distintas<input name="lineas_distintas_estaciones_cerca" type="number" step="any" placeholder="Ej: 2" required></label>
-            </div>
-          </div>
-        </details>
-
-        <details class="form-section">
-          <summary>Demografía del entorno</summary>
-          <div class="form-section__content">
-            <div class="form-grid">
-              <label>Población total<input name="poblacion_total" type="number" step="any" placeholder="Ej: 135000" required></label>
-              <label>% Extranjeros<input name="pct_extranjeros" type="number" step="any" placeholder="Ej: 18.5" required></label>
-              <label>% Mayores de 65<input name="pct_mayores_65" type="number" step="any" placeholder="Ej: 22.3" required></label>
-              <label>% Jóvenes menores 30<input name="pct_jovenes_30" type="number" step="any" placeholder="Ej: 28.1" required></label>
-            </div>
-          </div>
-        </details>
-
-        <button type="submit" class="btn-submit" style="margin-top: 24px;">Obtener Valoración de Venta</button>
+        <button type="submit" class="btn-submit" id="venta-submit-btn" style="margin-top: 24px;">
+          <span class="btn-text">Obtener Valoración de Venta</span>
+          <span class="btn-spinner" style="display:none;"></span>
+        </button>
       </form>
 
       <article class="result-card" id="venta-result-card">
         <p class="result-label">Resultado de la valoración</p>
         <p id="venta-result" class="result-value">Completa el formulario para obtener una predicción.</p>
       </article>
+
+      <!-- Enrichment details (shown after prediction) -->
+      <article class="computed-features" id="venta-computed" style="display:none;">
+        <p class="result-label">Datos calculados automáticamente</p>
+        <div class="computed-features__grid" id="venta-computed-grid"></div>
+      </article>
     </section>
 
     <!-- ═══ ALQUILER ═══ -->
     <section id="alquiler-card" class="model-card hidden animate-in">
       <h2>Predictor de Alquiler</h2>
+
+      <!-- Info banner -->
+      <div class="enrichment-banner" id="alquiler-enrichment-banner">
+        <div class="enrichment-banner__icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>
+          </svg>
+        </div>
+        <p>Solo necesitas rellenar la dirección y las características del piso. La ubicación geográfica, distancias a servicios, transporte público y demografía se calculan automáticamente.</p>
+      </div>
+
       <form id="alquiler-form">
+        <details class="form-section" open>
+          <summary>Ubicación del inmueble</summary>
+          <div class="form-section__content">
+            <div class="form-grid">
+              <label class="form-field--full">
+                Dirección completa
+                <input name="Direccion" type="text" placeholder="Ej: Calle Serrano 45" required id="alquiler-direccion">
+                <span class="input-hint">Introduce la calle y número. Se geocodificará automáticamente.</span>
+              </label>
+              <label>
+                Distrito
+                <select name="Distrito" required id="alquiler-distrito">
+                  <option value="" disabled selected>Selecciona distrito</option>
+                  <option value="Centro">Centro</option>
+                  <option value="Arganzuela">Arganzuela</option>
+                  <option value="Retiro">Retiro</option>
+                  <option value="Salamanca">Salamanca</option>
+                  <option value="Chamartín">Chamartín</option>
+                  <option value="Tetuán">Tetuán</option>
+                  <option value="Chamberí">Chamberí</option>
+                  <option value="Fuencarral-El Pardo">Fuencarral-El Pardo</option>
+                  <option value="Moncloa-Aravaca">Moncloa-Aravaca</option>
+                  <option value="Latina">Latina</option>
+                  <option value="Carabanchel">Carabanchel</option>
+                  <option value="Usera">Usera</option>
+                  <option value="Puente de Vallecas">Puente de Vallecas</option>
+                  <option value="Moratalaz">Moratalaz</option>
+                  <option value="Ciudad Lineal">Ciudad Lineal</option>
+                  <option value="Hortaleza">Hortaleza</option>
+                  <option value="Villaverde">Villaverde</option>
+                  <option value="Villa de Vallecas">Villa de Vallecas</option>
+                  <option value="Vicálvaro">Vicálvaro</option>
+                  <option value="San Blas-Canillejas">San Blas-Canillejas</option>
+                  <option value="Barajas">Barajas</option>
+                </select>
+              </label>
+            </div>
+          </div>
+        </details>
 
         <details class="form-section" open>
-          <summary>Datos básicos del inmueble</summary>
+          <summary>Características del inmueble</summary>
           <div class="form-section__content">
             <div class="form-grid">
-              <label>Distrito<input name="Distrito" type="text" placeholder="Ej: Salamanca" required></label>
-              <label>Superficie (m²)<input name="Superficie" type="number" step="any" placeholder="Ej: 65" required></label>
-              <label>Habitaciones<input name="Num_habitaciones" type="number" step="any" placeholder="Ej: 2" required></label>
-              <label>Baños<input name="Banyos" type="number" step="any" placeholder="Ej: 1" required></label>
-              <label>Planta<input name="Planta" type="number" step="any" placeholder="Ej: 3" required></label>
-              <label>Ventanas<input name="Ventanas" type="text" placeholder="Ej: Climalit" required></label>
-              <label>Ascensor (0/1)<input name="Ascensor" type="number" step="any" placeholder="Ej: 1" required></label>
-              <label>Terraza (0/1)<input name="Terraza" type="number" step="any" placeholder="Ej: 0" required></label>
-              <label>Balcón (0/1)<input name="Balcon" type="number" step="any" placeholder="Ej: 1" required></label>
-              <label>Equipamiento (0/1)<input name="Equipamiento" type="number" step="any" placeholder="Ej: 1" required></label>
-              <label>Orientación<input name="Orientacion" type="text" placeholder="Ej: Este" required></label>
-              <label>Consumo energético<input name="Consumo" type="text" placeholder="Ej: C" required></label>
-              <label>Anunciante<input name="Anuncia" type="text" placeholder="Ej: Agencia" required></label>
-              <label>Año de construcción<input name="anio_construccion" type="number" step="any" placeholder="Ej: 2005" required></label>
+              <label>
+                Superficie (m²)
+                <input name="Superficie" type="number" step="any" min="10" placeholder="Ej: 65" required id="alquiler-superficie">
+              </label>
+              <label>
+                Habitaciones
+                <input name="Num_habitaciones" type="number" step="1" min="0" placeholder="Ej: 2" required id="alquiler-habitaciones">
+              </label>
+              <label>
+                Baños
+                <input name="Banyos" type="number" step="1" min="1" placeholder="Ej: 1" required id="alquiler-banyos">
+              </label>
+              <label>
+                Planta
+                <input name="Planta" type="number" step="1" min="0" placeholder="Ej: 3" required id="alquiler-planta">
+              </label>
+              <label>
+                Tipo de ventanas
+                <select name="Ventanas" required id="alquiler-ventanas">
+                  <option value="" disabled selected>Selecciona</option>
+                  <option value="Climalit">Climalit</option>
+                  <option value="Doble acristalamiento">Doble acristalamiento</option>
+                  <option value="Simple">Simple</option>
+                  <option value="No determinado">No determinado</option>
+                </select>
+              </label>
+              <label>
+                Orientación
+                <select name="Orientacion" required id="alquiler-orientacion">
+                  <option value="" disabled selected>Selecciona</option>
+                  <option value="Sur">Sur</option>
+                  <option value="Norte">Norte</option>
+                  <option value="Este">Este</option>
+                  <option value="Oeste">Oeste</option>
+                  <option value="Sureste">Sureste</option>
+                  <option value="Suroeste">Suroeste</option>
+                  <option value="Noreste">Noreste</option>
+                  <option value="Noroeste">Noroeste</option>
+                  <option value="No determinado">No determinado</option>
+                </select>
+              </label>
+              <label>
+                Consumo energético
+                <select name="Consumo" required id="alquiler-consumo">
+                  <option value="" disabled selected>Selecciona</option>
+                  <option value="A">A</option>
+                  <option value="B">B</option>
+                  <option value="C">C</option>
+                  <option value="D">D</option>
+                  <option value="E">E</option>
+                  <option value="F">F</option>
+                  <option value="G">G</option>
+                  <option value="No indicado">No indicado</option>
+                </select>
+              </label>
+              <label>
+                Anunciante
+                <select name="Anuncia" required id="alquiler-anuncia">
+                  <option value="" disabled selected>Selecciona</option>
+                  <option value="Particular">Particular</option>
+                  <option value="Agencia">Agencia</option>
+                  <option value="Promotor">Promotor</option>
+                </select>
+              </label>
+            </div>
+
+            <div class="form-grid" style="margin-top: 24px;">
+              <label class="toggle-field">
+                <span class="toggle-label">Ascensor</span>
+                <div class="toggle-switch">
+                  <input type="checkbox" name="Ascensor_check" id="alquiler-ascensor">
+                  <span class="toggle-slider"></span>
+                </div>
+              </label>
+              <label class="toggle-field">
+                <span class="toggle-label">Terraza</span>
+                <div class="toggle-switch">
+                  <input type="checkbox" name="Terraza_check" id="alquiler-terraza">
+                  <span class="toggle-slider"></span>
+                </div>
+              </label>
+              <label class="toggle-field">
+                <span class="toggle-label">Balcón</span>
+                <div class="toggle-switch">
+                  <input type="checkbox" name="Balcon_check" id="alquiler-balcon">
+                  <span class="toggle-slider"></span>
+                </div>
+              </label>
+              <label class="toggle-field">
+                <span class="toggle-label">Amueblado</span>
+                <div class="toggle-switch">
+                  <input type="checkbox" name="Equipamiento_check" id="alquiler-equipamiento">
+                  <span class="toggle-slider"></span>
+                </div>
+              </label>
             </div>
           </div>
         </details>
 
         <details class="form-section">
-          <summary>Ubicación geográfica</summary>
+          <summary>Dato adicional (opcional)</summary>
           <div class="form-section__content">
             <div class="form-grid">
-              <label>Latitud<input name="lat" type="number" step="any" placeholder="Ej: 40.4168" required></label>
-              <label>Longitud<input name="lon" type="number" step="any" placeholder="Ej: -3.7038" required></label>
+              <label>
+                Año de construcción
+                <input name="anio_construccion" type="number" step="1" min="1800" max="2030" placeholder="Se calcula automáticamente si no se indica" id="alquiler-anio">
+                <span class="input-hint">Si lo dejas vacío, se obtendrá del catastro según la ubicación.</span>
+              </label>
             </div>
           </div>
         </details>
 
-        <details class="form-section">
-          <summary>Servicios y equipamientos cercanos</summary>
-          <div class="form-section__content">
-            <div class="form-grid">
-              <label>Dist. alimentación (m)<input name="dist_min_alimentacion" type="number" step="any" placeholder="Ej: 120" required></label>
-              <label>Dist. bibliotecas (m)<input name="dist_min_bibliotecas" type="number" step="any" placeholder="Ej: 450" required></label>
-              <label>Bibliotecas cerca<input name="cantidad_bibliotecas_cerca" type="number" step="any" placeholder="Ej: 2" required></label>
-              <label>Dist. bomberos (m)<input name="dist_min_bomberos" type="number" step="any" placeholder="Ej: 800" required></label>
-              <label>Bomberos cerca<input name="cantidad_bomberos_cerca" type="number" step="any" placeholder="Ej: 1" required></label>
-              <label>Dist. cementerios (m)<input name="dist_min_cementerios" type="number" step="any" placeholder="Ej: 2000" required></label>
-              <label>Cementerios cerca<input name="cantidad_cementerios_cerca" type="number" step="any" placeholder="Ej: 0" required></label>
-              <label>Dist. centros de día (m)<input name="dist_min_centros_dia" type="number" step="any" placeholder="Ej: 600" required></label>
-              <label>Centros de día cerca<input name="cantidad_centros_dia_cerca" type="number" step="any" placeholder="Ej: 1" required></label>
-              <label>Dist. centros educativos (m)<input name="dist_min_centros_educativos" type="number" step="any" placeholder="Ej: 300" required></label>
-              <label>Centros educativos cerca<input name="cantidad_centros_educativos_cerca" type="number" step="any" placeholder="Ej: 3" required></label>
-              <label>Dist. centros mayores (m)<input name="dist_min_centros_mayores" type="number" step="any" placeholder="Ej: 500" required></label>
-              <label>Centros mayores cerca<input name="cantidad_centros_mayores_cerca" type="number" step="any" placeholder="Ej: 1" required></label>
-              <label>Dist. centros sociales (m)<input name="dist_min_centros_sociales" type="number" step="any" placeholder="Ej: 700" required></label>
-              <label>Centros sociales cerca<input name="cantidad_centros_sociales_cerca" type="number" step="any" placeholder="Ej: 2" required></label>
-              <label>Dist. comercios (m)<input name="dist_min_comercios" type="number" step="any" placeholder="Ej: 50" required></label>
-              <label>Comercios cerca<input name="cantidad_comercios_cerca" type="number" step="any" placeholder="Ej: 15" required></label>
-              <label>Dist. comisarías (m)<input name="dist_min_comisarias" type="number" step="any" placeholder="Ej: 400" required></label>
-              <label>Comisarías cerca<input name="cantidad_comisarias_cerca" type="number" step="any" placeholder="Ej: 1" required></label>
-              <label>Dist. hospitales (m)<input name="dist_min_hospitales" type="number" step="any" placeholder="Ej: 900" required></label>
-              <label>Hospitales cerca<input name="cantidad_hospitales_cerca" type="number" step="any" placeholder="Ej: 1" required></label>
-              <label>Dist. iglesias (m)<input name="dist_min_iglesias" type="number" step="any" placeholder="Ej: 200" required></label>
-              <label>Iglesias cerca<input name="cantidad_iglesias_cerca" type="number" step="any" placeholder="Ej: 2" required></label>
-              <label>Dist. puntos negativos (m)<input name="dist_min_negativos" type="number" step="any" placeholder="Ej: 1500" required></label>
-              <label>Puntos negativos cerca<input name="cantidad_negativos_cerca" type="number" step="any" placeholder="Ej: 0" required></label>
-              <label>Dist. parques (m)<input name="dist_min_parques" type="number" step="any" placeholder="Ej: 150" required></label>
-              <label>Parques cerca<input name="cantidad_parques_cerca" type="number" step="any" placeholder="Ej: 3" required></label>
-              <label>Dist. parques bomberos (m)<input name="dist_min_parques_bomberos" type="number" step="any" placeholder="Ej: 1200" required></label>
-              <label>Parques bomberos cerca<input name="cantidad_parques_bomberos_cerca" type="number" step="any" placeholder="Ej: 1" required></label>
-              <label>Dist. polideportivos (m)<input name="dist_min_polideportivos" type="number" step="any" placeholder="Ej: 500" required></label>
-              <label>Polideportivos cerca<input name="cantidad_polideportivos_cerca" type="number" step="any" placeholder="Ej: 1" required></label>
-              <label>Dist. puntos limpios (m)<input name="dist_min_puntos_limpios" type="number" step="any" placeholder="Ej: 2000" required></label>
-              <label>Puntos limpios cerca<input name="cantidad_puntos_limpios_cerca" type="number" step="any" placeholder="Ej: 1" required></label>
-              <label>Dist. servicios sociales (m)<input name="dist_min_servicios_sociales" type="number" step="any" placeholder="Ej: 600" required></label>
-              <label>Servicios sociales cerca<input name="cantidad_servicios_sociales_cerca" type="number" step="any" placeholder="Ej: 1" required></label>
-              <label>Dist. universidades (m)<input name="dist_min_universidades" type="number" step="any" placeholder="Ej: 1000" required></label>
-              <label>Universidades cerca<input name="cantidad_universidades_cerca" type="number" step="any" placeholder="Ej: 1" required></label>
-            </div>
-          </div>
-        </details>
-
-        <details class="form-section">
-          <summary>Transporte público</summary>
-          <div class="form-section__content">
-            <div class="form-grid">
-              <label>Dist. paradas bus (m)<input name="dist_min_paradas" type="number" step="any" placeholder="Ej: 80" required></label>
-              <label>Paradas cerca<input name="paradas_cerca" type="number" step="any" placeholder="Ej: 5" required></label>
-              <label>Líneas de bus distintas<input name="lineas_distintas_paradas_cerca" type="number" step="any" placeholder="Ej: 8" required></label>
-              <label>Dist. estaciones metro (m)<input name="dist_min_estaciones" type="number" step="any" placeholder="Ej: 300" required></label>
-              <label>Líneas de metro distintas<input name="lineas_distintas_estaciones_cerca" type="number" step="any" placeholder="Ej: 2" required></label>
-            </div>
-          </div>
-        </details>
-
-        <details class="form-section">
-          <summary>Demografía del entorno</summary>
-          <div class="form-section__content">
-            <div class="form-grid">
-              <label>Población total<input name="poblacion_total" type="number" step="any" placeholder="Ej: 135000" required></label>
-              <label>% Extranjeros<input name="pct_extranjeros" type="number" step="any" placeholder="Ej: 18.5" required></label>
-              <label>% Mayores de 65<input name="pct_mayores_65" type="number" step="any" placeholder="Ej: 22.3" required></label>
-              <label>% Jóvenes menores 30<input name="pct_jovenes_30" type="number" step="any" placeholder="Ej: 28.1" required></label>
-            </div>
-          </div>
-        </details>
-
-        <button type="submit" class="btn-submit" style="margin-top: 24px;">Obtener Valoración de Alquiler</button>
+        <button type="submit" class="btn-submit" id="alquiler-submit-btn" style="margin-top: 24px;">
+          <span class="btn-text">Obtener Valoración de Alquiler</span>
+          <span class="btn-spinner" style="display:none;"></span>
+        </button>
       </form>
 
       <article class="result-card" id="alquiler-result-card">
         <p class="result-label">Resultado de la valoración</p>
         <p id="alquiler-result" class="result-value">Completa el formulario para obtener una predicción.</p>
+      </article>
+
+      <!-- Enrichment details (shown after prediction) -->
+      <article class="computed-features" id="alquiler-computed" style="display:none;">
+        <p class="result-label">Datos calculados automáticamente</p>
+        <div class="computed-features__grid" id="alquiler-computed-grid"></div>
       </article>
     </section>
   </main>
