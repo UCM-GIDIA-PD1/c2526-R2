@@ -31,29 +31,8 @@ MEJORES_PARAMS_XGB = {
     }
 }
 
-# Columnas a descartar antes del entrenamiento (texto libre, identificadores, leakage)
-COLUMNAS_EXCLUIR = ['id', 'Nombre', 'Calle', 'Descripcion', 'Anuncia', 'Url', 'Direccion', 'Precio_m2']
-
-def preparar_dataset(df: pd.DataFrame) -> pd.DataFrame:
-    """Limpia el dataset crudo eliminando columnas no aptas para ML y
-    convirtiendo booleanos a int para compatibilidad con XGBoost."""
-    # Eliminar columnas de alta cardinalidad o que causan data leakage
-    cols_a_excluir = [c for c in COLUMNAS_EXCLUIR if c in df.columns]
-    df = df.drop(columns=cols_a_excluir)
-    
-    # Convertir booleanos a int (XGBoost los trata como numéricos)
-    bool_cols = df.select_dtypes(include='bool').columns
-    df[bool_cols] = df[bool_cols].astype(int)
-    
-    print(f"   Dataset preparado: {df.shape[0]} filas x {df.shape[1]} columnas")
-    print(f"   Columnas usadas: {df.columns.tolist()}")
-    return df
-
 def entrenar_y_guardar_produccion(df, nombre_mercado):
     print(f"\nENTRENANDO MODELO DE PRODUCCIÓN: {nombre_mercado.upper()}")
-
-    # 0. Preparar el dataset (eliminar columnas no válidas para ML)
-    df = preparar_dataset(df)
     print(f"Usando el 100% de los datos: {len(df)} registros.")
 
     # 1. Separación de variables
@@ -165,8 +144,8 @@ if __name__ == "__main__":
     cliente = crear_cliente_minio()
     
     # Descargamos los datos de minio
-    df_venta = bajar_minio(cliente, "dataset_ml/precios/ventas", "df_venta_xgboost.parquet")
-    df_alquiler = bajar_minio(cliente, "dataset_ml/precios/alquiler", "df_alquiler_xgboost.parquet")
+    df_venta = bajar_minio(cliente, "dataset_ml/precios/ventas", "df_ventas_arboles.parquet")
+    df_alquiler = bajar_minio(cliente, "dataset_ml/precios/alquiler", "df_alquiler_arboles.parquet")
 
     # Ejecutamos para ambos mercados
     entrenar_y_guardar_produccion(df_venta, "venta")
