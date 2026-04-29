@@ -1,4 +1,4 @@
-# 🏠 MAiDay
+# MAiDay
 
 <div align="center">
   <img width="478" height="164" alt="MAiDay Logo" src="https://github.com/user-attachments/assets/70488fc4-ddba-4ee3-a97d-c629fc7c221a" />
@@ -13,8 +13,8 @@
 Nuestro asistente cuenta con tres objetivos fundamentales:
 
 1. **Estimación de Precios**: Recomendaciones de precios (venta y alquiler) basadas en datos reales del mercado, variables socioeconómicas y características de la zona.
-2. **Análisis de Texto (NLP)**: Clasificación de descripciones de anuncios para identificar el tipo de anunciante (particular, intermediario o promotora).
-3. **Clasificación de Imágenes (VLM)**: Etiquetado de fotografías inmobiliarias para categorizar las estancias mostradas (dormitorio, cocina, salón y baño).
+2. **Análisis de Texto**: Clasificación de descripciones de anuncios para identificar el tipo de anunciante (particular, intermediario o promotora).
+3. **Clasificación de Imágenes**: Etiquetado de fotografías inmobiliarias para categorizar las estancias mostradas (dormitorio, cocina, salón y baño).
 
 ---
 
@@ -100,44 +100,18 @@ El orquestador interactivo detecta y permite ejecutar cualquier fase cómodament
 ```bash
 uv run -m main
 ```
-
-### Ejecución Individual por Fases
-
-Si deseas correr las fases por separado, puedes utilizar los submódulos de `src`:
-
-```bash
-# Fase 1 a 3: Pipeline de Datos
-uv run -m src.1_Extraccion.main
-uv run -m src.2_Limpieza.main
-uv run -m src.3_Transformacion.main
-
-# Fase 4: Análisis (Jupyter Notebooks)
-uv run jupyter notebook src/4_Analisis/
-
-# Fase 5: Entrenamiento de Modelos
-uv run -m src.5_Modelos.main
-# O módulos específicos:
-uv run -m src.5_Modelos.1_Precios.main
-uv run -m src.5_Modelos.2_Texto.main
-uv run -m src.5_Modelos.3_Imagenes.main
-
-# Fase 6: Evaluación
-uv run -m src.6_Evaluacion.main
-```
-
 ---
 
 ## Resultados de Modelos
 
 A continuación se resumen los resultados principales obtenidos en nuestros modelos predictivos y de clasificación:
 
-| Modelo | Tarea | Métrica Principal | Resultado |
-| :--- | :--- | :--- | :--- |
-| *Regresión* | Estimación precio venta | MAPE | *[Por definir]* |
-| *Regresión* | Estimación precio alquiler | MAPE | *[Por definir]* |
-| *NLP* | Clasificador de anunciante | Accuracy | *[Por definir]* |
-| *VLM* | Clasificador de habitación | Accuracy | *[Por definir]* |
-
+| Mejor modelo | Tarea | Métrica Principal | Baseline | Resultado |
+| :--- | :--- | :--- | :--- | :--- |
+| *xgboost* | Estimación precio venta | MAPE | 40.8% | 15.03% |
+| *xgboost* | Estimación precio alquiler | MAPE | 67.02% | 15.69% |
+| *SVM* | Clasificador de anunciante | F1-score | 0.29 | 0.89 |
+| *MLP* | Clasificador de imágenes | F1-score | ? | 0.90 |
 ---
 
 ## Aplicación Web y Contenedores
@@ -154,19 +128,17 @@ uv run uvicorn app.main:app --reload
 - **Aplicación Web**: [http://127.0.0.1:8000/](http://127.0.0.1:8000/)
 - **Documentación API (Swagger)**: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
 
-### Construcción y Despliegue con Docker / Podman
+### Construcción y Despliegue con Podman
 
 Para un despliegue aislado, puedes construir el contenedor utilizando el archivo `Containerfile`:
 
 ```bash
 # Construir la imagen
-docker build -t maiday-web-demo -f Containerfile .
+podman build -t maiday-web -f Containerfile .
 
 # Ejecutar el contenedor
-docker run --rm -p 8000:8000 maiday-web-demo
+podman run --rm -p 8000:8000 maiday-web
 ```
-*(Puedes sustituir `docker` por `podman` si utilizas esta alternativa).*
-
 ---
 
 ## Configuraciones Especiales
