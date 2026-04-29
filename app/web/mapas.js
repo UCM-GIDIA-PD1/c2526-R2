@@ -352,4 +352,7 @@ function formatearNumero(val) {
 // ── Arranque ───────────────────────────────────────────
 
 initMapa();
+setTimeout(() => {
+  mapa.invalidateSize();
+}, 100);
 cargarCapas();

@@ -1028,7 +1028,7 @@ button.loading {
 
 .map-controls {
   position: fixed;
-  top: 64px;
+  top: 100px;
   left: 14px;
   z-index: 900;
   width: 260px;
