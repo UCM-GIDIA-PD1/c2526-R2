@@ -76,7 +76,7 @@ function setResult(resultId, cardId, text, isError = false) {
   const result = document.getElementById(resultId);
   const card = document.getElementById(cardId);
   if (!result || !card) return;
-  result.textContent = text;
+  result.innerHTML = text;
   card.classList.remove("success", "error");
   card.classList.add(isError ? "error" : "success");
 }
@@ -226,10 +226,15 @@ function initVentaForm() {
     try {
       const payload = parseSimpleForm(form, 'venta');
       const data = await postJson("/predict/venta/simple", payload);
-      const formatted = typeof data.prediction === 'number'
+      const mainPrice = typeof data.prediction === 'number'
         ? `Precio estimado: ${EUR.format(data.prediction)}`
         : `Precio estimado: ${data.prediction} EUR`;
-      setResult("venta-result", "venta-result-card", formatted);
+        
+      const m2Price = data.prediction_m2
+        ? `<br><small style="font-size: 0.6em; font-weight: normal; opacity: 0.8;">(${EUR.format(data.prediction_m2)} / m²)</small>`
+        : '';
+        
+      setResult("venta-result", "venta-result-card", mainPrice + m2Price);
 
       if (data.features_computed) {
         showComputedFeatures("venta-computed-grid", "venta-computed", data.features_computed);
@@ -258,10 +263,15 @@ function initAlquilerForm() {
     try {
       const payload = parseSimpleForm(form, 'alquiler');
       const data = await postJson("/predict/alquiler/simple", payload);
-      const formatted = typeof data.prediction === 'number'
+      const mainPrice = typeof data.prediction === 'number'
         ? `Alquiler estimado: ${EUR.format(data.prediction)}/mes`
         : `Alquiler estimado: ${data.prediction} EUR/mes`;
-      setResult("alquiler-result", "alquiler-result-card", formatted);
+        
+      const m2Price = data.prediction_m2
+        ? `<br><small style="font-size: 0.6em; font-weight: normal; opacity: 0.8;">(${EUR.format(data.prediction_m2)} / m² / mes)</small>`
+        : '';
+        
+      setResult("alquiler-result", "alquiler-result-card", mainPrice + m2Price);
 
       if (data.features_computed) {
         showComputedFeatures("alquiler-computed-grid", "alquiler-computed", data.features_computed);

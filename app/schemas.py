@@ -180,6 +180,7 @@ class PredictionResponse(BaseModel):
 class EnrichedPredictionResponse(BaseModel):
     model_name: str
     prediction: float | str | int
+    prediction_m2: Optional[float] = None
     lat: Optional[float] = None
     lon: Optional[float] = None
     features_computed: Optional[dict] = None

@@ -23,10 +23,24 @@ def predict_tabular(model_key: str, payload: dict[str, Any]) -> str | float | in
     model = model_loader.get(model_key)
     df = pd.DataFrame([payload])
     
-    # Preprocesamiento de inferencia consistente con el entrenamiento
-    cat_cols = df.select_dtypes(exclude=['int64', 'float64', 'int32', 'float32']).columns.tolist()
-    if cat_cols:
-        df[cat_cols] = df[cat_cols].fillna('Desconocido').astype(str)
+    # Extraer las columnas exactas del preprocesador del modelo
+    preprocessor = model.named_steps.get('preprocessor')
+    if preprocessor:
+        num_cols = preprocessor.transformers_[0][2]
+        cat_cols = preprocessor.transformers_[1][2]
+        
+        cat_cols_df = [c for c in cat_cols if c in df.columns]
+        num_cols_df = [c for c in num_cols if c in df.columns]
+        
+        if cat_cols_df:
+            df[cat_cols_df] = df[cat_cols_df].fillna('Desconocido').astype(str).replace(r'\.0$', '', regex=True)
+        if num_cols_df:
+            df[num_cols_df] = df[num_cols_df].astype(float)
+    else:
+        # Fallback
+        cat_cols = df.select_dtypes(exclude=['int64', 'float64', 'int32', 'float32']).columns.tolist()
+        if cat_cols:
+            df[cat_cols] = df[cat_cols].fillna('Desconocido').astype(str).replace(r'\.0$', '', regex=True)
         
     prediction = model.predict(df)
     return _normalize_result(prediction)
