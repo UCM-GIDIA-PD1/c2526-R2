@@ -1,145 +1,179 @@
 # 🏠 MAiDay
 
-<img width="478" height="164" alt="Captura_de_pantalla_2026-02-04_205952-removebg-preview" src="https://github.com/user-attachments/assets/70488fc4-ddba-4ee3-a97d-c629fc7c221a" />
+<div align="center">
+  <img width="478" height="164" alt="MAiDay Logo" src="https://github.com/user-attachments/assets/70488fc4-ddba-4ee3-a97d-c629fc7c221a" />
+</div>
+
+> **MAiDay** es un asistente inteligente diseñado para equilibrar el mercado inmobiliario madrileño. Integrando fuentes de datos diversas, proporciona información valiosa tanto a propietarios como a inquilinos.
 
 ---
 
-## Qué es?
+## Objetivos del Proyecto
 
-**MAiDay** es un asistente inteligente diseñado para equilibrar el sector inmobiliario madrileño. El proyecto tiene tres objetivos principales:
+Nuestro asistente cuenta con tres objetivos fundamentales:
 
-1. **Estimación de precios**: Ofrecer recomendaciones de precios, tanto para venta como para alquiler, para propietarios e inquilinos, mediante modelos entrenados con datos reales del mercado y características de la zona.
-2. **Análisis de descripciones**: Mediante un modelo de clasificación, según la descripción de los anuncios, se averigua si un anuncio fue publicado por un particular, un intermediario o una promotora.
-3. **Análisis de imagenes**: Por medio de un modelo de clasificación se etiquetan imágenes según la habitación que muestren: dormitorio, cocina, salón y baño.
+1. **Estimación de Precios**: Recomendaciones de precios (venta y alquiler) basadas en datos reales del mercado, variables socioeconómicas y características de la zona.
+2. **Análisis de Texto (NLP)**: Clasificación de descripciones de anuncios para identificar el tipo de anunciante (particular, intermediario o promotora).
+3. **Clasificación de Imágenes (VLM)**: Etiquetado de fotografías inmobiliarias para categorizar las estancias mostradas (dormitorio, cocina, salón y baño).
 
 ---
 
-## Estructura del repositorio
+## Estructura del Repositorio
 
-```
+El proyecto sigue un diseño modular y estructurado basado en fases (del 1 al 6) dentro de la carpeta `src/`. Además, cuenta con una aplicación web en `app/`.
+
+```text
 c2526-R2/
+├── app/                          # Aplicación Web (FastAPI + Frontend)
+│   ├── api/                      # Endpoints de la API
+│   ├── core/                     # Configuración
+│   ├── services/                 # Servicios de inferencia (predictores)
+│   ├── web/                      # Archivos estáticos (HTML, CSS, JS)
+│   └── main.py                   # Entrypoint de FastAPI
 │
-├── src/                          # Código fuente principal
+├── src/                          # Código fuente principal (Pipeline)
 │   ├── main.py                   # Orquestador principal del pipeline
-│   ├── utils/                    # Utilidades compartidas (MinIO, helpers)
+│   ├── utils/                    # Utilidades compartidas
+│   ├── model_artifacts/          # Artefactos y modelos guardados
 │   │
-│   ├── 1_Extraccion/             # Fase 1: Obtención de datos de múltiples fuentes
-│   │   ├── main.py
-│   │   ├── A_Anuncios_viviendas.py   # Scraping de anuncios inmobiliarios
-│   │   ├── B_aytoMadrid.py           # Datos del Ayuntamiento de Madrid
-│   │   ├── C_transporte.py           # Datos de transporte público (CRTM)
-│   │   ├── D_catastro.py             # Datos del Catastro
-│   │   ├── E_INE.py                  # Datos del INE
-│   │   ├── F_osmnx.py                # Datos OSM (puntos de interés)
-│   │   ├── G_rejillas_madrid.py      # Rejilla geográfica de Madrid
-│   │   └── H_padron.py               # Datos del Padrón Municipal
-│   │
-│   ├── 2_Limpieza/               # Fase 2: Preprocesamiento y limpieza de datos
-│   │   ├── main.py
-│   │   ├── A_viviendas_modificacion.py
-│   │   ├── B_aytoMadrid.py
-│   │   └── C_transporte.py
-│   │
-│   ├── 3_Transformacion/         # Fase 3: Integración y generación de datasets finales
-│   │   ├── main.py
-│   │   ├── A_rejilla_madrid.py
-│   │   ├── B_viviendas_madrid.py
-│   │   ├── C_aytoMadrid.py
-│   │   ├── D_INE_con_geometria.py
-│   │   ├── E_Imagenes_div.py
-│   │   ├── F_Preparar_datasets_Precios.py
-│   │   └── G_texto.py
-│   │
-│   ├── 4_Analisis/               # Fase 4: Análisis exploratorio (notebooks Jupyter)
-│   │   ├── analisis_estadistico.ipynb
-│   │   ├── analisis_estadistico_2.ipynb
-│   │   ├── analisis_texto.ipynb
-│   │   └── analisis_cantidad_imagenes.ipynb
-│   │
-│   ├── 5_Modelos/                # Fase 5: Entrenamiento de modelos de ML
-│   │   ├── main.py
-│   │   ├── 1_Precios/            # Modelo de regresión de precios
-│   │   ├── 2_Texto/              # Modelo de análisis de texto (NLP)
-│   │   └── 3_Imagenes/           # Modelo de análisis de imágenes (VLM)
-│   │
-│   └── 6_Evaluacion/             # Fase 6: Evaluación de los modelos
-│       ├── main.py
-│       ├── 1_Precios/            # Métricas del modelo de precios
-│       ├── 2_Texto/              # Métricas del modelo de texto
-│       └── 3_Imagenes/           # Métricas del modelo de imágenes
+│   ├── 1_Extraccion/             # Fase 1: Scraping y obtención de datos públicos
+│   ├── 2_Limpieza/               # Fase 2: Limpieza y preprocesamiento de datos
+│   ├── 3_Transformacion/         # Fase 3: Integración, cruce espacial y generación de datasets
+│   ├── 4_Analisis/               # Fase 4: Análisis exploratorio (Notebooks)
+│   ├── 5_Modelos/                # Fase 5: Entrenamiento de modelos (Precios, Texto, Imágenes)
+│   └── 6_Evaluacion/             # Fase 6: Evaluación y métricas de los modelos
 │
-├── pyproject.toml                # Dependencias y configuración del proyecto
-├── uv.lock                       # Lockfile de dependencias
-├── .env                          # Variables de entorno (NO subir a Git)
-└── .gitignore
+├── .env                          # Variables de entorno (MinIO)
+├── Containerfile                 # Configuración de Docker/Podman
+├── pyproject.toml                # Dependencias (uv)
+├── uv.lock                       # Lockfile
+└── README.md                     # Documentación principal
 ```
-
 ---
 
 ## Configuración del entorno de desarrollo
 
 Este proyecto utiliza [**uv**](https://docs.astral.sh/uv/) como gestor de entornos y dependencias. Requiere **Python ≥ 3.12**.
 
-### 1. Instalar `uv`
+### 1. Instalar uv
 
 ```bash
 pip install uv
 ```
 
-### 2. Crear el entorno virtual
+### 2. Crear y activar el entorno virtual
 
+Genera el entorno virtual:
 ```bash
 uv venv
 ```
 
-Activar el entorno:
+Actívalo según tu sistema operativo:
 
 **Windows**
 ```bash
 .venv\Scripts\activate
 ```
 
-**macOS/Linux**
+**macOS / Linux**
 ```bash
 source .venv/bin/activate
 ```
 
 ### 3. Instalar dependencias
 
-El proyecto define todas sus dependencias en `pyproject.toml`. Para instalarlas ejecuta:
-
+Sincroniza el entorno con el archivo `pyproject.toml` (instala todas las librerías necesarias, incluyendo TensorFlow, XGBoost, FastAPI, etc.):
 ```bash
 uv sync
 ```
 
-Esto instalará automáticamente todos los paquetes necesarios:
-`drissionpage`, `folium`, `geopandas`, `geopy`, `googlemaps`, `h3`, `matplotlib`, `minio`, `nltk`, `numpy`, `ollama`, `optuna`, `osmnx`, `pandas`, `pillow`, `plotly`, `pyarrow`, `python-dotenv`, `requests`, `scikit-learn`, `scipy`, `seaborn`, `shapely`, `tensorflow`, `torchvision`, `tqdm`, `umap-learn`, `wandb`, `xgboost`, entre otros.
+---
 
-### 4. Verificar la versión de Python del entorno
+## Ejecución del Pipeline (Scripts)
 
-**Windows**
+> Todos los comandos deben ejecutarse desde la raíz del proyecto (`c2526-R2/`) con el entorno virtual activado.
+
+### Orquestador Principal
+
+El orquestador interactivo detecta y permite ejecutar cualquier fase cómodamente.
+
 ```bash
-.\.venv\Scripts\python.exe --version
+uv run -m main
 ```
 
-**macOS/Linux**
+### Ejecución Individual por Fases
+
+Si deseas correr las fases por separado, puedes utilizar los submódulos de `src`:
+
 ```bash
-./.venv/bin/python --version
+# Fase 1 a 3: Pipeline de Datos
+uv run -m src.1_Extraccion.main
+uv run -m src.2_Limpieza.main
+uv run -m src.3_Transformacion.main
+
+# Fase 4: Análisis (Jupyter Notebooks)
+uv run jupyter notebook src/4_Analisis/
+
+# Fase 5: Entrenamiento de Modelos
+uv run -m src.5_Modelos.main
+# O módulos específicos:
+uv run -m src.5_Modelos.1_Precios.main
+uv run -m src.5_Modelos.2_Texto.main
+uv run -m src.5_Modelos.3_Imagenes.main
+
+# Fase 6: Evaluación
+uv run -m src.6_Evaluacion.main
 ```
 
 ---
 
-## Configuración de variables de entorno (MinIO)
+## Resultados de Modelos
 
-El proyecto utiliza un servidor **MinIO** para almacenar y recuperar datasets. Crea un fichero `.env` en la raíz del proyecto con el siguiente contenido:
+A continuación se resumen los resultados principales obtenidos en nuestros modelos predictivos y de clasificación:
 
-```env
-MINIO_ENDPOINT=minio.fdi.ucm.es
-MINIO_ACCESS_KEY=TU_ACCESS_KEY
-MINIO_SECRET_KEY=TU_SECRET_KEY
-MINIO_BUCKET=pd1
-MINIO_GROUP_PATH=grupo2
+| Modelo | Tarea | Métrica Principal | Resultado |
+| :--- | :--- | :--- | :--- |
+| *Regresión* | Estimación precio venta | MAPE | *[Por definir]* |
+| *Regresión* | Estimación precio alquiler | MAPE | *[Por definir]* |
+| *NLP* | Clasificador de anunciante | Accuracy | *[Por definir]* |
+| *VLM* | Clasificador de habitación | Accuracy | *[Por definir]* |
+
+---
+
+## Aplicación Web y Contenedores
+
+MAiDay incluye una aplicación web demostrativa para servir los modelos mediante FastAPI.
+
+### Ejecutar la aplicación en local
+
+Con el entorno virtual activado, lanza el servidor web:
+
+```bash
+uv run uvicorn app.main:app --reload
 ```
+- **Aplicación Web**: [http://127.0.0.1:8000/](http://127.0.0.1:8000/)
+- **Documentación API (Swagger)**: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
+
+### Construcción y Despliegue con Docker / Podman
+
+Para un despliegue aislado, puedes construir el contenedor utilizando el archivo `Containerfile`:
+
+```bash
+# Construir la imagen
+docker build -t maiday-web-demo -f Containerfile .
+
+# Ejecutar el contenedor
+docker run --rm -p 8000:8000 maiday-web-demo
+```
+*(Puedes sustituir `docker` por `podman` si utilizas esta alternativa).*
+
+---
+
+## Configuraciones Especiales
+
+### Conexión a MinIO (Almacenamiento de Datos)
+
+El proyecto lee y escribe datasets en un servidor MinIO. Debes crear un archivo `.env` en la raíz del proyecto con las siguientes credenciales:
 
 | Variable | Descripción |
 |---|---|
@@ -149,76 +183,14 @@ MINIO_GROUP_PATH=grupo2
 | `MINIO_BUCKET` | Bucket donde se almacenan los datos |
 | `MINIO_GROUP_PATH` | Carpeta base del grupo dentro del bucket |
 
+```env
+MINIO_ENDPOINT=minio.fdi.ucm.es
+MINIO_ACCESS_KEY=TU_ACCESS_KEY
+MINIO_SECRET_KEY=TU_SECRET_KEY
+MINIO_BUCKET=pd1
+MINIO_GROUP_PATH=grupo2
+```
 ---
-
-## Ejecución de los scripts
-
-### Orquestador principal (menú interactivo)
-
-El orquestador detecta automáticamente todas las fases disponibles y permite ejecutarlas de forma interactiva:
-
-```bash
-uv run -m main
-```
-
-### Ejecución individual de cada fase
-
-Se pueden ejecutar las fases directamente con el comando `uv run -m`:
-
-#### Fase 1 — Extracción
-```bash
-uv run -m src.1_Extraccion.main
-```
-
-#### Fase 2 — Limpieza
-```bash
-uv run -m src.2_Limpieza.main
-```
-
-#### Fase 3 — Transformación
-```bash
-uv run -m src.3_Transformacion.main
-```
-
-#### Fase 4 — Análisis (notebooks Jupyter)
-
-Los notebooks de análisis exploratorio se abren con Jupyter:
-```bash
-uv run jupyter notebook src/4_Analisis/
-```
-
-#### Fase 5 — Modelos
-
-```bash
-# Modelo de precios
-uv run -m src.5_Modelos.main
-
-# O por submódulo:
-uv run -m src.5_Modelos.1_Precios.main
-uv run -m src.5_Modelos.2_Texto.main
-uv run -m src.5_Modelos.3_Imagenes.main
-```
-
-#### Fase 6 — Evaluación
-
-```bash
-# Evaluación completa
-uv run -m src.6_Evaluacion.main
-
-# O por submódulo:
-uv run -m src.6_Evaluacion.1_Precios.main
-uv run -m src.6_Evaluacion.2_Texto.main
-uv run -m src.6_Evaluacion.3_Imagenes.main
-```
-
-### Orden recomendado de ejecución
-
-```
-1_Extraccion → 2_Limpieza → 3_Transformacion → 5_Modelos → 6_Evaluacion
-```
-
----
-
 ## Configuración de Ollama (modelos VLM)
 
 La fase de análisis de imágenes requiere **Ollama** ejecutándose localmente.
@@ -256,13 +228,13 @@ ollama list
 
 Proyecto desarrollado para la asignatura **Proyecto de Datos I (PD1)** — Universidad Complutense de Madrid (UCM), Grado en Ingeniería de Datos e Inteligencia Artificial.
 
-| GitHub |
-|---|
-| [@iisma-ai](https://github.com/iisma-ai) |
-| [@kauan287](https://github.com/kauan287) |
-| [@sperezplaza](https://github.com/sperezplaza) |
-| [@arthur-112](https://github.com/arthur-112) |
-| [@ouyang157](https://github.com/ouyang157) |
-| [@Oscmarin715](https://github.com/Oscmarin715) |
+**Grupo 2**
 
-> *Grupo 2 — Repositorio: `c2526-R2`*
+| Desarrollador | GitHub |
+| :--- | :--- |
+| iisma-ai | [@iisma-ai](https://github.com/iisma-ai) |
+| kauan287 | [@kauan287](https://github.com/kauan287) |
+| sperezplaza | [@sperezplaza](https://github.com/sperezplaza) |
+| arthur-112 | [@arthur-112](https://github.com/arthur-112) |
+| ouyang157 | [@ouyang157](https://github.com/ouyang157) |
+| Oscmarin715 | [@Oscmarin715](https://github.com/Oscmarin715) |
