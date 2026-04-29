@@ -31,13 +31,34 @@ MEJORES_PARAMS_XGB = {
     }
 }
 
+# Columnas a descartar antes del entrenamiento (texto libre, identificadores, leakage)
+COLUMNAS_EXCLUIR = ['id', 'Nombre', 'Calle', 'Descripcion', 'Anuncia', 'Url', 'Direccion', 'Precio_m2']
+
+def preparar_dataset(df: pd.DataFrame) -> pd.DataFrame:
+    """Limpia el dataset crudo eliminando columnas no aptas para ML y
+    convirtiendo booleanos a int para compatibilidad con XGBoost."""
+    # Eliminar columnas de alta cardinalidad o que causan data leakage
+    cols_a_excluir = [c for c in COLUMNAS_EXCLUIR if c in df.columns]
+    df = df.drop(columns=cols_a_excluir)
+
+    # Convertir booleanos a int (XGBoost los trata como numéricos)
+    bool_cols = df.select_dtypes(include='bool').columns
+    df[bool_cols] = df[bool_cols].astype(int)
+
+    print(f"   Dataset preparado: {df.shape[0]} filas x {df.shape[1]} columnas")
+    print(f"   Columnas usadas: {df.columns.tolist()}")
+    return df
+
 def entrenar_y_guardar_produccion(df, nombre_mercado):
     print(f"\nENTRENANDO MODELO DE PRODUCCIÓN: {nombre_mercado.upper()}")
+
+    # 0. Preparar el dataset (eliminar columnas no válidas para ML)
+    df = preparar_dataset(df)
     print(f"Usando el 100% de los datos: {len(df)} registros.")
 
     # 1. Separación de variables
     X = df.drop(columns=['Precio'])
-    
+
     if nombre_mercado == 'venta':
         print("Aplicando estrategia: Precio / m²")
         y = df['Precio'] / X['Superficie']
@@ -47,13 +68,13 @@ def entrenar_y_guardar_produccion(df, nombre_mercado):
 
     cat_cols = X.select_dtypes(exclude=['int64', 'float64']).columns.tolist()
     num_cols = X.select_dtypes(include=['int64', 'float64']).columns.tolist()
-    
+
     X[cat_cols] = X[cat_cols].fillna('Desconocido').astype(str)
 
     # 2. Partición 80/20 estratificada por 'Distrito' según la regla de negocio
     from sklearn.model_selection import train_test_split, cross_val_score
     from sklearn.metrics import mean_absolute_percentage_error
-    
+
     print("Realizando partición 80% entrenamiento y 20% test, estratificada por 'Distrito'...")
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.20, random_state=42, stratify=X['Distrito'])
 
@@ -87,7 +108,7 @@ def entrenar_y_guardar_produccion(df, nombre_mercado):
     print("Aplicando 5-Fold Cross Validation sobre conjunto de entrenamiento...")
     scores = cross_val_score(modelo_produccion, X_train, y_train, cv=5, scoring='neg_mean_absolute_percentage_error', n_jobs=-1)
     print(f"-> [CV 5-Folds] MAPE Promedio: {-scores.mean()*100:.2f}%")
-    
+
     # 6. EVALUACIÓN EN HOLD-OUT (20%)
     print("Entrenando temporalmente para hold-out...")
     modelo_produccion.fit(X_train, y_train)
@@ -98,7 +119,7 @@ def entrenar_y_guardar_produccion(df, nombre_mercado):
     # 7. ENTRENAMIENTO DEFINTIVO (100% de los datos)
     print("Entrenando el modelo definitivo con el 100% de los datos para producción...")
     modelo_produccion.fit(X, y)
-    
+
     # También asegurar la persistencia en local para FastAPI
     import pathlib
     local_artifacts_dir = pathlib.Path(__file__).resolve().parents[3] / "src" / "model_artifacts"
@@ -107,11 +128,11 @@ def entrenar_y_guardar_produccion(df, nombre_mercado):
 
     # 5. Guardado temporal y subida a W&B
     nombre_archivo = f"modelo_produccion_{nombre_mercado}.pkl"
-    
+
     try:
         # Guardamos en disco de forma temporal
         joblib.dump(modelo_produccion, nombre_archivo)
-        
+
         # 6. Registro en Weights & Biases
         print("Subiendo el modelo al Model Registry de W&B...")
         run = wandb.init(
@@ -120,14 +141,14 @@ def entrenar_y_guardar_produccion(df, nombre_mercado):
             name=f"produccion-final-{nombre_mercado}",
             job_type="model-registry"
         )
-        
+
         # Creamos el artefacto
         artefacto = wandb.Artifact(
             name=f"xgboost-hibrido-{nombre_mercado}", 
             type='model',
             description=f"Modelo de producción para {nombre_mercado} entrenado con el 100% de los datos."
         )
-        
+
         # Adjuntamos el archivo .pkl y lo subimos
         artefacto.add_file(nombre_archivo)
         run.log_artifact(artefacto)
@@ -142,11 +163,10 @@ def entrenar_y_guardar_produccion(df, nombre_mercado):
 
 if __name__ == "__main__":
     cliente = crear_cliente_minio()
-    
-    # Descargamos los datos de minio
-    df_venta = bajar_minio(cliente, "dataset_ml/precios/ventas", "df_ventas_arboles.parquet")
-    df_alquiler = bajar_minio(cliente, "dataset_ml/precios/alquiler", "df_alquiler_arboles.parquet")
+
+     # Descargamos los datos de minio
+    df_venta = bajar_minio(cliente, "dataset_ml/precios/ventas", "df_venta_xgboost.parquet")
+    df_alquiler = bajar_minio(cliente, "dataset_ml/precios/alquiler", "df_alquiler_xgboost.parquet")
 
     # Ejecutamos para ambos mercados
     entrenar_y_guardar_produccion(df_venta, "venta")
-    entrenar_y_guardar_produccion(df_alquiler, "alquiler")
