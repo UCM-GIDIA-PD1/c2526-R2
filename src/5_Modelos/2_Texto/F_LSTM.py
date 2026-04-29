@@ -5,13 +5,20 @@ from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Embedding, LSTM, Dense
 from tensorflow.keras.preprocessing.text import Tokenizer
 from tensorflow.keras.preprocessing.sequence import pad_sequences
+from tensorflow.keras import backend as K
 
+from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, f1_score, recall_score, precision_score
+from sklearn.model_selection import StratifiedKFold
 
 import nltk
 from nltk.corpus import stopwords
 
 from funciones_texto import bajar_df_texto, x_y_split, train_val_test_split
+
+import optuna
+
+
 
 
 def evaluar_modelo(y_true, y_pred):
@@ -31,42 +38,10 @@ def evaluar_modelo(y_true, y_pred):
     """
     return {
         "accuracy": accuracy_score(y_true, y_pred),
-        "f1_macro": f1_score(y_true, y_pred, average="macro"),
+        "f1_macro": f1_score(y_true, y_pred, average="macro", zero_division=0),
         "recall_macro": recall_score(y_true, y_pred, average="macro"),
         "precision_macro": precision_score(y_true, y_pred, average="macro", zero_division=0),
     }
-
-
-def preparar_tokenizer(X_train, X_val, X_test, max_words, max_len):
-    
-    """Prepara y aplica un tokenizador sobre datos de texto.
-
-    Ajusta un Tokenizer sobre el conjunto de entrenamiento y transforma
-    los textos de entrenamiento, validación y test en secuencias numéricas
-    con padding a una longitud fija.
-
-    Args:
-        X_train: Textos de entrenamiento.
-        X_val: Textos de validación.
-        X_test: Textos de test.
-        max_words (int): Número máximo de palabras a considerar en el vocabulario.
-        max_len (int): Longitud máxima de las secuencias.
-
-    Returns:
-        tuple:
-            - X_train_seq: Secuencias de entrenamiento.
-            - X_val_seq: Secuencias de validación.
-            - X_test_seq: Secuencias de test.
-    """
-
-    tokenizer = Tokenizer(num_words=max_words, oov_token="<OOV>")
-    tokenizer.fit_on_texts(X_train)
-
-    X_train_seq = pad_sequences(tokenizer.texts_to_sequences(X_train), maxlen=max_len)
-    X_val_seq = pad_sequences(tokenizer.texts_to_sequences(X_val), maxlen=max_len)
-    X_test_seq = pad_sequences(tokenizer.texts_to_sequences(X_test), maxlen=max_len)
-
-    return X_train_seq, X_val_seq, X_test_seq
 
 
 def crear_modelo(max_words, max_len, embedding_dim, lstm_units):
@@ -87,7 +62,7 @@ def crear_modelo(max_words, max_len, embedding_dim, lstm_units):
     """
 
     model = Sequential([
-        Embedding(input_dim=max_words, output_dim=embedding_dim, input_length=max_len),
+        Embedding(input_dim=max_words, output_dim=embedding_dim),
         LSTM(lstm_units),
         Dense(3, activation="softmax")  # 3 clases
     ])
@@ -101,7 +76,7 @@ def crear_modelo(max_words, max_len, embedding_dim, lstm_units):
     return model
 
 
-def entrenar_lstm_texto(X_train, y_train, X_val, y_val, X_test, y_test):
+def entrenar_lstm_texto(X_train, y_train, X_test, y_test):
 
     """Entrena y selecciona el mejor modelo LSTM para clasificación de texto.
 
@@ -122,8 +97,6 @@ def entrenar_lstm_texto(X_train, y_train, X_val, y_val, X_test, y_test):
     Args:
         X_train: Textos de entrenamiento.
         y_train: Etiquetas de entrenamiento.
-        X_val: Textos de validación.
-        y_val: Etiquetas de validación.
         X_test: Textos de test.
         y_test: Etiquetas de test.
 
@@ -135,7 +108,6 @@ def entrenar_lstm_texto(X_train, y_train, X_val, y_val, X_test, y_test):
 
     clases = {label: i for i, label in enumerate(sorted(y_train.unique()))}
     y_train_enc = y_train.map(clases).values
-    y_val_enc = y_val.map(clases).values
     y_test_enc = y_test.map(clases).values
 
     max_words_list = [5000, 10000]
@@ -148,7 +120,9 @@ def entrenar_lstm_texto(X_train, y_train, X_val, y_val, X_test, y_test):
     mejor_resultado = None
     mejor_modelo = None
 
-    run = wandb.init(
+    skf = StratifiedKFold(n_splits=3, shuffle=True, random_state=42)
+
+    """run = wandb.init(
         entity="pd1-c2526-team2",
         project="modelo-texto-lstm",
         name="lstm-texto",
@@ -161,7 +135,7 @@ def entrenar_lstm_texto(X_train, y_train, X_val, y_val, X_test, y_test):
     table = wandb.Table(columns=[
         "modelo", "max_words", "max_len", "embedding_dim", "lstm_units",
         "f1_macro", "accuracy"
-    ])
+    ])"""
 
     for max_words in max_words_list:
         for max_len in max_len_list:
@@ -171,27 +145,41 @@ def entrenar_lstm_texto(X_train, y_train, X_val, y_val, X_test, y_test):
                     nombre = f"mw{max_words}_len{max_len}_emb{emb_dim}_lstm{lstm_units}"
                     print(f"\nEntrenando: {nombre}")
 
-                    X_train_seq, X_val_seq, X_test_seq = preparar_tokenizer(
-                        X_train, X_val, X_test, max_words, max_len
-                    )
+                    cv_scores = []
 
-                    model = crear_modelo(max_words, max_len, emb_dim, lstm_units)
+                    for train_idx, val_idx in skf.split(X_train, y_train_enc):
 
-                    model.fit(
-                        X_train_seq, y_train_enc,
-                        validation_data=(X_val_seq, y_val_enc),
-                        epochs=3,
-                        batch_size=32,
-                        verbose=0
-                    )
+                        X_tr = X_train.iloc[train_idx]
+                        X_vl = X_train.iloc[val_idx]
+                        y_tr = y_train_enc[train_idx]
+                        y_vl = y_train_enc[val_idx]
 
-                    y_pred_val = np.argmax(model.predict(X_val_seq), axis=1)
+                        tokenizer = Tokenizer(num_words=max_words, oov_token="<OOV>")
+                        tokenizer.fit_on_texts(X_tr)
 
-                    metricas = evaluar_modelo(y_val_enc, y_pred_val)
+                        X_tr_seq = pad_sequences(tokenizer.texts_to_sequences(X_tr), maxlen=max_len)
+                        X_vl_seq = pad_sequences(tokenizer.texts_to_sequences(X_vl), maxlen=max_len)
 
-                    print(metricas)
+                        model = crear_modelo(max_words, max_len, emb_dim, lstm_units)
 
-                    table.add_data(
+                        model.fit(
+                            X_tr_seq, y_tr,
+                            epochs=3,
+                            batch_size=32,
+                            verbose=0
+                        )
+
+                        y_pred_val = np.argmax(model.predict(X_vl_seq, verbose=0), axis=1)
+
+                        f1 = f1_score(y_vl, y_pred_val, average="macro")
+                        cv_scores.append(f1)
+
+                    f1_mean = np.mean(cv_scores)
+                    f1_std = np.std(cv_scores)
+
+                    print({"f1_macro": f1_mean, "f1_std": f1_std})
+
+                    """table.add_data(
                         nombre,
                         max_words,
                         max_len,
@@ -199,31 +187,189 @@ def entrenar_lstm_texto(X_train, y_train, X_val, y_val, X_test, y_test):
                         lstm_units,
                         metricas["f1_macro"],
                         metricas["accuracy"]
-                    )
+                    )"""
 
-                    if (mejor_resultado is None) or (metricas["f1_macro"] > mejor_resultado["f1_macro"]):
-                        mejor_resultado = metricas | {
+                    if (mejor_resultado is None) or (f1_mean > mejor_resultado["f1_macro"]):
+                        mejor_resultado = {
                             "nombre": nombre,
                             "max_words": max_words,
                             "max_len": max_len,
                             "embedding_dim": emb_dim,
-                            "lstm_units": lstm_units
+                            "lstm_units": lstm_units,
+                            "f1_macro": f1_mean,
+                            "f1_std": f1_std
                         }
-                        mejor_modelo = model
-                        best_tokenizer_data = (X_train_seq, X_val_seq, X_test_seq)
+                        mejor_config = (max_words, max_len, emb_dim, lstm_units)
 
     print("\n=== MEJOR MODELO LSTM ===")
     print(mejor_resultado)
 
-    wandb.log({"resultados_modelos": table})
+    """wandb.log({"resultados_modelos": table})
 
     wandb.log({
         "f1_por_modelo": wandb.plot.bar(
             table, "modelo", "f1_macro", title="F1 por modelo (LSTM)"
         )
+    })"""
+
+    max_words, max_len, emb_dim, lstm_units = mejor_config
+
+    tokenizer = Tokenizer(num_words=max_words, oov_token="<OOV>")
+    tokenizer.fit_on_texts(X_train)
+
+    X_train_seq = pad_sequences(tokenizer.texts_to_sequences(X_train), maxlen=max_len)
+    X_test_seq = pad_sequences(tokenizer.texts_to_sequences(X_test), maxlen=max_len)
+
+    mejor_modelo = crear_modelo(max_words, max_len, emb_dim, lstm_units)
+
+    mejor_modelo.fit(
+        X_train_seq, y_train_enc,
+        epochs=3,
+        batch_size=32,
+        verbose=0
+    )
+
+    y_pred_test = np.argmax(mejor_modelo.predict(X_test_seq), axis=1)
+    metricas_test = evaluar_modelo(y_test_enc, y_pred_test)
+
+    print("\n=== RESULTADOS EN TEST ===")
+    print(metricas_test)
+    print("\n=== ANALISIS POR LONGITUD ===")
+    print(analizar_por_longitud(X_test, y_test_enc, y_pred_test))
+
+    """wandb.log({
+        "test_f1": metricas_test["f1_macro"],
+        "test_accuracy": metricas_test["accuracy"]
     })
 
-    X_train_seq, X_val_seq, X_test_seq = best_tokenizer_data
+    run.finish()"""
+
+    return mejor_modelo, mejor_resultado
+
+def analizar_por_longitud(X_text, y_true, y_pred):
+
+    import pandas as pd
+
+    df = pd.DataFrame({
+        "texto": X_text,
+        "y_true": y_true,
+        "y_pred": y_pred
+    })
+
+    df["longitud"] = df["texto"].apply(lambda x: len(x.split()))
+
+    bins = [0, 20, 50, 100, np.inf]
+    labels = ["corto", "medio", "largo", "muy_largo"]
+    df["segmento"] = pd.cut(df["longitud"], bins=bins, labels=labels)
+
+    resultados = []
+
+    for seg in labels:
+        subset = df[df["segmento"] == seg]
+        if len(subset) == 0:
+            continue
+
+        f1 = f1_score(subset["y_true"], subset["y_pred"], average="macro")
+
+        resultados.append({
+            "segmento": seg,
+            "n_samples": len(subset),
+            "f1_macro": f1
+        })
+
+    return pd.DataFrame(resultados)
+
+def entrenar_lstm_texto_optuna(X_train, y_train, X_test, y_test):
+
+    clases = {label: i for i, label in enumerate(sorted(y_train.unique()))}
+    y_train_enc = y_train.map(clases).values
+    y_test_enc = y_test.map(clases).values
+
+    skf = StratifiedKFold(n_splits=3, shuffle=True, random_state=42)
+
+    def objective(trial):
+
+        max_words = trial.suggest_categorical("max_words", [3000, 5000, 8000, 12000, 15000])
+        max_len = trial.suggest_int("max_len", 80, 250, step=40)
+        embedding_dim = trial.suggest_categorical("embedding_dim", [50, 100, 150])
+        lstm_units = trial.suggest_int("lstm_units", 32, 128, step=32)
+        epochs = trial.suggest_int("epochs", 2, 5)
+        batch_size = trial.suggest_categorical("batch_size", [16, 32, 64])
+
+        cv_scores = []
+
+        for fold_idx, (train_idx, val_idx) in enumerate(skf.split(X_train, y_train_enc)):
+
+            X_tr = X_train.iloc[train_idx]
+            X_vl = X_train.iloc[val_idx]
+            y_tr = y_train_enc[train_idx]
+            y_vl = y_train_enc[val_idx]
+
+            tokenizer = Tokenizer(num_words=max_words, oov_token="<OOV>")
+            tokenizer.fit_on_texts(X_tr)
+
+            X_tr_seq = pad_sequences(tokenizer.texts_to_sequences(X_tr), maxlen=max_len)
+            X_vl_seq = pad_sequences(tokenizer.texts_to_sequences(X_vl), maxlen=max_len)
+
+            model = crear_modelo(max_words, max_len, embedding_dim, lstm_units)
+
+            model.fit(
+                X_tr_seq, y_tr,
+                epochs=epochs,
+                batch_size=batch_size,
+                verbose=0
+            )
+
+            y_pred = np.argmax(model.predict(X_vl_seq, verbose=0), axis=1)
+
+            f1 = f1_score(y_vl, y_pred, average="macro")
+            cv_scores.append(f1)
+
+            trial.report(f1, step=fold_idx)
+
+            if trial.should_prune():
+                K.clear_session()
+                raise optuna.TrialPruned()
+            
+            K.clear_session()
+
+        return np.mean(cv_scores)
+
+    print("Buscando mejor modelo con Optuna...")
+
+    study = optuna.create_study(
+        direction="maximize",
+        pruner=optuna.pruners.MedianPruner(n_warmup_steps=1)
+    )
+
+    study.optimize(objective, n_trials=20)
+
+    best_params = study.best_params
+
+    print("\n=== MEJOR CONFIG OPTUNA ===")
+    print(best_params)
+
+    max_words = best_params["max_words"]
+    max_len = best_params["max_len"]
+    embedding_dim = best_params["embedding_dim"]
+    lstm_units = best_params["lstm_units"]
+    epochs = best_params["epochs"]
+    batch_size = best_params["batch_size"]
+
+    tokenizer = Tokenizer(num_words=max_words, oov_token="<OOV>")
+    tokenizer.fit_on_texts(X_train)
+
+    X_train_seq = pad_sequences(tokenizer.texts_to_sequences(X_train), maxlen=max_len)
+    X_test_seq = pad_sequences(tokenizer.texts_to_sequences(X_test), maxlen=max_len)
+
+    mejor_modelo = crear_modelo(max_words, max_len, embedding_dim, lstm_units)
+
+    mejor_modelo.fit(
+        X_train_seq, y_train_enc,
+        epochs=epochs,
+        batch_size=batch_size,
+        verbose=0
+    )
 
     y_pred_test = np.argmax(mejor_modelo.predict(X_test_seq), axis=1)
     metricas_test = evaluar_modelo(y_test_enc, y_pred_test)
@@ -231,14 +377,10 @@ def entrenar_lstm_texto(X_train, y_train, X_val, y_val, X_test, y_test):
     print("\n=== RESULTADOS EN TEST ===")
     print(metricas_test)
 
-    wandb.log({
-        "test_f1": metricas_test["f1_macro"],
-        "test_accuracy": metricas_test["accuracy"]
-    })
+    print("\n=== ANALISIS POR LONGITUD ===")
+    print(analizar_por_longitud(X_test, y_test_enc, y_pred_test))
 
-    run.finish()
-
-    return mejor_modelo, mejor_resultado
+    return mejor_modelo, best_params
 
 
 def main():
@@ -254,11 +396,24 @@ def main():
 
     df = bajar_df_texto()
     X, y = x_y_split(df)
-    X_train, X_val, X_test, y_train, y_val, y_test = train_val_test_split(X, y)
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y,
+        test_size=0.2,
+        stratify=y,
+        random_state=42
+    )
 
-    wandb.login()
+    #wandb.login()
 
-    entrenar_lstm_texto(X_train, y_train, X_val, y_val, X_test, y_test)
+    modo = input("Selecciona modo: 1 (Grid) / 2 (Optuna): ")
+
+    if modo == "1":
+        entrenar_lstm_texto(X_train, y_train, X_test, y_test)
+    elif modo == "2":
+        entrenar_lstm_texto_optuna(X_train, y_train, X_test, y_test)
+    else:
+        print("Opción no válida")
+        entrenar_lstm_texto(X_train, y_train, X_test, y_test)
 
 
 if __name__ == "__main__":
