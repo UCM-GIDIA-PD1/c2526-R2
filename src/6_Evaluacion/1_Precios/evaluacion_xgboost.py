@@ -15,20 +15,20 @@ from utils.funciones_minio import crear_cliente_minio, bajar_minio
 # Mejores parametros según la fase de tuning (copiados manualmente desde los resultados de W&B)
 MEJORES_PARAMS_XGB = {
     "venta": {
-        "n_estimators": 968, 
-        "learning_rate": 0.04787250943393604, 
-        "max_depth": 9,
+        "n_estimators": 838, 
+        "learning_rate": 0.023184070336254938, 
+        "max_depth": 13,
         "min_child_weight":3,
-        "subsample": 0.8487331435081997,
-        "colsample_bytree": 0.7242129930701307
+        "subsample": 0.8023455066032372,
+        "colsample_bytree": 0.9384671215434106
     },
     "alquiler": {
-        "n_estimators": 814, 
-        "learning_rate": 0.03545499257978169, 
-        "max_depth": 7,
-        "min_child_weight": 2,
-        "subsample": 0.9123383641803302,
-        "colsample_bytree": 0.5167959070943567
+        "n_estimators": 936, 
+        "learning_rate": 0.016714201311750457, 
+        "max_depth": 11,
+        "min_child_weight": 9,
+        "subsample": 0.7178862972597753,
+        "colsample_bytree": 0.5354280626524895
     }
 }
 
@@ -169,8 +169,8 @@ def evaluar_xgb_final_hibrido(df, nombre_mercado):
 
 if __name__ == "__main__":
     cliente = crear_cliente_minio()
-    df_venta = bajar_minio(cliente, "dataset_ml/precios/ventas", "df_ventas_arboles.parquet")
-    df_alquiler = bajar_minio(cliente, "dataset_ml/precios/alquiler", "df_alquiler_arboles.parquet")
+    df_venta = bajar_minio(cliente, "dataset_ml/precios/ventas", "df_venta_xgboost.parquet")
+    df_alquiler = bajar_minio(cliente, "dataset_ml/precios/alquiler", "df_alquiler_xgboost.parquet")
 
     evaluar_xgb_final_hibrido(df_venta, "venta")
     evaluar_xgb_final_hibrido(df_alquiler, "alquiler")
