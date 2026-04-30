@@ -59,11 +59,17 @@ RADIO_METROS = 500
 # ─── MinIO client ───────────────────────────────────────────────────────
 
 def _crear_cliente_minio() -> Minio:
-    """Creates a MinIO client from .env vars (same logic as src/utils)."""
+    """Creates a MinIO client from .env vars (same logic as src/utils).
+
+    Note: _region_map is pre-seeded to avoid the automatic region-detection
+    HEAD request, which fails because the UCM proxy returns an HTML login page
+    instead of the expected S3 XML response, causing a ParseError.
+    """
     load_dotenv()
     endpoint = os.getenv("MINIO_ENDPOINT")
     access_key = os.getenv("MINIO_ACCESS_KEY")
     secret_key = os.getenv("MINIO_SECRET_KEY")
+    bucket = os.getenv("MINIO_BUCKET", "pd1")
 
     assert endpoint, "Falta MINIO_ENDPOINT en el entorno/.env"
     assert access_key, "Falta MINIO_ACCESS_KEY en el entorno/.env"
@@ -76,13 +82,16 @@ def _crear_cliente_minio() -> Minio:
             status_forcelist=[500, 502, 503, 504],
         ),
     )
-    return Minio(
+    client = Minio(
         endpoint=endpoint,
         access_key=access_key,
         secret_key=secret_key,
         secure=True,
         http_client=http_client,
     )
+    # Pre-seed region to skip auto-detection (UCM proxy returns HTML, not XML)
+    client._region_map[bucket] = "us-east-1"
+    return client
 
 
 def _minio_path() -> tuple[str, str]:

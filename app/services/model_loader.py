@@ -1,5 +1,6 @@
 import os
-import pickle
+
+import joblib
 from pathlib import Path
 from typing import Any
 
@@ -35,8 +36,7 @@ class ModelLoader:
                 f"No se encontro el artefacto del modelo '{model_key}': {model_path}"
             )
 
-        with model_path.open("rb") as file:
-            model = pickle.load(file)
+        model = joblib.load(model_path)
 
         self._cache[model_key] = model
         return model
