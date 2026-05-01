@@ -11,6 +11,7 @@ const EUR = new Intl.NumberFormat('es-ES', {
 /* ── Friendly labels for computed features ── */
 const FEATURE_LABELS = {
   dist_min_alimentacion: 'Dist. alimentación',
+  cantidad_alimentacion_cerca: 'Alimentación cerca',
   dist_min_bibliotecas: 'Dist. bibliotecas',
   cantidad_bibliotecas_cerca: 'Bibliotecas cerca',
   dist_min_bomberos: 'Dist. bomberos',
@@ -114,18 +115,18 @@ function showComputedFeatures(gridId, containerId, features) {
   const groups = {
     'Servicios cercanos': {},
     'Transporte': {},
-    'Demografía': {},
+    'Demografía (Sección Censal)': {},
     'Otros': {},
   };
 
   for (const [key, value] of entries) {
     const label = FEATURE_LABELS[key] || key;
     if (key.startsWith('dist_min_paradas') || key.startsWith('dist_min_estaciones') ||
-        key.includes('paradas_cerca') || key.includes('estaciones_cerca') ||
-        key.includes('lineas_distintas')) {
+      key.includes('paradas_cerca') || key.includes('estaciones_cerca') ||
+      key.includes('lineas_distintas')) {
       groups['Transporte'][label] = value;
     } else if (key.startsWith('poblacion') || key.startsWith('pct_')) {
-      groups['Demografía'][label] = value;
+      groups['Demografía (Sección Censal)'][label] = value;
     } else if (key.startsWith('dist_min_') || key.startsWith('cantidad_')) {
       groups['Servicios cercanos'][label] = value;
     } else {
@@ -227,14 +228,18 @@ function initVentaForm() {
       const payload = parseSimpleForm(form, 'venta');
       const data = await postJson("/predict/venta/simple", payload);
       const mainPrice = typeof data.prediction === 'number'
-        ? `Precio estimado: ${EUR.format(data.prediction)}`
-        : `Precio estimado: ${data.prediction} EUR`;
-        
+        ? `Precio estimado de <strong>${EUR.format(data.prediction)}</strong> para tu piso en ${payload.Direccion}`
+        : `Precio estimado de <strong>${data.prediction} EUR</strong> para tu piso en ${payload.Direccion}`;
+
       const m2Price = data.prediction_m2
         ? `<br><small style="font-size: 0.6em; font-weight: normal; opacity: 0.8;">(${EUR.format(data.prediction_m2)} / m²)</small>`
         : '';
-        
-      setResult("venta-result", "venta-result-card", mainPrice + m2Price);
+
+      const coordsInfo = (data.lat && data.lon)
+        ? `<br><small style="font-size: 0.55em; color: var(--text-light); display: inline-block; margin-top: 12px; font-weight: normal; letter-spacing: 0.02em;"> Coordenadas detectadas: ${data.lat.toFixed(5)}, ${data.lon.toFixed(5)}</small>`
+        : '';
+
+      setResult("venta-result", "venta-result-card", mainPrice + m2Price + coordsInfo);
 
       if (data.features_computed) {
         showComputedFeatures("venta-computed-grid", "venta-computed", data.features_computed);
@@ -264,14 +269,18 @@ function initAlquilerForm() {
       const payload = parseSimpleForm(form, 'alquiler');
       const data = await postJson("/predict/alquiler/simple", payload);
       const mainPrice = typeof data.prediction === 'number'
-        ? `Alquiler estimado: ${EUR.format(data.prediction)}/mes`
-        : `Alquiler estimado: ${data.prediction} EUR/mes`;
-        
+        ? `Alquiler estimado de <strong>${EUR.format(data.prediction)}/mes</strong> para tu piso en ${payload.Direccion}`
+        : `Alquiler estimado de <strong>${data.prediction} EUR/mes</strong> para tu piso en ${payload.Direccion}`;
+
       const m2Price = data.prediction_m2
         ? `<br><small style="font-size: 0.6em; font-weight: normal; opacity: 0.8;">(${EUR.format(data.prediction_m2)} / m² / mes)</small>`
         : '';
-        
-      setResult("alquiler-result", "alquiler-result-card", mainPrice + m2Price);
+
+      const coordsInfo = (data.lat && data.lon)
+        ? `<br><small style="font-size: 0.55em; color: var(--text-light); display: inline-block; margin-top: 12px; font-weight: normal; letter-spacing: 0.02em;"> Coordenadas detectadas: ${data.lat.toFixed(5)}, ${data.lon.toFixed(5)}</small>`
+        : '';
+
+      setResult("alquiler-result", "alquiler-result-card", mainPrice + m2Price + coordsInfo);
 
       if (data.features_computed) {
         showComputedFeatures("alquiler-computed-grid", "alquiler-computed", data.features_computed);
