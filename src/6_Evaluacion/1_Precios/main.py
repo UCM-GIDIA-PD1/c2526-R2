@@ -14,10 +14,11 @@ if SRC_DIR not in sys.path:
 from utils.funciones_minio import crear_cliente_minio, bajar_minio
 
 MODELOS = {
-    "1": ("KNN",     "evaluacion_knn"),
-    "2": ("Lasso",   "evaluacion_lasso"),
-    "3": ("Random Forest", "evaluacion_rf"),
-    "4": ("XGBoost", "evaluacion_xgboost"),
+    "1": ("KNN",     "A_evaluacion_knn"),
+    "2": ("Lasso",   "B_evaluacion_lasso"),
+    "3": ("Random Forest", "C_evaluacion_rf"),
+    "4": ("XGBoost", "D_evaluacion_xgboost"),
+    "5": ("Subida a W&B (Modelo de Producción)", "E_entrenar_xgboost_produccion"),
 }
 
 def menu_precios():
@@ -26,6 +27,8 @@ def menu_precios():
         print("     EVALUACIÓN DE MODELOS - PRECIOS")
         print("=" * 50)
         for key, (nombre, _) in MODELOS.items():
+            if key == "5":
+                print("-" * 50)
             print(f"  {key}. Evaluar modelo: {nombre}")
         print("-" * 50)
         print("  0. Volver al menú principal")
@@ -47,7 +50,17 @@ def menu_precios():
         try:
             cliente = crear_cliente_minio()
 
-            if modulo == "evaluacion_lasso":
+            if modulo == "E_entrenar_xgboost_produccion":
+                df_venta = bajar_minio(cliente, "dataset_ml/precios/ventas", "df_venta_xgboost.parquet")
+                df_alquiler = bajar_minio(cliente, "dataset_ml/precios/alquiler", "df_alquiler_xgboost.parquet")
+                
+                import importlib
+                mod = importlib.import_module(f"src.6_Evaluacion.1_Precios.{modulo}")
+                mod.entrenar_y_guardar_produccion(df_venta, "venta")
+                mod.entrenar_y_guardar_produccion(df_alquiler, "alquiler")
+                continue
+
+            if modulo == "B_evaluacion_lasso":
                 df_venta    = bajar_minio(cliente, "dataset_ml/precios/ventas",   "df_ventas_regresion.parquet")
                 df_alquiler = bajar_minio(cliente, "dataset_ml/precios/alquiler", "df_alquiler_regresion.parquet")
             else:  # KNN, RF, XGBoost usan los parquets de árboles
@@ -56,18 +69,22 @@ def menu_precios():
 
             # Importación dinámica del módulo de evaluación
             import importlib
-            mod = importlib.import_module(modulo)
+            # Intentar importación relativa desde el paquete o por el path
+            try:
+                mod = importlib.import_module(f"src.6_Evaluacion.1_Precios.{modulo}")
+            except ModuleNotFoundError:
+                mod = importlib.import_module(modulo)
 
-            if modulo == "evaluacion_knn":
+            if modulo == "A_evaluacion_knn":
                 mod.evaluar_knn_final(df_venta,    "venta")
                 mod.evaluar_knn_final(df_alquiler, "alquiler")
-            elif modulo == "evaluacion_lasso":
+            elif modulo == "B_evaluacion_lasso":
                 mod.evaluar_modelo_final(df_venta,    "venta")
                 mod.evaluar_modelo_final(df_alquiler, "alquiler")
-            elif modulo == "evaluacion_rf":
+            elif modulo == "C_evaluacion_rf":
                 mod.evaluar_rf_final(df_venta,    "venta")
                 mod.evaluar_rf_final(df_alquiler, "alquiler")
-            elif modulo == "evaluacion_xgboost":
+            elif modulo == "D_evaluacion_xgboost":
                 mod.evaluar_xgb_final_hibrido(df_venta,    "venta")
                 mod.evaluar_xgb_final_hibrido(df_alquiler, "alquiler")
 

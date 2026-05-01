@@ -100,6 +100,18 @@ El orquestador interactivo detecta y permite ejecutar cualquier fase cómodament
 ```bash
 uv run -m main
 ```
+
+### Ejecución de una fase o script específico
+
+Si prefieres no usar el orquestador y quieres ejecutar el `main.py` de una fase concreta cualquiera (por ejemplo, la Fase 1 de Extracción o la Fase 6 de Evaluación), puedes llamarlo directamente indicando su ruta:
+
+```bash
+# Ejemplo: Ejecutar el main de la fase de Extracción
+uv run -m src.1_Extraccion.main
+
+# Ejemplo: Ejecutar el main de la evaluación del modelo de precios
+uv run -m src.6_Evaluacion.1_Precios.main
+```
 ---
 
 ## Resultados de Modelos
@@ -111,7 +123,7 @@ A continuación se resumen los resultados principales obtenidos en nuestros mode
 | *xgboost* | Estimación precio venta | MAPE | 40.8% | 15.03% |
 | *xgboost* | Estimación precio alquiler | MAPE | 67.02% | 15.69% |
 | *SVM* | Clasificador de anunciante | F1-score | 0.29 | 0.89 |
-| *MLP* | Clasificador de imágenes | F1-score | ? | 0.90 |
+| *MLP* | Clasificador de imágenes | F1-score | 0.25 | 0.90 |
 ---
 
 ## Aplicación Web y Contenedores
@@ -130,7 +142,14 @@ uv run uvicorn app.main:app --reload
 
 ### Construcción y Despliegue con Podman
 
-Para un despliegue aislado, puedes construir el contenedor utilizando el archivo `Containerfile`:
+Para un despliegue aislado, puedes construir el contenedor utilizando el archivo `Containerfile`.
+
+ **Requisito previo:** Debes tener instalado [Podman Desktop](https://podman.io/). 
+
+> *Nota para usuarios de Podman en Windows:* Recuerda iniciar la máquina virtual antes de ejecutar los comandos:
+ ```bash
+ podman machine start
+ ```
 
 ```bash
 # Construir la imagen
