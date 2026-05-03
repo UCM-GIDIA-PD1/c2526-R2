@@ -6,7 +6,9 @@ from typing import Any, Optional
 
 class VentaSimpleInput(BaseModel):
     """Datos mínimos que el usuario introduce para predecir venta."""
-    Direccion: str                   # Dirección exacta → geocodificación automática
+    Direccion: Optional[str] = None  # Dirección exacta (opcional si se da lat/lon)
+    lat: Optional[float] = None      # Latitud opcional
+    lon: Optional[float] = None      # Longitud opcional
     Distrito: str                    # Distrito de Madrid
     Superficie: float                # m²
     Num_habitaciones: float
@@ -24,7 +26,9 @@ class VentaSimpleInput(BaseModel):
 
 class AlquilerSimpleInput(BaseModel):
     """Datos mínimos que el usuario introduce para predecir alquiler."""
-    Direccion: str
+    Direccion: Optional[str] = None
+    lat: Optional[float] = None
+    lon: Optional[float] = None
     Distrito: str
     Superficie: float
     Num_habitaciones: float

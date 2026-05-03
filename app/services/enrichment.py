@@ -404,7 +404,7 @@ def compute_padron_features(lat: float, lon: float, store: ReferenceDataStore) -
 
 # ─── Main enrichment function ──────────────────────────────────────────
 
-def enrich_property(direccion: str, basic_data: dict) -> dict:
+def enrich_property(direccion: Optional[str], basic_data: dict) -> dict:
     """
     Takes user-provided address + basic property data and enriches it
     with all computed spatial features needed by the model.
@@ -413,13 +413,21 @@ def enrich_property(direccion: str, basic_data: dict) -> dict:
     """
     store = get_store()
 
-    # Step 1: Geocode the address
-    lat, lon = geocode_address(direccion)
-    if lat is None or lon is None:
-        raise ValueError(
-            f"No se pudo geocodificar la dirección: '{direccion}'. "
-            "Comprueba que es una dirección válida en Madrid."
-        )
+    # Step 1: Geocode the address or use provided coords
+    lat = basic_data.get("lat")
+    lon = basic_data.get("lon")
+
+    if lat is not None and lon is not None:
+        pass  # Coordenadas proporcionadas directamente
+    elif direccion:
+        lat, lon = geocode_address(direccion)
+        if lat is None or lon is None:
+            raise ValueError(
+                f"No se pudo geocodificar la dirección: '{direccion}'. "
+                "Comprueba que es una dirección válida en Madrid."
+            )
+    else:
+        raise ValueError("Se debe proporcionar una dirección o coordenadas (lat, lon).")
 
     # Validate coordinates are within Madrid bounds
     if not (40.28 <= lat <= 40.65 and -3.83 <= lon <= -3.48):

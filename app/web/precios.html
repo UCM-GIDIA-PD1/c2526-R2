@@ -58,9 +58,17 @@
           <div class="form-section__content">
             <div class="form-grid">
               <label class="form-field--full">
-                Dirección completa
-                <input name="Direccion" type="text" placeholder="Ej: Calle Gran Vía 28, 3º" required id="venta-direccion">
-                <span class="input-hint">Introduce la calle y número. Se geocodificará automáticamente.</span>
+                Dirección completa (o deja vacío si usas coordenadas)
+                <input name="Direccion" type="text" placeholder="Ej: Calle Gran Vía 28, 3º" id="venta-direccion">
+                <span class="input-hint">Introduce la calle y número. Se geocodificará automáticamente si no indicas lat/lon.</span>
+              </label>
+              <label>
+                Latitud (opcional)
+                <input name="lat" type="number" step="any" placeholder="Ej: 40.420" id="venta-lat">
+              </label>
+              <label>
+                Longitud (opcional)
+                <input name="lon" type="number" step="any" placeholder="Ej: -3.703" id="venta-lon">
               </label>
               <label>
                 Distrito
@@ -69,12 +77,12 @@
                   <option value="Centro">Centro</option>
                   <option value="Arganzuela">Arganzuela</option>
                   <option value="Retiro">Retiro</option>
-                  <option value="Salamanca">Salamanca</option>
+                  <option value="Barrio de Salamanca">Salamanca</option>
                   <option value="Chamartín">Chamartín</option>
                   <option value="Tetuán">Tetuán</option>
                   <option value="Chamberí">Chamberí</option>
-                  <option value="Fuencarral-El Pardo">Fuencarral-El Pardo</option>
-                  <option value="Moncloa-Aravaca">Moncloa-Aravaca</option>
+                  <option value="Fuencarral">Fuencarral-El Pardo</option>
+                  <option value="Moncloa">Moncloa-Aravaca</option>
                   <option value="Latina">Latina</option>
                   <option value="Carabanchel">Carabanchel</option>
                   <option value="Usera">Usera</option>
@@ -85,7 +93,7 @@
                   <option value="Villaverde">Villaverde</option>
                   <option value="Villa de Vallecas">Villa de Vallecas</option>
                   <option value="Vicálvaro">Vicálvaro</option>
-                  <option value="San Blas-Canillejas">San Blas-Canillejas</option>
+                  <option value="San Blas">San Blas-Canillejas</option>
                   <option value="Barajas">Barajas</option>
                 </select>
               </label>
@@ -117,10 +125,10 @@
                 Tipo de ventanas
                 <select name="Ventanas" required id="venta-ventanas">
                   <option value="" disabled selected>Selecciona</option>
-                  <option value="Climalit">Climalit</option>
-                  <option value="Doble acristalamiento">Doble acristalamiento</option>
-                  <option value="Simple">Simple</option>
-                  <option value="No determinado">No determinado</option>
+                  <option value="exterior">Exterior</option>
+                  <option value="interior">Interior</option>
+                  <option value="reducida">Reducida</option>
+                  <option value="no determinado">No determinado</option>
                 </select>
               </label>
               <label>
@@ -131,10 +139,6 @@
                   <option value="Norte">Norte</option>
                   <option value="Este">Este</option>
                   <option value="Oeste">Oeste</option>
-                  <option value="Sureste">Sureste</option>
-                  <option value="Suroeste">Suroeste</option>
-                  <option value="Noreste">Noreste</option>
-                  <option value="Noroeste">Noroeste</option>
                   <option value="No determinado">No determinado</option>
                 </select>
               </label>
@@ -149,7 +153,7 @@
                   <option value="E">E</option>
                   <option value="F">F</option>
                   <option value="G">G</option>
-                  <option value="No indicado">No indicado</option>
+                  <option value="No determinado">No determinado</option>
                 </select>
               </label>
               <label>
@@ -157,8 +161,9 @@
                 <select name="Anuncia" required id="venta-anuncia">
                   <option value="" disabled selected>Selecciona</option>
                   <option value="Particular">Particular</option>
-                  <option value="Agencia">Agencia</option>
-                  <option value="Promotor">Promotor</option>
+                  <option value="Profesional">Profesional</option>
+                  <option value="Promotora">Promotora</option>
+                  <option value="Agente Pro">Agente Pro</option>
                 </select>
               </label>
             </div>
@@ -240,9 +245,17 @@
           <div class="form-section__content">
             <div class="form-grid">
               <label class="form-field--full">
-                Dirección completa
-                <input name="Direccion" type="text" placeholder="Ej: Calle Serrano 45" required id="alquiler-direccion">
-                <span class="input-hint">Introduce la calle y número. Se geocodificará automáticamente.</span>
+                Dirección completa (o deja vacío si usas coordenadas)
+                <input name="Direccion" type="text" placeholder="Ej: Calle Serrano 45" id="alquiler-direccion">
+                <span class="input-hint">Introduce la calle y número. Se geocodificará automáticamente si no indicas lat/lon.</span>
+              </label>
+              <label>
+                Latitud (opcional)
+                <input name="lat" type="number" step="any" placeholder="Ej: 40.420" id="alquiler-lat">
+              </label>
+              <label>
+                Longitud (opcional)
+                <input name="lon" type="number" step="any" placeholder="Ej: -3.703" id="alquiler-lon">
               </label>
               <label>
                 Distrito
@@ -251,12 +264,12 @@
                   <option value="Centro">Centro</option>
                   <option value="Arganzuela">Arganzuela</option>
                   <option value="Retiro">Retiro</option>
-                  <option value="Salamanca">Salamanca</option>
+                  <option value="Barrio de Salamanca">Salamanca</option>
                   <option value="Chamartín">Chamartín</option>
                   <option value="Tetuán">Tetuán</option>
                   <option value="Chamberí">Chamberí</option>
-                  <option value="Fuencarral-El Pardo">Fuencarral-El Pardo</option>
-                  <option value="Moncloa-Aravaca">Moncloa-Aravaca</option>
+                  <option value="Fuencarral">Fuencarral-El Pardo</option>
+                  <option value="Moncloa">Moncloa-Aravaca</option>
                   <option value="Latina">Latina</option>
                   <option value="Carabanchel">Carabanchel</option>
                   <option value="Usera">Usera</option>
@@ -267,7 +280,7 @@
                   <option value="Villaverde">Villaverde</option>
                   <option value="Villa de Vallecas">Villa de Vallecas</option>
                   <option value="Vicálvaro">Vicálvaro</option>
-                  <option value="San Blas-Canillejas">San Blas-Canillejas</option>
+                  <option value="San Blas">San Blas-Canillejas</option>
                   <option value="Barajas">Barajas</option>
                 </select>
               </label>
@@ -299,10 +312,10 @@
                 Tipo de ventanas
                 <select name="Ventanas" required id="alquiler-ventanas">
                   <option value="" disabled selected>Selecciona</option>
-                  <option value="Climalit">Climalit</option>
-                  <option value="Doble acristalamiento">Doble acristalamiento</option>
-                  <option value="Simple">Simple</option>
-                  <option value="No determinado">No determinado</option>
+                  <option value="exterior">Exterior</option>
+                  <option value="interior">Interior</option>
+                  <option value="reducida">Reducida</option>
+                  <option value="no determinado">No determinado</option>
                 </select>
               </label>
               <label>
@@ -313,10 +326,6 @@
                   <option value="Norte">Norte</option>
                   <option value="Este">Este</option>
                   <option value="Oeste">Oeste</option>
-                  <option value="Sureste">Sureste</option>
-                  <option value="Suroeste">Suroeste</option>
-                  <option value="Noreste">Noreste</option>
-                  <option value="Noroeste">Noroeste</option>
                   <option value="No determinado">No determinado</option>
                 </select>
               </label>
@@ -331,7 +340,7 @@
                   <option value="E">E</option>
                   <option value="F">F</option>
                   <option value="G">G</option>
-                  <option value="No indicado">No indicado</option>
+                  <option value="No determinado">No determinado</option>
                 </select>
               </label>
               <label>
@@ -339,8 +348,9 @@
                 <select name="Anuncia" required id="alquiler-anuncia">
                   <option value="" disabled selected>Selecciona</option>
                   <option value="Particular">Particular</option>
-                  <option value="Agencia">Agencia</option>
-                  <option value="Promotor">Promotor</option>
+                  <option value="Profesional">Profesional</option>
+                  <option value="Promotora">Promotora</option>
+                  <option value="Agente Pro">Agente Pro</option>
                 </select>
               </label>
             </div>

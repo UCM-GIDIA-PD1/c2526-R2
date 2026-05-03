@@ -165,11 +165,9 @@ function showComputedFeatures(gridId, containerId, features) {
   container.style.display = 'block';
 }
 
-/* ── Parse simplified form ── */
 function parseSimpleForm(form, mode) {
   const data = new FormData(form);
   const payload = {
-    Direccion: String(data.get("Direccion")),
     Distrito: String(data.get("Distrito")),
     Superficie: Number(data.get("Superficie")),
     Num_habitaciones: Number(data.get("Num_habitaciones")),
@@ -183,6 +181,16 @@ function parseSimpleForm(form, mode) {
     Consumo: String(data.get("Consumo")),
     Anuncia: String(data.get("Anuncia")),
   };
+
+  if (data.get("Direccion") && String(data.get("Direccion")).trim() !== '') {
+    payload.Direccion = String(data.get("Direccion")).trim();
+  }
+  if (data.get("lat") && String(data.get("lat")).trim() !== '') {
+    payload.lat = Number(data.get("lat"));
+  }
+  if (data.get("lon") && String(data.get("lon")).trim() !== '') {
+    payload.lon = Number(data.get("lon"));
+  }
 
   if (mode === 'alquiler') {
     payload.Equipamiento = form.querySelector('[name="Equipamiento_check"]')?.checked ? 1 : 0;
@@ -227,9 +235,10 @@ function initVentaForm() {
     try {
       const payload = parseSimpleForm(form, 'venta');
       const data = await postJson("/predict/venta/simple", payload);
+      const locText = payload.Direccion ? payload.Direccion : `las coordenadas (${payload.lat}, ${payload.lon})`;
       const mainPrice = typeof data.prediction === 'number'
-        ? `Precio estimado de <strong>${EUR.format(data.prediction)}</strong> para tu piso en ${payload.Direccion}`
-        : `Precio estimado de <strong>${data.prediction} EUR</strong> para tu piso en ${payload.Direccion}`;
+        ? `Precio estimado de <strong>${EUR.format(data.prediction)}</strong> para tu piso en ${locText}`
+        : `Precio estimado de <strong>${data.prediction} EUR</strong> para tu piso en ${locText}`;
 
       const m2Price = data.prediction_m2
         ? `<br><small style="font-size: 0.6em; font-weight: normal; opacity: 0.8;">(${EUR.format(data.prediction_m2)} / m²)</small>`
@@ -268,9 +277,10 @@ function initAlquilerForm() {
     try {
       const payload = parseSimpleForm(form, 'alquiler');
       const data = await postJson("/predict/alquiler/simple", payload);
+      const locText = payload.Direccion ? payload.Direccion : `las coordenadas (${payload.lat}, ${payload.lon})`;
       const mainPrice = typeof data.prediction === 'number'
-        ? `Alquiler estimado de <strong>${EUR.format(data.prediction)}/mes</strong> para tu piso en ${payload.Direccion}`
-        : `Alquiler estimado de <strong>${data.prediction} EUR/mes</strong> para tu piso en ${payload.Direccion}`;
+        ? `Alquiler estimado de <strong>${EUR.format(data.prediction)}/mes</strong> para tu piso en ${locText}`
+        : `Alquiler estimado de <strong>${data.prediction} EUR/mes</strong> para tu piso en ${locText}`;
 
       const m2Price = data.prediction_m2
         ? `<br><small style="font-size: 0.6em; font-weight: normal; opacity: 0.8;">(${EUR.format(data.prediction_m2)} / m² / mes)</small>`
