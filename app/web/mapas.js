@@ -10,9 +10,13 @@ let columnasActuales = [];     // columnas de la rejilla activa
 let variableActual = "";       // columna seleccionada
 let rejillaActual = "";        // rejilla seleccionada
 
-// Escala de colores (Viridis-like, legible en fondo oscuro)
-const COLORES = ["#440154", "#482878", "#3e4989", "#31688e", "#26828e",
-                 "#1f9e89", "#35b779", "#6ece58", "#b5de2b", "#fde725"];
+// Escala de colores
+const PALETAS = {
+  "viridis": ["#440154", "#482878", "#3e4989", "#31688e", "#26828e", "#1f9e89", "#35b779", "#6ece58", "#b5de2b", "#fde725"],
+  "coolwarm": ["#313695", "#4575b4", "#74add1", "#abd9e9", "#e0f3f8", "#fee090", "#fdae61", "#f46d43", "#d73027", "#a50026"]
+};
+let paletaActual = "viridis";
+let COLORES = PALETAS[paletaActual];
 const NUM_CLASES = COLORES.length;
 
 const MADRID_CENTER = [40.42, -3.70];
@@ -176,6 +180,8 @@ async function cargarDatos(tipoRejilla) {
 function renderizarCoropleta(variable) {
   if (!geojsonActual || !variable) return;
 
+  COLORES = PALETAS[paletaActual];
+
   // Limpiar capa anterior
   if (capaActual) {
     mapa.removeLayer(capaActual);
@@ -260,7 +266,7 @@ function resaltarZona(e, feature, variable, colId) {
   const layer = e.target;
   layer.setStyle({
     weight: 2.5,
-    color: "#55d5ff",
+    color: "#A32223", // Cambiado al color corporativo
     fillOpacity: 0.9,
   });
   layer.bringToFront();
@@ -307,7 +313,15 @@ function actualizarLeyenda(breaks, colores, variable, minVal, maxVal) {
   const colInfo = columnasActuales.find((c) => c.nombre === variable);
   const label = colInfo ? colInfo.label : variable;
 
-  let html = `<p class="legend-title">${label}</p>`;
+  let html = `
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 8px;">
+      <p class="legend-title" style="margin: 0; border: none; padding: 0;">${label}</p>
+      <select id="paleta-select" class="map-select" style="font-size: 0.75rem !important; padding: 4px 8px !important; width: auto !important; border-radius: 4px !important;">
+        <option value="viridis" ${paletaActual === "viridis" ? "selected" : ""}>Viridis</option>
+        <option value="coolwarm" ${paletaActual === "coolwarm" ? "selected" : ""}>Coolwarm</option>
+      </select>
+    </div>
+  `;
   html += '<div class="legend-gradient">';
 
   // Barra de gradiente continua
@@ -322,6 +336,12 @@ function actualizarLeyenda(breaks, colores, variable, minVal, maxVal) {
   html += "</div>";
 
   legend.innerHTML = html;
+
+  // Escuchar cambios en la paleta
+  document.getElementById("paleta-select").addEventListener("change", (e) => {
+    paletaActual = e.target.value;
+    renderizarCoropleta(variableActual);
+  });
 }
 
 // ── Stats ──────────────────────────────────────────────
@@ -339,10 +359,102 @@ function mostrarLoading(visible) {
   document.getElementById("map-loading").style.display = visible ? "flex" : "none";
 }
 
+// ── Puntos de Interés (Secundarios) ─────────────────────
+
+let capaSecundaria = null;
+
+async function cargarCapasSecundarias() {
+  try {
+    const res = await fetch("/api/mapas/secundarios/capas");
+    const data = await res.json();
+    const datasets = data.datasets || [];
+
+    const sel = document.getElementById("secundarios-select");
+    datasets.forEach((nombre) => {
+      const opt = document.createElement("option");
+      opt.value = nombre;
+      // Convertir a título legible: "centros_educativos" -> "Centros Educativos"
+      opt.textContent = nombre.split("_").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
+      sel.appendChild(opt);
+    });
+
+    sel.addEventListener("change", () => {
+      cargarPuntosSecundarios(sel.value);
+    });
+  } catch (err) {
+    console.error("Error al cargar lista de secundarios:", err);
+  }
+}
+
+async function cargarPuntosSecundarios(nombreDataset) {
+  if (capaSecundaria) {
+    mapa.removeLayer(capaSecundaria);
+    capaSecundaria = null;
+  }
+  document.getElementById("map-tooltip").style.display = "none";
+
+  if (!nombreDataset) return;
+
+  mostrarLoading(true);
+  try {
+    const res = await fetch(`/api/mapas/secundarios/datos?nombre=${nombreDataset}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const geojson = await res.json();
+
+    capaSecundaria = L.geoJSON(geojson, {
+      pointToLayer: function (feature, latlng) {
+        return L.circleMarker(latlng, {
+          radius: 5,
+          fillColor: "#ff477e", // Un rojo/rosado brillante que contrasta bien
+          color: "#fff",
+          weight: 1,
+          opacity: 1,
+          fillOpacity: 0.8
+        });
+      },
+      onEachFeature: function (feature, layer) {
+        layer.on({
+          mouseover: (e) => {
+            const props = feature.properties;
+            // Buscar una columna que sea el nombre
+            const nombrePto = props["nombre"] || props["NOMBRE"] || props["Name"] || props["name"] || "Punto de interés";
+            
+            const tooltip = document.getElementById("map-tooltip");
+            tooltip.innerHTML = `<strong>${nombrePto}</strong>`;
+            tooltip.style.display = "block";
+            
+            const rect = document.getElementById("map").getBoundingClientRect();
+            tooltip.style.left = e.originalEvent.clientX - rect.left + 14 + "px";
+            tooltip.style.top = e.originalEvent.clientY - rect.top - 10 + "px";
+            
+            e.target.setStyle({ radius: 8, weight: 2 });
+            e.target.bringToFront();
+          },
+          mouseout: (e) => {
+            document.getElementById("map-tooltip").style.display = "none";
+            e.target.setStyle({ radius: 5, weight: 1 });
+          }
+        });
+      }
+    }).addTo(mapa);
+  } catch (err) {
+    console.error("Error al cargar datos secundarios:", err);
+  } finally {
+    mostrarLoading(false);
+  }
+}
+
 // ── Utilidades ─────────────────────────────────────────
 
-function formatearNumero(val) {
+function formatearNumero(val, varName = variableActual) {
   if (val == null || isNaN(val)) return "—";
+  
+  // Si la variable está relacionada con años, mostrar número exacto redondeado
+  const esAnio = varName && (varName.toLowerCase().includes("anio") || varName.toLowerCase().includes("construccion"));
+  if (esAnio) {
+    return Math.round(val).toString();
+  }
+
   if (Math.abs(val) >= 1000000) return (val / 1000000).toFixed(2) + " M";
   if (Math.abs(val) >= 1000) return (val / 1000).toFixed(1) + " K";
   if (Number.isInteger(val)) return val.toLocaleString("es-ES");
@@ -356,3 +468,19 @@ setTimeout(() => {
   mapa.invalidateSize();
 }, 100);
 cargarCapas();
+cargarCapasSecundarias();
+
+// Listeners de los Toggles
+document.getElementById("toggle-coropleta").addEventListener("change", (e) => {
+  if (capaActual) {
+    if (e.target.checked) mapa.addLayer(capaActual);
+    else mapa.removeLayer(capaActual);
+  }
+});
+
+document.getElementById("toggle-secundarios").addEventListener("change", (e) => {
+  if (capaSecundaria) {
+    if (e.target.checked) mapa.addLayer(capaSecundaria);
+    else mapa.removeLayer(capaSecundaria);
+  }
+});

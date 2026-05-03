@@ -6,7 +6,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.api.routes import router as predict_router
 from app.api.map_routes import router as map_router
-
+from app.api.image_routes import router as image_router
 
 app = FastAPI(
     title="MAiDay Model Serving",
@@ -19,8 +19,8 @@ WEB_DIR = BASE_DIR / "web"
 
 app.include_router(predict_router)
 app.include_router(map_router)
+app.include_router(image_router)
 app.mount("/static", StaticFiles(directory=WEB_DIR), name="static")
-
 
 @app.get("/", include_in_schema=False)
 def home() -> FileResponse:

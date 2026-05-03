@@ -55,15 +55,24 @@
       <article class="model-card">
         <h2>Clasificador de imagen</h2>
         <form id="imagen-form" class="form-grid" style="grid-template-columns: 1fr;">
-          <label class="dropzone" id="dropzone" for="imagen-file">
-            <input id="imagen-file" name="file" type="file" accept="image/*" required>
-            <span id="dropzone-text">Arrastra una imagen aquí o haz click para seleccionar</span>
-          </label>
-          <button type="submit" class="btn-submit">Clasificar imagen</button>
+          <div style="display: flex; gap: 10px;">
+            <label class="dropzone" id="dropzone" for="imagen-file" style="flex: 1;">
+              <input id="imagen-file" name="files" type="file" accept="image/*" multiple>
+              <span id="dropzone-text">Seleccionar archivos</span>
+            </label>
+            <label class="dropzone" id="dropzone-folder" for="imagen-folder" style="flex: 1;">
+              <input id="imagen-folder" name="files" type="file" webkitdirectory multiple>
+              <span id="dropzone-folder-text">Seleccionar carpeta</span>
+            </label>
+          </div>
+          <button type="submit" id="imagen-submit-btn" class="btn-submit">
+            <span class="btn-text">Clasificar imágenes</span>
+            <span class="btn-spinner" style="display: none;">⏳</span>
+          </button>
         </form>
         <article class="result-card" id="imagen-result-card">
-          <p class="result-label">Resultado</p>
-          <p id="imagen-result" class="result-value">Sube una imagen para clasificar.</p>
+          <p class="result-label">Resultados</p>
+          <div id="imagen-result" class="result-value">Sube imágenes para clasificar.</div>
         </article>
       </article>
 

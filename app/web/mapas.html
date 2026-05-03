@@ -53,11 +53,33 @@
       </select>
     </label>
 
+    <label class="map-label" for="secundarios-select">
+      Puntos de Interés
+      <select id="secundarios-select" class="map-select">
+        <option value="">Ninguno</option>
+      </select>
+    </label>
+
     <div class="map-stats" id="map-stats">
       <p class="map-stats-row"><span class="map-stats-label">Zonas:</span> <span id="stat-zonas">—</span></p>
       <p class="map-stats-row"><span class="map-stats-label">Min:</span> <span id="stat-min">—</span></p>
       <p class="map-stats-row"><span class="map-stats-label">Max:</span> <span id="stat-max">—</span></p>
       <p class="map-stats-row"><span class="map-stats-label">Media:</span> <span id="stat-media">—</span></p>
+    </div>
+
+    <hr style="border: none; border-top: 1px solid rgba(255,255,255,0.1); margin: 24px 0;">
+
+    <h3 style="font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 16px; color: rgba(255,255,255,0.9);">Capas del Mapa</h3>
+
+    <div style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 8px;">
+      <label class="map-toggle-row">
+        <span>Mostrar Rejilla</span>
+        <input type="checkbox" id="toggle-coropleta" checked>
+      </label>
+      <label class="map-toggle-row">
+        <span>Mostrar Puntos de Interés</span>
+        <input type="checkbox" id="toggle-secundarios" checked>
+      </label>
     </div>
   </aside>
 

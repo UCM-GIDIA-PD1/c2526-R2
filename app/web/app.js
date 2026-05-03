@@ -313,31 +313,45 @@ function initDragAndDrop() {
   const dropzone = document.getElementById("dropzone");
   const input = document.getElementById("imagen-file");
   const text = document.getElementById("dropzone-text");
+  
+  const inputFolder = document.getElementById("imagen-folder");
+  const textFolder = document.getElementById("dropzone-folder-text");
 
-  if (!dropzone || !input || !text) return;
+  if (dropzone && input && text) {
+    dropzone.addEventListener("dragover", (event) => {
+      event.preventDefault();
+      dropzone.classList.add("dragover");
+    });
 
-  dropzone.addEventListener("dragover", (event) => {
-    event.preventDefault();
-    dropzone.classList.add("dragover");
-  });
+    dropzone.addEventListener("dragleave", () => {
+      dropzone.classList.remove("dragover");
+    });
 
-  dropzone.addEventListener("dragleave", () => {
-    dropzone.classList.remove("dragover");
-  });
+    dropzone.addEventListener("drop", (event) => {
+      event.preventDefault();
+      dropzone.classList.remove("dragover");
+      if (!event.dataTransfer || !event.dataTransfer.files.length) return;
+      input.files = event.dataTransfer.files;
+      text.textContent = `${input.files.length} archivo(s) seleccionado(s)`;
+      if (inputFolder && textFolder) { inputFolder.value = ''; textFolder.textContent = 'Seleccionar carpeta'; }
+    });
 
-  dropzone.addEventListener("drop", (event) => {
-    event.preventDefault();
-    dropzone.classList.remove("dragover");
-    if (!event.dataTransfer || !event.dataTransfer.files.length) return;
-    input.files = event.dataTransfer.files;
-    text.textContent = `Archivo seleccionado: ${input.files[0].name}`;
-  });
+    input.addEventListener("change", () => {
+      if (input.files.length) {
+        text.textContent = `${input.files.length} archivo(s) seleccionado(s)`;
+        if (inputFolder && textFolder) { inputFolder.value = ''; textFolder.textContent = 'Seleccionar carpeta'; }
+      }
+    });
+  }
 
-  input.addEventListener("change", () => {
-    if (input.files.length) {
-      text.textContent = `Archivo seleccionado: ${input.files[0].name}`;
-    }
-  });
+  if (inputFolder && textFolder) {
+    inputFolder.addEventListener("change", () => {
+      if (inputFolder.files.length) {
+        textFolder.textContent = `${inputFolder.files.length} archivo(s) en carpeta`;
+        if (input && text) { input.value = ''; text.textContent = 'Seleccionar archivos'; }
+      }
+    });
+  }
 }
 
 function initImagenForm() {
@@ -346,11 +360,90 @@ function initImagenForm() {
 
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
-    setResult("imagen-result", "imagen-result-card", "Procesando clasificación...");
-    const formData = new FormData(form);
-    const response = await fetch("/predict/imagen", { method: "POST", body: formData });
-    const data = await response.json();
-    setResult("imagen-result", "imagen-result-card", `Categoría: ${data.prediction}`);
+    setLoading("imagen-submit-btn", true);
+    setResult("imagen-result", "imagen-result-card", "Cargando modelo y procesando imágenes... (Esto puede tardar unos segundos la primera vez)");
+    
+    try {
+      const formData = new FormData();
+      const inputFiles = document.getElementById("imagen-file");
+      const inputFolder = document.getElementById("imagen-folder");
+      
+      let hasFiles = false;
+      let inputFilesList = [];
+
+      if (inputFiles && inputFiles.files.length > 0) {
+        for(let i=0; i < inputFiles.files.length; i++) {
+            formData.append("files", inputFiles.files[i]);
+            inputFilesList.push(inputFiles.files[i]);
+            hasFiles = true;
+        }
+      } else if (inputFolder && inputFolder.files.length > 0) {
+        for(let i=0; i < inputFolder.files.length; i++) {
+            if (inputFolder.files[i].type.startsWith("image/")) {
+                formData.append("files", inputFolder.files[i]);
+                inputFilesList.push(inputFolder.files[i]);
+                hasFiles = true;
+            }
+        }
+      }
+      
+      if (!hasFiles) {
+          throw new Error("No se seleccionaron imágenes válidas.");
+      }
+
+      const response = await fetch("/predict/imagen", { method: "POST", body: formData });
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({ detail: 'Error en el servidor' }));
+        throw new Error(err.detail || `HTTP ${response.status}`);
+      }
+      const data = await response.json();
+      
+      let htmlContent = `<div style="display: flex; flex-direction: column; gap: 20px;">`;
+      data.forEach((item, index) => {
+          const matchedFile = inputFilesList.find(f => f.name === item.filename) || inputFilesList[index];
+          const imgUrl = matchedFile ? URL.createObjectURL(matchedFile) : '';
+
+          let probHtml = Object.entries(item.probabilidades).map(([c, p]) => {
+              const perc = (p * 100).toFixed(1);
+              return `
+                <div style="margin-top: 5px;">
+                    <div style="display: flex; justify-content: space-between; font-size: 0.85em; margin-bottom: 2px;">
+                        <span>${c}</span>
+                        <span>${perc}%</span>
+                    </div>
+                    <div style="background-color: var(--line); border-radius: 4px; height: 6px; overflow: hidden;">
+                        <div style="background-color: var(--accent); width: ${perc}%; height: 100%;"></div>
+                    </div>
+                </div>
+              `;
+          }).join('');
+          
+          htmlContent += `
+          <div style="border: 1px solid var(--line); padding: 15px; border-radius: 8px; background: var(--bg); display: flex; gap: 20px; align-items: center; flex-wrap: wrap;">
+            <div style="flex-shrink: 0; width: 140px; height: 140px; border-radius: 8px; overflow: hidden; background: var(--bg-soft); box-shadow: var(--shadow-sm);">
+                <img src="${imgUrl}" style="width: 100%; height: 100%; object-fit: cover;" alt="${item.filename}">
+            </div>
+            <div style="flex-grow: 1; min-width: 200px;">
+                <h4 style="margin: 0 0 10px 0; font-size: 1.1em; color: var(--text);">${item.filename}</h4>
+                <div style="font-size: 1.5em; font-weight: bold; color: var(--accent); margin-bottom: 15px;">
+                    ${item.clase}
+                </div>
+                <div>
+                    <strong style="font-size: 0.9em; color: var(--text-secondary);">Probabilidades:</strong>
+                    ${probHtml}
+                </div>
+            </div>
+          </div>
+          `;
+      });
+      htmlContent += `</div>`;
+      
+      setResult("imagen-result", "imagen-result-card", htmlContent);
+    } catch (err) {
+      setResult("imagen-result", "imagen-result-card", `Error: ${err.message}`, true);
+    } finally {
+      setLoading("imagen-submit-btn", false);
+    }
   });
 }
 

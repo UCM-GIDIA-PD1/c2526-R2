@@ -61,6 +61,7 @@ def _get_client() -> Minio:
 
     http = urllib3.PoolManager(
         timeout=urllib3.Timeout(connect=10.0, read=600.0),
+        cert_reqs='CERT_NONE',
         retries=urllib3.Retry(
             total=5, backoff_factor=0.5, status_forcelist=[500, 502, 503, 504]
         ),
@@ -160,13 +161,25 @@ def _label_legible(nombre: str) -> str:
         "m2": "m²",
         "pct": "%",
         "num": "Nº",
-        "anio": "Año",
+        "Num": "Nº",
+        "anio construccion": "año de construcción",
+        "Anio construccion": "Año de construcción",
+        "anio": "año",
+        "Anio": "Año",
+        "construccion": "construcción",
         "prop": "Proporción",
+        "Prop": "Proporción",
         "dist min": "Dist. mín.",
     }
     for viejo, nuevo in reemplazos.items():
         label = label.replace(viejo, nuevo)
-    return label.strip().capitalize()
+    
+    # Capitalize the first letter but don't lowercase everything else
+    # Because .capitalize() lowercases the rest of the string, which might destroy specific casing
+    label = label.strip()
+    if label:
+        label = label[0].upper() + label[1:]
+    return label
 
 
 # Columnas que NO deben mostrarse como variable visualizable
@@ -217,3 +230,69 @@ def listar_capas() -> list[dict]:
             "columnas": columnas,
         })
     return capas
+
+
+# ── Datasets Secundarios (Puntos) ──────────────────────────────────────
+
+_secundarios_cache: dict[str, dict] = {}
+
+def listar_secundarios() -> list[str]:
+    """Busca en el bucket los archivos de la carpeta secundarios."""
+    client = _get_client()
+    bucket = os.getenv("MINIO_BUCKET", "pd1")
+    group = os.getenv("MINIO_GROUP_PATH", "grupo2")
+    prefix = f"{group}/cleaned/secundarios/"
+    
+    objects = client.list_objects(bucket, prefix=prefix, recursive=True)
+    datasets = []
+    for obj in objects:
+        if obj.object_name.endswith(".parquet"):
+            # Extraer solo el nombre base sin extensión
+            base = obj.object_name.split("/")[-1].replace(".parquet", "")
+            datasets.append(base)
+    return datasets
+
+def obtener_geojson_secundario(nombre: str) -> dict:
+    """Descarga un parquet secundario (puntos con lat/lon) y devuelve su GeoJSON."""
+    if nombre in _secundarios_cache:
+        return _secundarios_cache[nombre]
+
+    client = _get_client()
+    bucket = os.getenv("MINIO_BUCKET", "pd1")
+    group = os.getenv("MINIO_GROUP_PATH", "grupo2")
+    object_path = f"{group}/cleaned/secundarios/{nombre}.parquet"
+
+    try:
+        response = client.get_object(bucket, object_path)
+        buffer = io.BytesIO(response.read())
+        response.close()
+        response.release_conn()
+        
+        # Leer como DataFrame normal porque no son GeoParquets
+        import pandas as pd
+        df = pd.read_parquet(buffer)
+        
+        # Detectar columnas de coordenadas
+        lat_col = 'lat' if 'lat' in df.columns else ('latitud' if 'latitud' in df.columns else None)
+        lon_col = 'lon' if 'lon' in df.columns else ('longitud' if 'longitud' in df.columns else None)
+        
+        if lat_col and lon_col:
+            gdf = gpd.GeoDataFrame(
+                df, 
+                geometry=gpd.points_from_xy(df[lon_col], df[lat_col]),
+                crs="EPSG:4326"
+            )
+        else:
+            # Fallback por si acaso alguien lo convierte a GeoParquet en el futuro
+            buffer.seek(0)
+            gdf = gpd.read_parquet(buffer)
+
+        if gdf.crs and gdf.crs.to_epsg() != 4326:
+            gdf = gdf.to_crs("EPSG:4326")
+            
+        geojson_str = gdf.to_json()
+        geojson = json.loads(geojson_str)
+        _secundarios_cache[nombre] = geojson
+        return geojson
+    except Exception as e:
+        raise ValueError(f"No se pudo cargar el dataset secundario '{nombre}': {e}")

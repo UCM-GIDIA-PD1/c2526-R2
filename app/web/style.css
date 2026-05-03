@@ -1127,45 +1127,51 @@ button.loading {
 
 .map-legend {
   position: fixed;
-  bottom: 28px;
-  left: 14px;
+  bottom: 30px;
+  right: 20px;
   z-index: 900;
-  width: 260px;
-  padding: 14px 16px;
-  background: rgba(11, 16, 32, 0.82);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid var(--map-line);
-  border-radius: 14px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  min-width: 280px;
+  padding: 18px 24px;
+  background: rgba(26, 26, 26, 0.95);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  box-shadow: var(--shadow-lg);
 }
 
 .legend-title {
-  margin: 0 0 10px;
-  font-size: 0.78rem;
-  font-weight: 700;
+  margin: 0 0 14px;
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--map-brand-2);
+  letter-spacing: 0.08em;
+  color: var(--white);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding-bottom: 8px;
 }
 
 .legend-gradient {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 8px;
 }
 
 .legend-bar {
-  height: 12px;
-  border-radius: 6px;
+  height: 10px;
+  border-radius: 4px;
   width: 100%;
+  box-shadow: inset 0 1px 2px rgba(0,0,0,0.3);
 }
 
 .legend-labels {
   display: flex;
   justify-content: space-between;
-  font-size: 0.72rem;
-  color: var(--map-muted);
+  font-size: 0.8rem;
+  font-family: var(--font-body);
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.8);
 }
 
 /* ── Tooltip flotante ───────────────────────────────── */
@@ -1257,4 +1263,140 @@ button.loading {
   .map-topbar-title {
     display: none;
   }
+}
+
+/* ── Sobreescritura de Estilos Elegantes para Mapas ── */
+.map-controls, .map-legend, .map-tooltip {
+  background: rgba(18, 18, 18, 0.85) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  color: var(--white) !important;
+  font-family: var(--font-body) !important;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.5) !important;
+  border-radius: 12px !important;
+}
+
+.map-controls {
+  padding: 20px !important;
+  max-height: calc(100vh - 120px) !important;
+  overflow-y: auto !important;
+  width: 320px !important;
+}
+
+/* Scrollbar styling for map-controls */
+.map-controls::-webkit-scrollbar {
+  width: 6px;
+}
+.map-controls::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 4px;
+}
+.map-controls::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+}
+.map-controls::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.map-controls-title {
+  font-family: var(--font-body) !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.05em !important;
+  color: var(--white) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+  padding-bottom: 12px !important;
+  margin-bottom: 16px !important;
+  text-transform: uppercase;
+  font-size: 1rem !important;
+}
+
+.map-stats {
+  background: rgba(255, 255, 255, 0.03) !important;
+  border: 1px solid rgba(255, 255, 255, 0.05) !important;
+  border-left: 4px solid var(--accent) !important;
+  border-radius: 8px !important;
+  padding: 12px 16px !important;
+  margin-top: 16px !important;
+}
+
+.map-stats-row {
+  margin-bottom: 8px !important;
+  display: flex !important;
+  align-items: center !important;
+}
+
+.map-stats-label {
+  font-family: var(--font-body) !important;
+  font-weight: 500 !important;
+  font-size: 0.75rem !important;
+  letter-spacing: 0.08em !important;
+  color: rgba(255, 255, 255, 0.6) !important;
+}
+
+.map-stats-row span:not(.map-stats-label) {
+  font-family: var(--font-body) !important;
+  font-weight: 600 !important;
+  font-size: 1rem !important;
+  color: var(--white) !important;
+}
+
+.map-select {
+  background: rgba(255, 255, 255, 0.04) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  color: var(--white) !important;
+  padding: 12px 16px !important;
+  border-radius: 6px !important;
+  font-size: 0.9rem !important;
+  transition: all var(--transition) !important;
+}
+
+.map-select:focus {
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 1px var(--accent) !important;
+  background: rgba(255, 255, 255, 0.08) !important;
+}
+
+.map-tooltip {
+  border-left: 3px solid var(--accent) !important;
+  padding: 14px 18px !important;
+}
+
+.map-tooltip strong {
+  font-family: var(--font-body) !important;
+  font-weight: 600 !important;
+  font-size: 1.05rem !important;
+  color: var(--white) !important;
+  margin-bottom: 8px !important;
+}
+
+.tooltip-value {
+  color: var(--accent) !important;
+  font-weight: 600 !important;
+}
+
+.map-toggle-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.85rem;
+  color: rgba(255,255,255,0.8);
+  cursor: pointer;
+  padding: 8px 12px;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(255,255,255,0.05);
+  border-radius: 6px;
+  transition: background var(--transition);
+}
+
+.map-toggle-row:hover {
+  background: rgba(255,255,255,0.05);
+}
+
+.map-toggle-row input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent);
+  cursor: pointer;
 }

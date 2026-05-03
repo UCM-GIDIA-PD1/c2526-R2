@@ -35,3 +35,25 @@ def get_datos(rejilla: str = Query(..., description="Tipo de rejilla: barrios, s
         return JSONResponse(content=geojson)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error al obtener datos: {e}")
+
+from app.services.minio_service import listar_secundarios, obtener_geojson_secundario
+
+@router.get("/secundarios/capas")
+def get_secundarios_capas():
+    """Devuelve la lista de datasets secundarios disponibles."""
+    try:
+        datasets = listar_secundarios()
+        return {"datasets": datasets}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error al listar datasets secundarios: {e}")
+
+@router.get("/secundarios/datos")
+def get_secundarios_datos(nombre: str = Query(..., description="Nombre del dataset secundario")):
+    """Devuelve el GeoJSON de un dataset secundario de puntos."""
+    try:
+        geojson = obtener_geojson_secundario(nombre)
+        return JSONResponse(content=geojson)
+    except ValueError as ve:
+        raise HTTPException(status_code=404, detail=str(ve))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error al obtener datos secundarios: {e}")
