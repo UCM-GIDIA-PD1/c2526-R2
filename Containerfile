@@ -29,14 +29,16 @@ RUN uv pip install --system \
     "pillow>=12.1.1" \
     "scikit-learn>=1.8.0" \
     "xgboost>=3.2.0" \
-    "tensorflow>=2.21.0" \
+    "tensorflow-cpu>=2.21.0" \
     "ollama>=0.6.1" \
     "geopandas>=1.1.2" \
     "geopy>=2.4.1" \
     "minio>=7.2.20" \
     "python-dotenv>=1.0.0" \
     "scipy>=1.17.1" \
-    "urllib3>=2.0.0"
+    "urllib3>=2.0.0" \
+    "wandb>=0.15.0" \
+    "pyarrow>=15.0.0"
 
 # Copiamos el resto de los archivos.
 # El archivo .containerignore filtrará automáticamente todas las carpetas pesadas de datos,

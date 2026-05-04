@@ -156,7 +156,7 @@ Para un despliegue aislado, puedes construir el contenedor utilizando el archivo
 podman build -t maiday-web -f Containerfile .
 
 # Ejecutar el contenedor
-podman run --rm -p 8000:8000 maiday-web
+podman run --rm -p 8000:8000 --env-file .env maiday-web
 ```
 ---
 
