@@ -1,0 +1,684 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="MAiDay Minijuego — ¿Conoces Madrid mejor que la IA? Adivina el precio de una vivienda real.">
+  <title>MAiDay | ¿Conoces Madrid mejor que la IA?</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <style>
+    /* ── Game-specific styles ── */
+    .game-wrapper {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 0 24px 80px;
+    }
+
+    /* ── Phase panels ── */
+    .game-phase { display: none; }
+    .game-phase.active { display: block; animation: fadeInUp 0.6s ease; }
+
+    /* ── Property card ── */
+    .property-card {
+      border: 1px solid var(--line);
+      margin-bottom: 40px;
+    }
+    .property-img {
+      width: 100%;
+      height: 380px;
+      object-fit: cover;
+      display: block;
+      background: var(--bg-soft);
+    }
+    .property-img-placeholder {
+      width: 100%;
+      height: 380px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+      color: rgba(255,255,255,0.4);
+      font-size: 0.85rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      gap: 16px;
+    }
+    .property-img-placeholder svg {
+      width: 48px; height: 48px;
+      stroke: rgba(255,255,255,0.2);
+      stroke-width: 1;
+      fill: none;
+    }
+
+    /* ── Hints grid ── */
+    .hints-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 0;
+      border-top: 1px solid var(--line);
+    }
+    .hint-item {
+      padding: 20px 24px;
+      border-right: 1px solid var(--line-light);
+    }
+    .hint-item:last-child { border-right: none; }
+    .hint-label {
+      font-size: 0.68rem;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--text-light);
+      margin-bottom: 6px;
+    }
+    .hint-value {
+      font-family: var(--font-heading);
+      font-size: 1.25rem;
+      font-weight: 400;
+      color: var(--text);
+    }
+
+    /* ── Price input ── */
+    .price-input-group {
+      display: flex;
+      gap: 0;
+      margin-top: 32px;
+      border: 1px solid var(--line);
+    }
+    .price-input-group .currency {
+      display: flex;
+      align-items: center;
+      padding: 0 20px;
+      background: var(--bg-soft);
+      font-family: var(--font-heading);
+      font-size: 1.4rem;
+      color: var(--text-secondary);
+      border-right: 1px solid var(--line);
+      flex-shrink: 0;
+    }
+    .price-input-group input {
+      border: none;
+      font-family: var(--font-heading);
+      font-size: 1.6rem;
+      font-weight: 400;
+      padding: 20px 24px;
+      flex: 1;
+      box-shadow: none;
+      background: var(--bg);
+    }
+    .price-input-group input:focus {
+      outline: none;
+      box-shadow: none;
+      border: none;
+    }
+    .price-input-group:focus-within {
+      border-color: var(--text);
+      box-shadow: 0 0 0 1px var(--text);
+    }
+
+    /* ── Submit row ── */
+    .submit-row {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-top: 24px;
+      flex-wrap: wrap;
+    }
+    .skip-btn {
+      background: transparent;
+      color: var(--text-secondary);
+      border: 1px solid var(--line);
+      padding: 16px 32px;
+      font-size: 0.8rem;
+    }
+    .skip-btn:hover {
+      background: var(--bg-soft);
+      color: var(--text);
+      transform: none;
+    }
+
+    /* ── Results panel ── */
+    .results-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 0;
+      border: 1px solid var(--line);
+      margin-bottom: 32px;
+    }
+    .result-col {
+      padding: 32px 24px;
+      text-align: center;
+      position: relative;
+    }
+    .result-col:not(:last-child)::after {
+      content: '';
+      position: absolute;
+      right: 0; top: 20%; bottom: 20%;
+      width: 1px;
+      background: var(--line-light);
+    }
+    .result-col .r-label {
+      font-size: 0.7rem;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--text-light);
+      margin-bottom: 12px;
+    }
+    .result-col .r-price {
+      font-family: var(--font-heading);
+      font-size: 1.8rem;
+      font-weight: 400;
+      margin-bottom: 8px;
+    }
+    .result-col .r-error {
+      font-size: 0.82rem;
+      color: var(--text-secondary);
+    }
+    .result-col.winner-col {
+      background: #FDF5F5;
+    }
+    .result-col.winner-col .r-price {
+      color: var(--accent);
+    }
+    .result-col.real-col .r-price {
+      color: var(--text);
+    }
+
+    /* ── Winner banner ── */
+    .winner-banner {
+      padding: 32px 40px;
+      margin-bottom: 32px;
+      display: flex;
+      align-items: center;
+      gap: 24px;
+      border: 2px solid var(--accent);
+      background: #FDF5F5;
+    }
+    .winner-banner.modelo {
+      border-color: var(--bg-dark);
+      background: #F5F5F5;
+    }
+    .winner-banner.empate {
+      border-color: var(--success);
+      background: #F5FBF5;
+    }
+    .winner-icon {
+      font-size: 2.8rem;
+      flex-shrink: 0;
+    }
+    .winner-text h2 {
+      font-family: var(--font-heading);
+      font-size: 1.5rem;
+      font-weight: 400;
+      margin-bottom: 8px;
+    }
+    .winner-text p {
+      font-size: 0.95rem;
+      color: var(--text-secondary);
+      line-height: 1.5;
+    }
+
+    /* ── Error bars ── */
+    .error-bars { margin-bottom: 40px; }
+    .error-bar-row {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+    .error-bar-label {
+      font-size: 0.78rem;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--text-secondary);
+      width: 80px;
+      flex-shrink: 0;
+    }
+    .error-bar-track {
+      flex: 1;
+      height: 8px;
+      background: var(--line-light);
+      position: relative;
+      overflow: visible;
+    }
+    .error-bar-fill {
+      height: 100%;
+      width: 0%;
+      transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .error-bar-fill.usuario { background: var(--accent); }
+    .error-bar-fill.modelo { background: var(--bg-dark); }
+    .error-bar-pct {
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--text);
+      width: 60px;
+      text-align: right;
+      flex-shrink: 0;
+    }
+
+    /* ── Loading state ── */
+    .game-loading {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 120px 24px;
+      gap: 24px;
+      color: var(--text-secondary);
+    }
+    .game-loading .spinner-lg {
+      width: 40px; height: 40px;
+      border: 3px solid var(--line);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    .game-loading p {
+      font-size: 0.85rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    /* ── Play again ── */
+    .play-again-row {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    /* ── Score tracker ── */
+    .score-bar {
+      display: flex;
+      justify-content: flex-end;
+      gap: 32px;
+      padding: 16px 0;
+      border-bottom: 1px solid var(--line-light);
+      margin-bottom: 48px;
+    }
+    .score-item {
+      text-align: center;
+    }
+    .score-item .s-label {
+      font-size: 0.65rem;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--text-light);
+      margin-bottom: 4px;
+    }
+    .score-item .s-value {
+      font-family: var(--font-heading);
+      font-size: 1.4rem;
+      color: var(--text);
+    }
+    .score-item.score-user .s-value { color: var(--accent); }
+
+    @media (max-width: 640px) {
+      .results-grid { grid-template-columns: 1fr; }
+      .result-col:not(:last-child)::after { display: none; }
+      .hints-grid { grid-template-columns: 1fr 1fr; }
+      .winner-banner { flex-direction: column; text-align: center; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ── Navigation ── -->
+  <nav class="site-nav" id="site-nav">
+    <a href="/" class="site-nav__logo">M<span>Ai</span>Day</a>
+    <ul class="site-nav__links">
+      <li><a href="/">Inicio</a></li>
+      <li><a href="/precios">Predicción de Precios</a></li>
+      <li><a href="/analisis">Análisis Avanzado</a></li>
+      <li><a href="/mapas">Mapas</a></li>
+      <li><a href="/juego" class="active">Minijuego</a></li>
+    </ul>
+  </nav>
+
+  <!-- ── Page Header ── -->
+  <div class="page-header">
+    <div class="container" style="padding-top:0">
+      <span class="section__label">Minijuego</span>
+      <h1>¿Conoces Madrid mejor que la IA?</h1>
+      <p>Adivina el precio de una vivienda real. Compite contra nuestro modelo XGBoost y descubre quién se acerca más.</p>
+    </div>
+  </div>
+
+  <div class="game-wrapper">
+
+    <!-- ── Score bar ── -->
+    <div class="score-bar" id="score-bar">
+      <div class="score-item score-user">
+        <div class="s-label">Tú</div>
+        <div class="s-value" id="score-user">0</div>
+      </div>
+      <div class="score-item">
+        <div class="s-label">Empates</div>
+        <div class="s-value" id="score-tie">0</div>
+      </div>
+      <div class="score-item">
+        <div class="s-label">IA</div>
+        <div class="s-value" id="score-model">0</div>
+      </div>
+    </div>
+
+    <!-- ── Phase: Loading ── -->
+    <div class="game-phase active" id="phase-loading">
+      <div class="game-loading">
+        <div class="spinner-lg"></div>
+        <p>Cargando vivienda…</p>
+      </div>
+    </div>
+
+    <!-- ── Phase: Guess ── -->
+    <div class="game-phase" id="phase-guess">
+      <div class="property-card" id="property-card">
+        <!-- Image injected by JS -->
+        <div id="property-img-container"></div>
+        <!-- Hints injected by JS -->
+        <div class="hints-grid" id="hints-grid"></div>
+      </div>
+
+      <label for="user-price" style="font-size:0.8rem; font-weight:600; letter-spacing:0.1em; text-transform:uppercase; color:var(--text-secondary); margin-bottom:8px; display:block;">
+        Tu estimación de precio
+      </label>
+      <div class="price-input-group">
+        <div class="currency">€</div>
+        <input
+          type="number"
+          id="user-price"
+          placeholder="0"
+          min="10000"
+          max="10000000"
+          step="1000"
+          autocomplete="off"
+        >
+      </div>
+
+      <div class="submit-row">
+        <button id="btn-submit" onclick="submitGuess()">
+          Revelar resultado
+        </button>
+        <button class="skip-btn" onclick="startNewRound()">
+          Otra vivienda
+        </button>
+      </div>
+    </div>
+
+    <!-- ── Phase: Calculating ── -->
+    <div class="game-phase" id="phase-calculating">
+      <div class="game-loading">
+        <div class="spinner-lg"></div>
+        <p>El modelo está prediciendo…</p>
+      </div>
+    </div>
+
+    <!-- ── Phase: Results ── -->
+    <div class="game-phase" id="phase-results">
+
+      <!-- Winner banner -->
+      <div class="winner-banner" id="winner-banner">
+        <div class="winner-icon" id="winner-icon">🏆</div>
+        <div class="winner-text">
+          <h2 id="winner-title">Cargando…</h2>
+          <p id="winner-msg"></p>
+        </div>
+      </div>
+
+      <!-- Price comparison -->
+      <div class="results-grid">
+        <div class="result-col">
+          <div class="r-label">Tu predicción</div>
+          <div class="r-price" id="res-user-price">—</div>
+          <div class="r-error" id="res-user-error">—</div>
+        </div>
+        <div class="result-col real-col">
+          <div class="r-label">Precio real</div>
+          <div class="r-price" id="res-real-price">—</div>
+          <div class="r-error" style="color:var(--text-light); font-size:0.78rem;">Fuente: Idealista</div>
+        </div>
+        <div class="result-col" id="res-model-col">
+          <div class="r-label">Predicción IA</div>
+          <div class="r-price" id="res-model-price">—</div>
+          <div class="r-error" id="res-model-error">—</div>
+        </div>
+      </div>
+
+      <!-- Error bars -->
+      <div class="error-bars">
+        <div class="error-bar-row">
+          <span class="error-bar-label">Tú</span>
+          <div class="error-bar-track">
+            <div class="error-bar-fill usuario" id="bar-user"></div>
+          </div>
+          <span class="error-bar-pct" id="bar-user-pct">—</span>
+        </div>
+        <div class="error-bar-row">
+          <span class="error-bar-label">IA</span>
+          <div class="error-bar-track">
+            <div class="error-bar-fill modelo" id="bar-model"></div>
+          </div>
+          <span class="error-bar-pct" id="bar-model-pct">—</span>
+        </div>
+      </div>
+
+      <div class="play-again-row">
+        <button onclick="startNewRound()">Jugar de nuevo</button>
+        <a href="/precios" class="btn skip-btn">Ir al predictor</a>
+      </div>
+
+    </div><!-- /phase-results -->
+
+  </div><!-- /game-wrapper -->
+
+  <!-- ── Footer ── -->
+  <footer class="site-footer">
+    <div class="site-footer__accent"></div>
+    <p>MAiDay — Plataforma de Inteligencia Inmobiliaria · UCM GIDIA</p>
+  </footer>
+
+  <script>
+    // ── State ──────────────────────────────────────────────────────────────
+    let gameState = {
+      vivienda: null,   // response from GET /juego/vivienda
+      scores: { user: 0, tie: 0, model: 0 }
+    };
+
+    // ── Hint labels ────────────────────────────────────────────────────────
+    const HINT_LABELS = {
+      Barrio:           'Barrio',
+      Superficie:       'Superficie',
+      Num_habitaciones: 'Habitaciones',
+      Banyos:           'Baños',
+    };
+
+    // ── Utilities ──────────────────────────────────────────────────────────
+    function formatEur(n) {
+      return new Intl.NumberFormat('es-ES', {
+        style: 'currency', currency: 'EUR',
+        minimumFractionDigits: 0, maximumFractionDigits: 0
+      }).format(n);
+    }
+
+    function showPhase(id) {
+      document.querySelectorAll('.game-phase').forEach(p => p.classList.remove('active'));
+      document.getElementById(id).classList.add('active');
+    }
+
+    function updateScoreBar() {
+      document.getElementById('score-user').textContent = gameState.scores.user;
+      document.getElementById('score-tie').textContent = gameState.scores.tie;
+      document.getElementById('score-model').textContent = gameState.scores.model;
+    }
+
+    // ── Load a new round ───────────────────────────────────────────────────
+    async function startNewRound() {
+      showPhase('phase-loading');
+      document.getElementById('user-price').value = '';
+
+      try {
+        const res = await fetch('/juego/vivienda');
+        if (!res.ok) throw new Error(await res.text());
+        const data = await res.json();
+        gameState.vivienda = data;
+        renderGuessPhase(data);
+      } catch (err) {
+        showPhase('phase-guess');
+        alert('Error cargando vivienda: ' + err.message);
+      }
+    }
+
+    // ── Render the guess phase ─────────────────────────────────────────────
+    function renderGuessPhase(data) {
+      // Image
+      const imgContainer = document.getElementById('property-img-container');
+      if (data.imagen_b64) {
+        imgContainer.innerHTML = `
+          <img
+            class="property-img"
+            src="data:${data.imagen_mime};base64,${data.imagen_b64}"
+            alt="Foto de la vivienda"
+          >`;
+      } else {
+        imgContainer.innerHTML = `
+          <div class="property-img-placeholder">
+            <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+            <span>Imagen no disponible</span>
+          </div>`;
+      }
+
+      // Hints
+      const grid = document.getElementById('hints-grid');
+      grid.innerHTML = '';
+      const pistas = data.pistas || {};
+      Object.entries(HINT_LABELS).forEach(([key, label]) => {
+        const val = pistas[key];
+        if (val === undefined || val === null) return;
+        grid.innerHTML += `
+          <div class="hint-item">
+            <div class="hint-label">${label}</div>
+            <div class="hint-value">${val}</div>
+          </div>`;
+      });
+
+      showPhase('phase-guess');
+    }
+
+    // ── Submit guess ───────────────────────────────────────────────────────
+    async function submitGuess() {
+      const raw = document.getElementById('user-price').value.trim();
+      const precioUsuario = parseFloat(raw);
+
+      if (!precioUsuario || precioUsuario <= 0) {
+        document.getElementById('user-price').focus();
+        return;
+      }
+
+      const btn = document.getElementById('btn-submit');
+      btn.classList.add('loading');
+      btn.innerHTML = 'Calculando… <span class="btn-spinner"></span>';
+      showPhase('phase-calculating');
+
+      try {
+        const payload = {
+          precio_usuario: precioUsuario,
+          precio_real: gameState.vivienda.precio_real,
+          features_para_modelo: gameState.vivienda.features_para_modelo
+        };
+
+        const res = await fetch('/juego/resultado', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        if (!res.ok) throw new Error(await res.text());
+        const resultado = await res.json();
+        renderResults(resultado);
+
+      } catch (err) {
+        showPhase('phase-guess');
+        alert('Error calculando resultado: ' + err.message);
+      } finally {
+        btn.classList.remove('loading');
+        btn.innerHTML = 'Revelar resultado';
+      }
+    }
+
+    // ── Render results ─────────────────────────────────────────────────────
+    function renderResults(r) {
+      // Update scores
+      if (r.ganador === 'usuario') gameState.scores.user++;
+      else if (r.ganador === 'modelo') gameState.scores.model++;
+      else gameState.scores.tie++;
+      updateScoreBar();
+
+      // Winner banner
+      const banner = document.getElementById('winner-banner');
+      const icon = document.getElementById('winner-icon');
+      const title = document.getElementById('winner-title');
+      const msg = document.getElementById('winner-msg');
+
+      banner.className = 'winner-banner ' + r.ganador;
+
+      if (r.ganador === 'usuario') {
+        icon.textContent = '🏆';
+        title.textContent = '¡Has ganado!';
+      } else if (r.ganador === 'modelo') {
+        icon.textContent = '🤖';
+        title.textContent = 'La IA ha ganado';
+      } else {
+        icon.textContent = '🤝';
+        title.textContent = '¡Empate!';
+      }
+      msg.textContent = r.mensaje;
+
+      // Prices
+      document.getElementById('res-real-price').textContent = formatEur(r.precio_real);
+      document.getElementById('res-user-price').textContent = formatEur(r.precio_usuario);
+      document.getElementById('res-model-price').textContent = formatEur(r.precio_modelo);
+
+      document.getElementById('res-user-error').textContent =
+        `Error: ${formatEur(r.error_usuario)} (${r.pct_error_usuario}%)`;
+      document.getElementById('res-model-error').textContent =
+        `Error: ${formatEur(r.error_modelo)} (${r.pct_error_modelo}%)`;
+
+      // Highlight winner column
+      const modelCol = document.getElementById('res-model-col');
+      modelCol.className = 'result-col' + (r.ganador === 'modelo' ? ' winner-col' : '');
+      document.querySelectorAll('.result-col')[0].className =
+        'result-col' + (r.ganador === 'usuario' ? ' winner-col' : '');
+
+      // Error bars (normalise to the larger value)
+      const maxPct = Math.max(r.pct_error_usuario, r.pct_error_modelo, 1);
+      requestAnimationFrame(() => {
+        document.getElementById('bar-user').style.width =
+          (r.pct_error_usuario / maxPct * 100) + '%';
+        document.getElementById('bar-model').style.width =
+          (r.pct_error_modelo / maxPct * 100) + '%';
+      });
+      document.getElementById('bar-user-pct').textContent = r.pct_error_usuario + '%';
+      document.getElementById('bar-model-pct').textContent = r.pct_error_modelo + '%';
+
+      showPhase('phase-results');
+    }
+
+    // ── Keyboard shortcut: Enter submits ──────────────────────────────────
+    document.getElementById('user-price').addEventListener('keydown', e => {
+      if (e.key === 'Enter') submitGuess();
+    });
+
+    // ── Nav scroll effect ──────────────────────────────────────────────────
+    window.addEventListener('scroll', () => {
+      document.getElementById('site-nav').classList.toggle('scrolled', window.scrollY > 50);
+    });
+
+    // ── Boot ──────────────────────────────────────────────────────────────
+    startNewRound();
+  </script>
+
+</body>
+</html>
