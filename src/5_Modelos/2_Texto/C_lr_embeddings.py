@@ -190,10 +190,10 @@ def entrenar_logreg_optuna(
 
     wandb.log({
         "best_f1_cv":     best_f1_cv,
-        "test_f1":        metricas_test["f1_macro"],
+        "test_f1_macro":        metricas_test["f1_macro"],
         "test_accuracy":  metricas_test["accuracy"],
-        "test_recall":    metricas_test["recall_macro"],
-        "test_precision": metricas_test["precision_macro"],
+        "test_recall_macro":    metricas_test["recall_macro"],
+        "test_precision_macro": metricas_test["precision_macro"],
         **{f"best_param/{k}": str(v) for k, v in best_params.items()},
     })
 
