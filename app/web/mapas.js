@@ -25,6 +25,7 @@ function aplicarTema(tema, animar = false) {
   const body = document.body;
   const checkbox = document.getElementById("toggle-tema");
   const label = document.getElementById("theme-label");
+  const switchEl = document.getElementById("house-switch-btn");
 
   if (animar) {
     body.style.transition = "background 0.4s ease, color 0.4s ease";
@@ -34,10 +35,18 @@ function aplicarTema(tema, animar = false) {
     body.classList.add("light");
     if (checkbox) checkbox.checked = true;
     if (label) label.textContent = "Modo claro";
+    if (switchEl) {
+      switchEl.classList.add("is-light");
+      switchEl.setAttribute("aria-checked", "true");
+    }
   } else {
     body.classList.remove("light");
     if (checkbox) checkbox.checked = false;
     if (label) label.textContent = "Modo oscuro";
+    if (switchEl) {
+      switchEl.classList.remove("is-light");
+      switchEl.setAttribute("aria-checked", "false");
+    }
   }
 
   // Intercambiar tiles si el mapa ya existe
@@ -60,9 +69,35 @@ function iniciarToggleTema() {
   const guardado = localStorage.getItem("mapa-tema") || "dark";
   aplicarTema(guardado, false);
 
-  document.getElementById("toggle-tema").addEventListener("change", (e) => {
-    aplicarTema(e.target.checked ? "light" : "dark", true);
-  });
+  // Wire the visible house-switch wrapper (click anywhere on it)
+  const wrapper = document.getElementById("theme-toggle-row");
+  const switchEl = document.getElementById("house-switch-btn");
+
+  function toggleTema() {
+    aplicarTema(temaActual === "light" ? "dark" : "light", true);
+  }
+
+  if (wrapper) {
+    wrapper.addEventListener("click", toggleTema);
+  }
+
+  // Keyboard accessibility on the switch div
+  if (switchEl) {
+    switchEl.addEventListener("keydown", (e) => {
+      if (e.key === " " || e.key === "Enter") {
+        e.preventDefault();
+        toggleTema();
+      }
+    });
+  }
+
+  // Also keep the hidden checkbox change event as a fallback
+  const checkbox = document.getElementById("toggle-tema");
+  if (checkbox) {
+    checkbox.addEventListener("change", (e) => {
+      aplicarTema(e.target.checked ? "light" : "dark", true);
+    });
+  }
 }
 
 // ── Estado global ──────────────────────────────────────

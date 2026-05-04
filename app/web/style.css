@@ -1402,6 +1402,172 @@ button.loading {
 }
 
 /* ═══════════════════════════════════════════════════════
+   HOUSE THEME SWITCH COMPONENT
+   ═══════════════════════════════════════════════════════ */
+
+/* Dark mode SVG color tokens */
+.map-body {
+  --hs-roof-fill:    #3a4468;
+  --hs-roof-stroke:  #5a6899;
+  --hs-chimney-fill: #2e3554;
+  --hs-wall-fill:    #2b3153;
+  --hs-wall-stroke:  #4a5580;
+  --hs-win-fill:     #4a5070;   /* gray unlit windows */
+  --hs-win-bar:      rgba(255,255,255,0.15);
+  --hs-door-fill:    #1e2340;
+  --hs-knob-fill:    rgba(255,255,255,0.5);
+  --hs-track-bg:     rgba(255,255,255,0.06);
+  --hs-track-border: rgba(255,255,255,0.12);
+  --hs-track-shadow: inset 2px 2px 6px rgba(0,0,0,0.6), inset -1px -1px 4px rgba(255,255,255,0.04);
+  --hs-knob-bg:      #1e2340;
+  --hs-knob-shadow:  3px 3px 8px rgba(0,0,0,0.7), -2px -2px 6px rgba(255,255,255,0.05);
+  --hs-label-color:  rgba(255,255,255,0.75);
+}
+
+/* Wrapper row (label + switch) */
+.house-switch-wrapper {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.house-switch-wrapper:hover {
+  background: rgba(255,255,255,0.05);
+}
+
+.house-switch-label {
+  font-size: 0.84rem;
+  font-weight: 500;
+  color: var(--hs-label-color);
+  user-select: none;
+  letter-spacing: 0.02em;
+  transition: color 0.3s;
+}
+
+/* Switch outer container */
+.house-switch {
+  position: relative;
+  flex-shrink: 0;
+  outline: none;
+}
+.house-switch:focus-visible .house-switch__track {
+  box-shadow: 0 0 0 2px var(--accent), var(--hs-track-shadow);
+}
+
+/* Track — the pill shaped container */
+.house-switch__track {
+  position: relative;
+  width: 112px;
+  height: 52px;
+  border-radius: 26px;
+  background: var(--hs-track-bg);
+  border: 1px solid var(--hs-track-border);
+  box-shadow: var(--hs-track-shadow);
+  overflow: hidden;
+  transition:
+    background 0.35s ease,
+    border-color 0.35s ease,
+    box-shadow 0.35s ease;
+  display: flex;
+  align-items: center;
+}
+
+/* House SVG — lives on the right when dark (knob left), moves left when light */
+.house-switch__house {
+  position: absolute;
+  width: 44px;
+  height: 44px;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  transition: right 0.38s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s;
+  overflow: visible;
+}
+
+/* SVG parts — dark mode defaults */
+.house-roof    { fill: var(--hs-roof-fill);    stroke: var(--hs-roof-stroke); stroke-width: 1.2; }
+.house-chimney { fill: var(--hs-chimney-fill); }
+.house-wall    { fill: var(--hs-wall-fill);    stroke: var(--hs-wall-stroke); stroke-width: 0.8; }
+.house-window  { fill: var(--hs-win-fill); transition: fill 0.35s; }
+.house-window-bar { stroke: var(--hs-win-bar); stroke-width: 1; }
+.house-door    { fill: var(--hs-door-fill); stroke: var(--hs-wall-stroke); stroke-width: 0.6; }
+.house-doorknob { fill: var(--hs-knob-fill); }
+
+/* Knob — the circular slider button */
+.house-switch__knob {
+  position: absolute;
+  left: 5px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: var(--hs-knob-bg);
+  box-shadow: var(--hs-knob-shadow);
+  transition:
+    left 0.38s cubic-bezier(0.4, 0, 0.2, 1),
+    background 0.35s ease,
+    box-shadow 0.35s ease;
+  z-index: 2;
+}
+
+/* ── CHECKED (light mode) STATE ── */
+/* When the hidden checkbox is checked, JS adds .is-light to the switch div  */
+.house-switch.is-light .house-switch__track {
+  background: rgba(255,255,255,0.18);
+  border-color: rgba(255,255,255,0.4);
+  box-shadow:
+    inset -2px -2px 6px rgba(255,255,255,0.6),
+    inset 2px 2px 8px rgba(180,180,200,0.35);
+}
+
+.house-switch.is-light .house-switch__knob {
+  left: calc(100% - 47px);   /* slide right */
+  background: #e8eaf0;
+  box-shadow: 3px 3px 8px rgba(120,130,160,0.5), -2px -2px 6px rgba(255,255,255,0.9);
+}
+
+/* House moves to left side when knob is on the right */
+.house-switch.is-light .house-switch__house {
+  right: auto;
+  left: 8px;
+}
+
+/* ── Light-mode token overrides ── */
+.map-body.light {
+  --hs-roof-fill:    #b0b8cc;
+  --hs-roof-stroke:  #8892a8;
+  --hs-chimney-fill: #c8cfd8;
+  --hs-wall-fill:    #d4d9e4;
+  --hs-wall-stroke:  #aab0c0;
+  --hs-win-fill:     #f5c842;  /* yellow lit windows */
+  --hs-win-bar:      rgba(0,0,0,0.25);
+  --hs-door-fill:    #b0bac8;
+  --hs-knob-fill:    rgba(0,0,0,0.25);
+  --hs-track-bg:     rgba(200,210,230,0.6);
+  --hs-track-border: rgba(255,255,255,0.5);
+  --hs-track-shadow: inset 2px 2px 6px rgba(180,190,210,0.6), inset -1px -1px 4px rgba(255,255,255,0.8);
+  --hs-knob-bg:      #e8eaf0;
+  --hs-knob-shadow:  3px 3px 8px rgba(120,130,160,0.5), -2px -2px 6px rgba(255,255,255,0.9);
+  --hs-label-color:  rgba(30,30,40,0.75);
+}
+
+/* Light-mode wrapper */
+.map-body.light .house-switch-wrapper {
+  background: rgba(0,0,0,0.03);
+  border-color: rgba(0,0,0,0.08);
+}
+.map-body.light .house-switch-wrapper:hover {
+  background: rgba(0,0,0,0.06);
+}
+
+/* ═══════════════════════════════════════════════════════
    MODO CLARO — solo página de Mapas (.map-body.light)
    El modo oscuro se mantiene igual (sin tocar estilos anteriores)
    ═══════════════════════════════════════════════════════ */

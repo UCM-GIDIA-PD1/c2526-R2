@@ -86,10 +86,43 @@
 
     <h3 class="map-section-title">Apariencia</h3>
 
-    <label class="map-toggle-row" id="theme-toggle-row">
-      <span id="theme-label">Modo claro</span>
-      <input type="checkbox" id="toggle-tema">
-    </label>
+    <!-- House Theme Switch -->
+    <div class="house-switch-wrapper" id="theme-toggle-row">
+      <span id="theme-label" class="house-switch-label">Modo oscuro</span>
+      <div class="house-switch" id="house-switch-btn" role="switch" aria-checked="false" aria-label="Cambiar tema" tabindex="0">
+        <!-- Hidden real checkbox for JS compatibility -->
+        <input type="checkbox" id="toggle-tema" class="house-switch__input" hidden>
+        <!-- Track -->
+        <div class="house-switch__track">
+          <!-- House SVG -->
+          <svg class="house-switch__house" viewBox="0 0 64 56" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <!-- Roof -->
+            <polygon class="house-roof" points="32,4 60,24 4,24" stroke-width="1.5" stroke-linejoin="round"/>
+            <!-- Chimney -->
+            <rect class="house-chimney" x="44" y="10" width="6" height="14" rx="1"/>
+            <!-- Walls -->
+            <rect class="house-wall" x="8" y="23" width="48" height="29" rx="2"/>
+            <!-- Left upper window -->
+            <rect class="house-window" x="13" y="28" width="12" height="9" rx="1.5"/>
+            <!-- Right upper window -->
+            <rect class="house-window" x="39" y="28" width="12" height="9" rx="1.5"/>
+            <!-- Center vertical divider upper-left window -->
+            <line class="house-window-bar" x1="19" y1="28" x2="19" y2="37"/>
+            <!-- Center horizontal divider upper-left window -->
+            <line class="house-window-bar" x1="13" y1="32.5" x2="25" y2="32.5"/>
+            <!-- Center vertical divider upper-right window -->
+            <line class="house-window-bar" x1="45" y1="28" x2="45" y2="37"/>
+            <!-- Center horizontal divider upper-right window -->
+            <line class="house-window-bar" x1="39" y1="32.5" x2="51" y2="32.5"/>
+            <!-- Door -->
+            <rect class="house-door" x="26" y="38" width="12" height="14" rx="2"/>
+            <circle class="house-doorknob" cx="35.5" cy="45" r="1.2"/>
+          </svg>
+          <!-- Knob -->
+          <div class="house-switch__knob"></div>
+        </div>
+      </div>
+    </div>
   </aside>
 
   <!-- ── Mapa ────────────────────────────────────────── -->
