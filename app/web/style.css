@@ -1400,3 +1400,142 @@ button.loading {
   accent-color: var(--accent);
   cursor: pointer;
 }
+
+/* ═══════════════════════════════════════════════════════
+   MODO CLARO — solo página de Mapas (.map-body.light)
+   El modo oscuro se mantiene igual (sin tocar estilos anteriores)
+   ═══════════════════════════════════════════════════════ */
+
+.map-body {
+  transition: background var(--transition), color var(--transition);
+}
+
+/* Variables del modo claro */
+.map-body.light {
+  --map-bg: #F5F5F3;
+  --map-bg-soft: #ECECEA;
+  --map-line: rgba(0, 0, 0, 0.12);
+  --map-text: #1A1A1A;
+  --map-muted: #6B6B6B;
+  --map-brand: #A32223;
+  --map-brand-2: #A32223;
+  --map-success: #2E7D32;
+  background: var(--map-bg);
+  color: var(--map-text);
+}
+
+/* Glows visibles en modo oscuro — ocultos en claro */
+.map-body.light .bg-glow { display: none; }
+
+/* Nav superior: fondo claro */
+.map-body.light .site-nav {
+  background: rgba(255, 255, 255, 0.97) !important;
+  border-bottom: 1px solid #E0E0E0 !important;
+}
+.map-body.light .site-nav__logo { color: #1A1A1A !important; }
+.map-body.light .site-nav__links a { color: #6B6B6B !important; }
+.map-body.light .site-nav__links a:hover,
+.map-body.light .site-nav__links a.active { color: #1A1A1A !important; }
+
+/* Panel de controles: fondo blanco */
+.map-body.light .map-controls,
+.map-body.light .map-legend,
+.map-body.light .map-tooltip {
+  background: rgba(255, 255, 255, 0.97) !important;
+  border: 1px solid rgba(0, 0, 0, 0.10) !important;
+  color: #1A1A1A !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08) !important;
+}
+
+/* Título del panel */
+.map-body.light .map-controls-title {
+  color: #1A1A1A !important;
+  border-bottom-color: rgba(0, 0, 0, 0.08) !important;
+}
+.map-body.light .map-controls-title svg { stroke: var(--accent); }
+
+/* Labels */
+.map-body.light .map-label { color: #6B6B6B !important; }
+
+/* Selects */
+.map-body.light .map-select {
+  background: #FFFFFF !important;
+  border: 1px solid #D0D0D0 !important;
+  color: #1A1A1A !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236B6B6B' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") !important;
+  background-repeat: no-repeat !important;
+  background-position: right 10px center !important;
+}
+.map-body.light .map-select:focus {
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 1px var(--accent) !important;
+  background-color: #FAFAFA !important;
+}
+.map-body.light .map-select option { background: #FFFFFF; color: #1A1A1A; }
+.map-body.light .map-select optgroup { color: var(--accent); }
+
+/* Estadísticas */
+.map-body.light .map-stats {
+  background: #F5F5F3 !important;
+  border: 1px solid #E0E0E0 !important;
+  border-left: 4px solid var(--accent) !important;
+}
+.map-body.light .map-stats-label { color: #6B6B6B !important; }
+.map-body.light .map-stats-row span:not(.map-stats-label) { color: #1A1A1A !important; }
+
+/* Separador en el panel */
+.map-body.light .map-controls hr { border-top-color: rgba(0,0,0,0.08) !important; }
+.map-body.light .map-controls h3 { color: #6B6B6B !important; }
+
+/* Toggle rows (capas) */
+.map-body.light .map-toggle-row {
+  color: #1A1A1A !important;
+  background: #F5F5F3 !important;
+  border: 1px solid #E0E0E0 !important;
+}
+.map-body.light .map-toggle-row:hover { background: #ECECEA !important; }
+
+/* Leyenda */
+.map-body.light .legend-title { color: #1A1A1A !important; border-bottom-color: rgba(0,0,0,0.08) !important; }
+.map-body.light .legend-labels { color: #6B6B6B !important; }
+.map-body.light .map-legend select { color: #1A1A1A !important; }
+
+/* Tooltip */
+.map-body.light .map-tooltip {
+  background: rgba(255, 255, 255, 0.97) !important;
+  border-left: 3px solid var(--accent) !important;
+}
+.map-body.light .map-tooltip strong { color: #1A1A1A !important; }
+.map-body.light .tooltip-label { color: #6B6B6B !important; }
+.map-body.light .tooltip-value { color: var(--accent) !important; }
+
+/* Spinner de carga */
+.map-body.light .map-loading {
+  background: rgba(245, 245, 243, 0.85) !important;
+}
+.map-body.light .map-loading p { color: var(--accent) !important; }
+.map-body.light .map-spinner {
+  border-color: rgba(163, 34, 35, 0.2) !important;
+  border-top-color: var(--accent) !important;
+}
+
+/* ── Título de sección dentro del panel ─────────────────── */
+
+.map-section-title {
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: rgba(255, 255, 255, 0.6);
+  margin-bottom: 10px;
+}
+
+.map-body.light .map-section-title {
+  color: #6B6B6B;
+}
+
+/* Scrollbar en modo claro */
+.map-body.light .map-controls::-webkit-scrollbar-track { background: rgba(0,0,0,0.02); }
+.map-body.light .map-controls::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.15); }
+.map-body.light .map-controls::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.25); }
+

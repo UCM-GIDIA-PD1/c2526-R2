@@ -2,6 +2,69 @@
    mapas.js — Explorador de Mapas interactivo (Leaflet)
    ═══════════════════════════════════════════════════════ */
 
+// ── Tiles por tema ──────────────────────────────────────
+const TILES = {
+  dark: {
+    url: "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>',
+    subdomains: "abcd",
+  },
+  light: {
+    url: "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>',
+    subdomains: "abcd",
+  },
+};
+
+let tileLayer = null;        // referencia al tile layer activo
+let temaActual = "dark";     // tema activo ("dark" | "light")
+
+// ── Aplicar tema ────────────────────────────────────────
+function aplicarTema(tema, animar = false) {
+  temaActual = tema;
+  const body = document.body;
+  const checkbox = document.getElementById("toggle-tema");
+  const label = document.getElementById("theme-label");
+
+  if (animar) {
+    body.style.transition = "background 0.4s ease, color 0.4s ease";
+  }
+
+  if (tema === "light") {
+    body.classList.add("light");
+    if (checkbox) checkbox.checked = true;
+    if (label) label.textContent = "Modo claro";
+  } else {
+    body.classList.remove("light");
+    if (checkbox) checkbox.checked = false;
+    if (label) label.textContent = "Modo oscuro";
+  }
+
+  // Intercambiar tiles si el mapa ya existe
+  if (mapa && tileLayer) {
+    mapa.removeLayer(tileLayer);
+    tileLayer = L.tileLayer(TILES[tema].url, {
+      attribution: TILES[tema].attribution,
+      subdomains: TILES[tema].subdomains,
+      maxZoom: 19,
+    }).addTo(mapa);
+    tileLayer.bringToBack();
+  }
+
+  localStorage.setItem("mapa-tema", tema);
+}
+
+// ── Toggle ──────────────────────────────────────────────
+function iniciarToggleTema() {
+  // Restaurar preferencia guardada
+  const guardado = localStorage.getItem("mapa-tema") || "dark";
+  aplicarTema(guardado, false);
+
+  document.getElementById("toggle-tema").addEventListener("change", (e) => {
+    aplicarTema(e.target.checked ? "light" : "dark", true);
+  });
+}
+
 // ── Estado global ──────────────────────────────────────
 let mapa = null;
 let capaActual = null;         // L.geoJSON layer activo
@@ -31,15 +94,13 @@ function initMapa() {
     zoomControl: false,
   });
 
-  // Tiles oscuros (CartoDB Dark Matter)
-  L.tileLayer(
-    "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
-    {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>',
-      subdomains: "abcd",
-      maxZoom: 19,
-    }
-  ).addTo(mapa);
+  // Tile layer inicial según el tema guardado
+  const temaInicial = localStorage.getItem("mapa-tema") || "dark";
+  tileLayer = L.tileLayer(TILES[temaInicial].url, {
+    attribution: TILES[temaInicial].attribution,
+    subdomains: TILES[temaInicial].subdomains,
+    maxZoom: 19,
+  }).addTo(mapa);
 
   // Control de zoom abajo-derecha
   L.control.zoom({ position: "bottomright" }).addTo(mapa);
@@ -463,6 +524,7 @@ function formatearNumero(val, varName = variableActual) {
 
 // ── Arranque ───────────────────────────────────────────
 
+iniciarToggleTema();   // leer localStorage y aplicar clase + UI antes de todo
 initMapa();
 setTimeout(() => {
   mapa.invalidateSize();
