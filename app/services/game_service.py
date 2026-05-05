@@ -385,7 +385,7 @@ def obtener_imagen_de_fila(fila: pd.Series) -> Optional[bytes]:
 
 def predecir_modelo(features: dict[str, Any]) -> float:
     """
-    Llama a predict_tabular("venta", features) y multiplica por superficie.
+    Llama a precios_predictor.predict("venta", features) y multiplica por superficie.
 
     Returns:
         Precio total estimado en euros.
@@ -393,10 +393,10 @@ def predecir_modelo(features: dict[str, Any]) -> float:
     Raises:
         RuntimeError: Si el modelo no puede predecir.
     """
-    from app.services.predictors import predict_tabular
+    from app.services.precios_predictor import predictor as precios_predictor
 
     try:
-        prediction_m2 = predict_tabular("venta", features)
+        prediction_m2 = precios_predictor.predict("venta", features)
         superficie = float(features.get("Superficie") or 1.0)
         precio_total = float(prediction_m2) * superficie
         logger.info(

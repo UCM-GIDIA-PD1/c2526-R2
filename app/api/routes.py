@@ -6,7 +6,7 @@ from app.schemas import (
     EnrichedPredictionResponse, PredictionResponse,
     TextoInput, VentaInput, VentaSimpleInput,
 )
-from app.services.predictors import predict_tabular
+from app.services.precios_predictor import predictor as precios_predictor
 from app.services.enrichment import enrich_property
 
 logger = logging.getLogger(__name__)
@@ -26,7 +26,7 @@ def predict_venta_simple(data: VentaSimpleInput) -> EnrichedPredictionResponse:
     try:
         basic = data.model_dump(exclude={"Direccion"})
         enriched = enrich_property(data.Direccion, basic)
-        prediction_m2 = predict_tabular("venta", enriched)
+        prediction_m2 = precios_predictor.predict("venta", enriched)
         prediction_total = prediction_m2 * enriched.get("Superficie", 1.0)
         return EnrichedPredictionResponse(
             model_name="venta-xgboost",
@@ -40,6 +40,7 @@ def predict_venta_simple(data: VentaSimpleInput) -> EnrichedPredictionResponse:
             },
         )
     except ValueError as e:
+        logger.exception("Error de validación o fallo en el modelo (¿faltan columnas?)")
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         logger.exception("Error en predicción de venta simplificada")
@@ -55,7 +56,7 @@ def predict_alquiler_simple(data: AlquilerSimpleInput) -> EnrichedPredictionResp
     try:
         basic = data.model_dump(exclude={"Direccion"})
         enriched = enrich_property(data.Direccion, basic)
-        prediction = predict_tabular("alquiler", enriched)
+        prediction = precios_predictor.predict("alquiler", enriched)
         return EnrichedPredictionResponse(
             model_name="alquiler-xgboost",
             prediction=prediction,
@@ -78,11 +79,11 @@ def predict_alquiler_simple(data: AlquilerSimpleInput) -> EnrichedPredictionResp
 
 @router.post("/venta", response_model=PredictionResponse)
 def predict_venta(data: VentaInput) -> PredictionResponse:
-    prediction_m2 = predict_tabular("venta", data.model_dump())
+    prediction_m2 = precios_predictor.predict("venta", data.model_dump())
     prediction_total = prediction_m2 * data.Superficie
     return PredictionResponse(model_name="venta-xgboost", prediction=prediction_total)
 
 @router.post("/alquiler", response_model=PredictionResponse)
 def predict_alquiler(data: AlquilerInput) -> PredictionResponse:
-    prediction = predict_tabular("alquiler", data.model_dump())
+    prediction = precios_predictor.predict("alquiler", data.model_dump())
     return PredictionResponse(model_name="alquiler-xgboost", prediction=prediction)
