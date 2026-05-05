@@ -1,152 +1,83 @@
 import wandb
 import numpy as np
-import random
+import pandas as pd
+import optuna
 
 from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
 from sklearn.pipeline import Pipeline
-from sklearn.metrics import accuracy_score, f1_score, recall_score, precision_score
-from sklearn.model_selection import StratifiedKFold
+from sklearn.metrics import (
+    accuracy_score, f1_score, recall_score, precision_score,
+    classification_report, confusion_matrix,
+)
+from sklearn.model_selection import StratifiedKFold, train_test_split
 from sklearn.base import clone
-from sklearn.metrics import classification_report
-from sklearn.metrics import confusion_matrix
-from sklearn.model_selection import train_test_split
-import pandas as pd
-import optuna
 
 import nltk
 from nltk.corpus import stopwords
 
+from funciones_texto import bajar_df_texto, x_y_split, evaluar_modelo, analizar_por_longitud, loguear_resultados_test
 
-from funciones_texto import bajar_df_texto, x_y_split, train_val_test_split
+
+WANDB_ENTITY = "pd1-c2526-team2"
+WANDB_PROJECT = "modelo-texto-final"
+WANDB_GROUP = "texto"
+MODEL_TYPE = "logistic_regression"
+RANDOM_STATE = 42
+CV_N_SPLITS = 5
 
 
-def evaluar_modelo(model, X_test, y_test):
-    """Evalúa un modelo de clasificación sobre un conjunto de validación y devuelve las métricas de evaluación seleccionadas
-
-    Args:
-        model: Modelo entrenado con método "predict".
-        X_test: Datos de entrada del conjunto de validación.
-        y_test: Etiquetas reales del conjunto de validación.
-
-    Returns:
-        dict: Diccionario con las métricas calculadas:
-            - accuracy (float)
-            - f1_macro (float)
-            - recall_macro (float)
-            - precision_macro (float)
-    """
-    
-    y_pred = model.predict(X_test)
-
-    return {
-        "accuracy": accuracy_score(y_test, y_pred),
-        "f1_macro": f1_score(y_test, y_pred, average="macro"),
-        "recall_macro": recall_score(y_test, y_pred, average="macro"),
-        "precision_macro": precision_score(y_test, y_pred, average="macro"),
-    }
-
-def analizar_por_longitud(model, X_test, y_test):
-    import pandas as pd
-
-    df = pd.DataFrame({
-        "texto": X_test,
-        "y_true": y_test
-    })
-
-    df["longitud"] = df["texto"].apply(lambda x: len(x.split()))
-
-    # Definir segmentos
-    bins = [0, 20, 50, 100, np.inf]
-    labels = ["corto", "medio", "largo", "muy_largo"]
-    df["segmento"] = pd.cut(df["longitud"], bins=bins, labels=labels)
-
-    resultados = []
-
-    for seg in labels:
-        subset = df[df["segmento"] == seg]
-        if len(subset) == 0:
-            continue
-
-        y_pred = model.predict(subset["texto"])
-
-        f1 = f1_score(subset["y_true"], y_pred, average="macro")
-
-        resultados.append({
-            "segmento": seg,
-            "n_samples": len(subset),
-            "f1_macro": f1
-        })
-
-    return pd.DataFrame(resultados)
-
+# =====================================================================
+# ENTRENAMIENTO: GRID SEARCH MANUAL CON STRATIFIED K-FOLD
+# =====================================================================
 
 def entrenar_logreg_texto(X_train, y_train, X_test, y_test):
-    """Entrena y selecciona el mejor modelo de clasificación de texto basado en regresión logística.
-    Realiza una búsqueda exhaustiva sobre distintas combinaciones de:
-    - Vectorizadores (CountVectorizer y TfidfVectorizer)
-    - Valores de regularización (C)
-    - Rangos de n-gramas
-    - Número máximo de características
-
-    Evalúa cada configuración en el conjunto de validación usando F1 macro
-    como métrica principal, registra los resultados en Weights & Biases (wandb)
-    y selecciona el mejor modelo para evaluarlo según el test.
-
-    Args:
-        X_train: Textos de entrenamiento.
-        y_train: Etiquetas de entrenamiento.
-        X_test: Textos de test.
-        y_test: Etiquetas de test.
-
-    Returns:
-        tuple:
-            - mejor_modelo: Pipeline entrenado con la mejor configuración encontrada.
-            - mejor_resultado (dict): Diccionario con la configuración y métricas del mejor modelo.
-    """
+    """Búsqueda en grilla con StratifiedKFold + evaluación final en test."""
     spanish_stopwords = stopwords.words("spanish")
 
-    vectorizers = {
-        "count": CountVectorizer,
-        "tfidf": TfidfVectorizer
-    }
-
+    vectorizers = {"count": CountVectorizer, "tfidf": TfidfVectorizer}
     Cs = [0.1, 1.0, 5.0]
-    ngrams = [(1,1), (1,2)]
+    ngrams = [(1, 1), (1, 2)]
     max_features_list = [5000, 10000]
 
-    mejor_resultado = None
-    mejor_modelo = None
+    skf = StratifiedKFold(n_splits=CV_N_SPLITS, shuffle=True, random_state=RANDOM_STATE)
 
-    skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
-
-    """ run = wandb.init(
-        entity="pd1-c2526-team2",
-        project="modelo-texto-logreg",
-        name="logreg-texto",
-        job_type="model-training",
+    run = wandb.init(
+        entity=WANDB_ENTITY,
+        project=WANDB_PROJECT,
+        group=WANDB_GROUP,
+        name=f"{MODEL_TYPE}-grid_search",
+        job_type="hyperparameter-search-and-eval",
+        tags=[MODEL_TYPE, "grid_search_kfold"],
         config={
-            "modelo": "LogisticRegression",
-            "task": "clasificacion",
-            "vectorizers": ["count", "tfidf"],
-            "C_values": Cs,
-            "ngram_range": ngrams,
-            "max_features": max_features_list,
-            "split": "train/val/test",
-            "random_state": 42
-        }
-    ) """
-    
-    print("Buscando mejor modelo de texto...")
-    """table = wandb.Table(columns=[
-        "modelo", "vectorizer", "C", "ngram", "max_features",
-        "f1_macro", "accuracy", "recall_macro", "precision_macro"
-    ])"""
+            "model_type": MODEL_TYPE,
+            "search_strategy": "grid_search_kfold",
+            "cv_n_splits": CV_N_SPLITS,
+            "random_state": RANDOM_STATE,
+            "search_space": {
+                "vectorizers": list(vectorizers.keys()),
+                "C": Cs,
+                "ngram_range": [str(n) for n in ngrams],
+                "max_features": max_features_list,
+            },
+        },
+        reinit=True,
+    )
+
+    cv_table = wandb.Table(columns=[
+        "trial_id", "vectorizer", "C", "ngram", "max_features",
+        "cv_f1_macro_mean", "cv_f1_macro_std",
+    ])
+
+    print("Buscando mejor modelo de texto (grid search + CV)...")
+    mejor_resultado = None
+    mejor_config = None
+    trial_id = 0
+
     for vec_name, vec_class in vectorizers.items():
         for C in Cs:
             for ngram in ngrams:
                 for max_feat in max_features_list:
-
                     nombre = f"{vec_name}_C{C}_ng{ngram}_mf{max_feat}"
                     print(f"\nEntrenando: {nombre}")
 
@@ -154,257 +85,245 @@ def entrenar_logreg_texto(X_train, y_train, X_test, y_test):
                         ("vectorizer", vec_class(
                             max_features=max_feat,
                             ngram_range=ngram,
-                            stop_words=spanish_stopwords
+                            stop_words=spanish_stopwords,
                         )),
                         ("classifier", LogisticRegression(
                             C=C,
                             max_iter=1000,
                             class_weight="balanced",
-                            random_state=42
-                        ))
+                            random_state=RANDOM_STATE,
+                        )),
                     ])
 
                     cv_scores = []
-
                     for train_idx, val_idx in skf.split(X_train, y_train):
-                        
                         X_tr, X_vl = X_train.iloc[train_idx], X_train.iloc[val_idx]
                         y_tr, y_vl = y_train.iloc[train_idx], y_train.iloc[val_idx]
+                        m = clone(model)
+                        m.fit(X_tr, y_tr)
+                        cv_scores.append(
+                            f1_score(y_vl, m.predict(X_vl), average="macro")
+                        )
 
-                        model_cv = clone(model)
-                        model_cv.fit(X_tr, y_tr)
+                    f1_mean = float(np.mean(cv_scores))
+                    f1_std = float(np.std(cv_scores))
+                    print(f"  cv_f1_macro = {f1_mean:.4f} ± {f1_std:.4f}")
 
-                        y_pred = model_cv.predict(X_vl)
-                        f1 = f1_score(y_vl, y_pred, average="macro")
+                    cv_table.add_data(
+                        trial_id, vec_name, C, str(ngram), max_feat, f1_mean, f1_std,
+                    )
 
-                        cv_scores.append(f1)
-
-                    f1_cv_mean = np.mean(cv_scores)
-                    f1_cv_std = np.std(cv_scores)
-
-                    print(f1_cv_mean)
-                    print(f1_cv_std)
-
-
-                    """table.add_data(
-                        nombre,
-                        vec_name,
-                        C,
-                        str(ngram),
-                        max_feat,
-                        metricas["f1_macro"],
-                        metricas["accuracy"],
-                        metricas["recall_macro"],
-                        metricas["precision_macro"]
-                    )"""
-
-                    if (mejor_resultado is None) or (f1_cv_mean > mejor_resultado["f1_macro"]):
+                    if (mejor_resultado is None) or (f1_mean > mejor_resultado["cv_f1_macro_mean"]):
                         mejor_resultado = {
+                            "trial_id": trial_id,
                             "nombre": nombre,
+                            "vectorizer": vec_name,
+                            "C": C,
+                            "ngram": list(ngram),
+                            "max_features": max_feat,
+                            "cv_f1_macro_mean": f1_mean,
+                            "cv_f1_macro_std": f1_std,
+                        }
+                        mejor_config = {
+                            "vec_class": vec_class,
                             "vectorizer": vec_name,
                             "C": C,
                             "ngram": ngram,
                             "max_features": max_feat,
-                            "f1_macro": f1_cv_mean,
-                            "f1_std": f1_cv_std
                         }
-                        mejor_config = {
-                            "vec_class": vec_class,
-                            "C": C,
-                            "ngram": ngram,
-                            "max_features": max_feat
-                        }
+                    trial_id += 1
 
-                        mejor_modelo = model
-        
-
-    print("\n=== MEJOR MODELO ===")
+    print("\n=== MEJOR MODELO (CV) ===")
     print(mejor_resultado)
-    mejor_modelo.fit(X_train, y_train)
 
+    # Reentrenar con todo el train usando la mejor config
     mejor_modelo = Pipeline([
         ("vectorizer", mejor_config["vec_class"](
             max_features=mejor_config["max_features"],
             ngram_range=mejor_config["ngram"],
-            stop_words=spanish_stopwords
+            stop_words=spanish_stopwords,
         )),
         ("classifier", LogisticRegression(
             C=mejor_config["C"],
             max_iter=1000,
             class_weight="balanced",
-            random_state=42
-        ))
+            random_state=RANDOM_STATE,
+        )),
     ])
-
     mejor_modelo.fit(X_train, y_train)
 
-    metricas_test = evaluar_modelo(mejor_modelo, X_test, y_test)
-
-    #wandb.log({"resultados_modelos": table})
-
-    """wandb.log({
-    "f1_por_modelo": wandb.plot.bar(
-        table,
-        "modelo",
-        "f1_macro",
-        title="F1 por modelo"
-    )})"""
-
-    print("\n=== RESULTADOS EN TEST ===")
-    print(metricas_test)
-
-    """wandb.log({
-        "test_f1": metricas_test["f1_macro"],
-        "test_accuracy": metricas_test["accuracy"],
-        "test_recall": metricas_test["recall_macro"],
-        "test_precision": metricas_test["precision_macro"]
+    # Logueamos los resultados de la búsqueda
+    wandb.log({"search/cv_results_table": cv_table})
+    wandb.log({
+        "cv/f1_macro_mean": mejor_resultado["cv_f1_macro_mean"],
+        "cv/f1_macro_std": mejor_resultado["cv_f1_macro_std"],
+    })
+    wandb.config.update({
+        "best_params": {
+            "vectorizer": mejor_config["vectorizer"],
+            "C": mejor_config["C"],
+            "ngram_range": str(mejor_config["ngram"]),
+            "max_features": mejor_config["max_features"],
+        }
     })
 
-    run.finish()"""
+    # Evaluación final en test (esquema unificado)
+    loguear_resultados_test(mejor_modelo, X_test, y_test)
 
-
-    print("\n=== ANALISIS POR CLASE ===")
-    print(classification_report(y_test, mejor_modelo.predict(X_test)))
-
-    print("\n=== ANALISIS POR LONGITUD ===")
-    print(analizar_por_longitud(mejor_modelo, X_test, y_test))
-
-    labels = np.unique(y_test)
-    cm = confusion_matrix(y_test, mejor_modelo.predict(X_test))
-
-    print("\n=== MATRIZ DE CONFUSION ===")
-    print(pd.DataFrame(cm, index=labels, columns=labels))
-
+    run.finish()
     return mejor_modelo, mejor_resultado
 
-def entrenar_logreg_texto_optuna(X_train, y_train, X_test, y_test):
 
+# =====================================================================
+# ENTRENAMIENTO: BÚSQUEDA CON OPTUNA
+# =====================================================================
+
+def entrenar_logreg_texto_optuna(X_train, y_train, X_test, y_test, n_trials: int = 20):
+    """Búsqueda con Optuna + pruning por fold + evaluación final en test."""
     spanish_stopwords = stopwords.words("spanish")
+    skf = StratifiedKFold(n_splits=CV_N_SPLITS, shuffle=True, random_state=RANDOM_STATE)
 
-    skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+    run = wandb.init(
+        entity=WANDB_ENTITY,
+        project=WANDB_PROJECT,
+        group=WANDB_GROUP,
+        name=f"{MODEL_TYPE}-optuna",
+        job_type="hyperparameter-search-and-eval",
+        tags=[MODEL_TYPE, "optuna"],
+        config={
+            "model_type": MODEL_TYPE,
+            "search_strategy": "optuna",
+            "cv_n_splits": CV_N_SPLITS,
+            "random_state": RANDOM_STATE,
+            "n_trials": n_trials,
+            "search_space": {
+                "vectorizer": ["count", "tfidf"],
+                "C": [0.1, 5.0],
+                "ngram": ["(1,1)", "(1,2)"],
+                "max_features": [1000, 15000],
+            },
+        },
+        reinit=True,
+    )
 
     def objective(trial):
-
         vec_name = trial.suggest_categorical("vectorizer", ["count", "tfidf"])
         C = trial.suggest_float("C", 0.1, 5.0)
-        ngram = trial.suggest_categorical("ngram", [(1,1), (1,2)])
+        ngram = trial.suggest_categorical("ngram", [(1, 1), (1, 2)])
         max_features = trial.suggest_int("max_features", 1000, 15000, step=1000)
 
         vec_class = CountVectorizer if vec_name == "count" else TfidfVectorizer
-
         model = Pipeline([
             ("vectorizer", vec_class(
                 max_features=max_features,
                 ngram_range=ngram,
-                stop_words=spanish_stopwords
+                stop_words=spanish_stopwords,
             )),
             ("classifier", LogisticRegression(
-                C=C,
-                max_iter=1000,
+                C=C, max_iter=1000,
                 class_weight="balanced",
-                random_state=42
-            ))
+                random_state=RANDOM_STATE,
+            )),
         ])
 
         scores = []
-
         for fold_idx, (train_idx, val_idx) in enumerate(skf.split(X_train, y_train)):
-
             X_tr, X_vl = X_train.iloc[train_idx], X_train.iloc[val_idx]
             y_tr, y_vl = y_train.iloc[train_idx], y_train.iloc[val_idx]
-
-            model_cv = clone(model)
-            model_cv.fit(X_tr, y_tr)
-
-            y_pred = model_cv.predict(X_vl)
-            f1 = f1_score(y_vl, y_pred, average="macro")
-
-            scores.append(f1)
-
-            # 🔥 PRUNING
-            trial.report(np.mean(scores), step=fold_idx)
-
+            m = clone(model)
+            m.fit(X_tr, y_tr)
+            scores.append(f1_score(y_vl, m.predict(X_vl), average="macro"))
+            trial.report(float(np.mean(scores)), step=fold_idx)
             if trial.should_prune():
                 raise optuna.TrialPruned()
-
-        return np.mean(scores)
+        return float(np.mean(scores))
 
     print("Buscando mejor modelo con Optuna...")
-
     study = optuna.create_study(
         direction="maximize",
-        pruner=optuna.pruners.MedianPruner(n_warmup_steps=2)
+        pruner=optuna.pruners.MedianPruner(n_warmup_steps=2),
     )
-    study.optimize(objective, n_trials=20)  # puedes subir esto
+    study.optimize(objective, n_trials=n_trials)
+
+    # Loguear historial de trials
+    optuna_table = wandb.Table(columns=[
+        "trial_id", "vectorizer", "C", "ngram", "max_features",
+        "cv_f1_macro_mean", "state",
+    ])
+    for t in study.trials:
+        params = t.params
+        optuna_table.add_data(
+            t.number,
+            params.get("vectorizer"),
+            params.get("C"),
+            str(params.get("ngram")),
+            params.get("max_features"),
+            t.value if t.value is not None else float("nan"),
+            str(t.state),
+        )
+    wandb.log({"search/optuna_trials_table": optuna_table})
 
     best_params = study.best_params
-
     print("\n=== MEJOR CONFIG OPTUNA ===")
     print(best_params)
 
+    # Reentrenar con todo el train usando los mejores params
     vec_class = CountVectorizer if best_params["vectorizer"] == "count" else TfidfVectorizer
-
     mejor_modelo = Pipeline([
         ("vectorizer", vec_class(
             max_features=best_params["max_features"],
             ngram_range=best_params["ngram"],
-            stop_words=spanish_stopwords
+            stop_words=spanish_stopwords,
         )),
         ("classifier", LogisticRegression(
             C=best_params["C"],
             max_iter=1000,
             class_weight="balanced",
-            random_state = 42
-        ))
+            random_state=RANDOM_STATE,
+        )),
     ])
-
     mejor_modelo.fit(X_train, y_train)
 
-    metricas_test = evaluar_modelo(mejor_modelo, X_test, y_test)
+    wandb.config.update({
+        "best_params": {
+            "vectorizer": best_params["vectorizer"],
+            "C": best_params["C"],
+            "ngram_range": str(best_params["ngram"]),
+            "max_features": best_params["max_features"],
+        }
+    })
+    wandb.log({"cv/f1_macro_mean": study.best_value})
 
-    print("\n=== RESULTADOS EN TEST ===")
-    print(metricas_test)
+    # Evaluación final en test (esquema unificado)
+    loguear_resultados_test(mejor_modelo, X_test, y_test)
 
-    print("\n=== ANALISIS POR CLASE ===")
-    print(classification_report(y_test, mejor_modelo.predict(X_test)))
-
-    print("\n=== ANALISIS POR LONGITUD ===")
-    print(analizar_por_longitud(mejor_modelo, X_test, y_test))
-
-    cm = confusion_matrix(y_test, mejor_modelo.predict(X_test))
-
-    print("\n=== MATRIZ DE CONFUSION ===")
-    print(pd.DataFrame(cm))
-
+    run.finish()
     return mejor_modelo, best_params
 
-def main():
-    """Función principal del script.
 
-    Descarga los recursos necesarios de NLTK, carga y prepara los datos de texto,
-    realiza la partición en conjuntos de entrenamiento, validación y test, inicia
-    sesión en Weights & Biases y lanza el proceso de entrenamiento y evaluación
-    del modelo de clasificación de texto.
-    """
-    nltk.download("stopwords")
+# =====================================================================
+# MAIN
+# =====================================================================
+
+def main():
+    """Carga datos, divide en train/test y lanza el entrenamiento elegido."""
+    nltk.download("stopwords", quiet=True)
 
     df = bajar_df_texto()
     X, y = x_y_split(df)
     X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.2, random_state=42, stratify=y
+        X, y, test_size=0.2, random_state=RANDOM_STATE, stratify=y
     )
 
-    """wandb.login()"""
+    wandb.login()
 
     modo = input("Selecciona modo: 1 (Grid Search) / 2 (Optuna): ")
-
     if modo == "1":
         entrenar_logreg_texto(X_train, y_train, X_test, y_test)
     elif modo == "2":
         entrenar_logreg_texto_optuna(X_train, y_train, X_test, y_test)
     else:
         print("Opción no válida")
-   
 
 
 if __name__ == "__main__":
