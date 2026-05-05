@@ -158,6 +158,7 @@ def _cargar_df_barrio_aleatorio() -> tuple[pd.DataFrame, str]:
         df[COLUMNA_PRECIO]
         .astype(str)
         .str.replace(r"[^\d,\.]", "", regex=True)
+        .str.replace(".", "", regex=False)
         .str.replace(",", ".", regex=False)
         .pipe(pd.to_numeric, errors="coerce")
     )
@@ -166,6 +167,7 @@ def _cargar_df_barrio_aleatorio() -> tuple[pd.DataFrame, str]:
             df["Superficie"]
             .astype(str)
             .str.replace(r"[^\d,\.]", "", regex=True)
+            .str.replace(".", "", regex=False)
             .str.replace(",", ".", regex=False)
             .pipe(pd.to_numeric, errors="coerce")
         )
@@ -385,7 +387,7 @@ def obtener_imagen_de_fila(fila: pd.Series) -> Optional[bytes]:
 
 def predecir_modelo(features: dict[str, Any]) -> float:
     """
-    Llama a precios_predictor.predict("venta", features) y multiplica por superficie.
+    Enriquece los datos espaciales y llama a precios_predictor.predict("venta", features).
 
     Returns:
         Precio total estimado en euros.
@@ -394,11 +396,50 @@ def predecir_modelo(features: dict[str, Any]) -> float:
         RuntimeError: Si el modelo no puede predecir.
     """
     from app.services.precios_predictor import predictor as precios_predictor
+    from app.services.enrichment import enrich_property
 
     try:
-        prediction_m2 = precios_predictor.predict("venta", features)
-        superficie = float(features.get("Superficie") or 1.0)
+        calle = str(features.get("Calle", "")).strip()
+        barrio = str(features.get("Barrio", "")).strip()
+        distrito = str(features.get("Distrito", "")).strip()
+        
+        # Intentar enriquecer con diferentes niveles de detalle por si el geocodificador falla
+        direcciones_a_probar = [
+            [calle, barrio, distrito, "Madrid", "Spain"],
+            [barrio, distrito, "Madrid", "Spain"],
+            [distrito, "Madrid", "Spain"],
+            ["Madrid", "Spain"]
+        ]
+        
+        features_enriched = None
+        ultimo_error = None
+        
+        for partes in direcciones_a_probar:
+            # Eliminar partes vacías y duplicados consecutivos (ej: calle=barrio)
+            partes_validas = []
+            for p in partes:
+                if p and (not partes_validas or p.lower() != partes_validas[-1].lower()):
+                    partes_validas.append(p)
+                    
+            direccion = ", ".join(partes_validas)
+            
+            try:
+                features_enriched = enrich_property(direccion, features)
+                break  # Si tiene éxito, salimos del bucle
+            except ValueError as e:
+                ultimo_error = e
+                logger.warning(f"Fallo al geocodificar '{direccion}', intentando fallback... ({e})")
+                
+        if features_enriched is None:
+            raise ValueError(f"No se pudo geocodificar la vivienda en ninguno de los intentos. Último error: {ultimo_error}")
+
+        # Predecir con el modelo (precio por m2)
+        prediction_m2 = precios_predictor.predict("venta", features_enriched)
+        
+        # Calcular el precio total
+        superficie = float(features_enriched.get("Superficie") or 1.0)
         precio_total = float(prediction_m2) * superficie
+        
         logger.info(
             "Predicción modelo — %.2f €/m² × %.1f m² = %.0f €",
             prediction_m2, superficie, precio_total,

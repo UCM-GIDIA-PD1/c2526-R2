@@ -71,6 +71,11 @@ class PreciosPredictor:
             num_cols = preprocessor.transformers_[0][2]
             cat_cols = preprocessor.transformers_[1][2]
             
+            # Asegurar que existan todas las columnas que espera el modelo
+            for c in num_cols + cat_cols:
+                if c not in df.columns:
+                    df[c] = np.nan
+            
             cat_cols_df = [c for c in cat_cols if c in df.columns]
             num_cols_df = [c for c in num_cols if c in df.columns]
             
