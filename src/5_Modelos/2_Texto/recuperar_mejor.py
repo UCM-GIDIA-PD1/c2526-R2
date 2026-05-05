@@ -27,31 +27,30 @@ def obtener_mejor_run():
 
 
 def parse_best_params(run):
-
     best_params = run.summary.get("best_params", None)
-    
-
-    print("Tipo:", type(best_params))
-    print("Contenido:", best_params)
 
     if best_params is None:
         print("⚠️ Este run no tiene best_params")
         return {}
 
-    # Caso 1: ya es dict
+    # Caso 1: ya es dict (o dict-like de wandb)
     if isinstance(best_params, dict):
-        return best_params
+        return dict(best_params)
 
     # Caso 2: viene como string
     if isinstance(best_params, str):
         try:
             return ast.literal_eval(best_params)
-        except:
+        except Exception:
             print("⚠️ No se pudo parsear best_params")
             return {}
 
-    print("⚠️ Formato desconocido en best_params")
-    return {}
+    # Caso 3: dict-like de wandb (SummarySubDict y similares)
+    try:
+        return dict(best_params)
+    except Exception:
+        print("⚠️ Formato desconocido en best_params")
+        return {}
 
 
 def main():
