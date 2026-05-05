@@ -43,7 +43,7 @@ c2526-R2/
 │   ├── 5_Modelos/                # Fase 5: Entrenamiento de modelos (Precios, Texto, Imágenes)
 │   └── 6_Evaluacion/             # Fase 6: Evaluación y métricas de los modelos
 │
-├── .env                          # Variables de entorno (MinIO)
+├── .env                          # Variables de entorno (MinIO, WandB)
 ├── Containerfile                 # Configuración de Docker/Podman
 ├── pyproject.toml                # Dependencias (uv)
 ├── uv.lock                       # Lockfile
@@ -144,27 +144,33 @@ uv run uvicorn app.main:app --reload
 
 Para un despliegue aislado, puedes construir el contenedor utilizando el archivo `Containerfile`.
 
- **Requisito previo:** Debes tener instalado [Podman Desktop](https://podman.io/). 
+**Requisito previo:** Debes tener instalado [Podman Desktop](https://podman.io/).
 
 > *Nota para usuarios de Podman en Windows:* Recuerda iniciar la máquina virtual antes de ejecutar los comandos:
- ```bash
- podman machine start
- ```
+> ```bash
+> podman machine start
+> ```
 
 ```bash
 # Construir la imagen
-podman build -t maiday-web -f Containerfile .
+podman build -t maiday-app -f Containerfile .
 
-# Ejecutar el contenedor
-podman run --rm -p 8000:8000 --env-file .env maiday-web
+# Ejecutar el contenedor (comando completo de producción)
+podman run --rm -p 8000:8000 \
+    --env-file .env \
+    --add-host host.containers.internal:host-gateway \
+    maiday-app
 ```
+
+> **¿Por qué `--add-host host.containers.internal:host-gateway`?**
+> Dentro del contenedor, `localhost` apunta al propio contenedor, no a tu máquina. Este flag crea un alias DNS que resuelve `host.containers.internal` hacia la IP de tu host, permitiendo que el contenedor acceda a MinIO u otros servicios corriendo en local. Si `MINIO_ENDPOINT` apunta a `localhost` o `127.0.0.1`, la aplicación lo detecta automáticamente y redirige la conexión a `host.containers.internal`.
 ---
 
 ## Configuraciones Especiales
 
 ### Conexión a MinIO (Almacenamiento de Datos)
 
-El proyecto lee y escribe datasets en un servidor MinIO. Debes crear un archivo `.env` en la raíz del proyecto con las siguientes credenciales:
+El proyecto lee y escribe datasets en un servidor MinIO, y utiliza Weights & Biases para el seguimiento de experimentos. Debes crear un archivo `.env` en la raíz del proyecto con las siguientes credenciales:
 
 | Variable | Descripción |
 |---|---|
@@ -173,6 +179,7 @@ El proyecto lee y escribe datasets en un servidor MinIO. Debes crear un archivo 
 | `MINIO_SECRET_KEY` | Clave secreta |
 | `MINIO_BUCKET` | Bucket donde se almacenan los datos |
 | `MINIO_GROUP_PATH` | Carpeta base del grupo dentro del bucket |
+| `WANDB_API_KEY` | API Key de Weights & Biases (seguimiento de experimentos) |
 
 ```env
 MINIO_ENDPOINT=minio.fdi.ucm.es
@@ -180,6 +187,7 @@ MINIO_ACCESS_KEY=TU_ACCESS_KEY
 MINIO_SECRET_KEY=TU_SECRET_KEY
 MINIO_BUCKET=pd1
 MINIO_GROUP_PATH=grupo2
+WANDB_API_KEY=TU_WANDB_API_KEY
 ```
 ---
 ## Configuración de Ollama (modelos VLM)
