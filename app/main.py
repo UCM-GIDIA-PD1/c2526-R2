@@ -7,6 +7,7 @@ from fastapi.staticfiles import StaticFiles
 from app.api.routes import router as predict_router
 from app.api.map_routes import router as map_router
 from app.api.image_routes import router as image_router
+from app.api.text_routes import router as text_router
 from app.api.game_routes import router as game_router
 
 app = FastAPI(
@@ -21,6 +22,7 @@ WEB_DIR = BASE_DIR / "web"
 app.include_router(predict_router)
 app.include_router(map_router)
 app.include_router(image_router)
+app.include_router(text_router)
 app.include_router(game_router)
 app.mount("/static", StaticFiles(directory=WEB_DIR), name="static")
 
