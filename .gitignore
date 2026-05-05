@@ -22,3 +22,5 @@ dataset_ml/
 /datos_locales/
 *.parquet
 *.tfrecord
+*.png
+*.npy
