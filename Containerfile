@@ -1,10 +1,22 @@
+# ── Etapa única: imagen de producción ──────────────────────────────────────────
 FROM python:3.12-slim
 
-WORKDIR /app
+# Copiamos los binarios de uv directamente desde la imagen oficial
+# (evita instalar pip + uv manualmente y siempre usa la última versión estable)
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
-ENV PYTHONDONTWRITEBYTECODE=1
-ENV PYTHONUNBUFFERED=1
+# ── Variables de entorno ────────────────────────────────────────────────────────
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    # Permite importaciones cruzadas entre módulos del proyecto (app/, src/, etc.)
+    PYTHONPATH="/maiday" \
+    # uv: ruta fija para el entorno virtual dentro del contenedor
+    UV_PROJECT_ENVIRONMENT="/maiday/.venv"
 
+WORKDIR /maiday
+
+# ── Dependencias de sistema geoespaciales ───────────────────────────────────────
+# Este bloque es crítico: geopandas, pyproj y rtree requieren estas librerías nativas.
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     python3-dev \
@@ -17,34 +29,28 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libspatialindex-dev \
     && rm -rf /var/lib/apt/lists/*
 
-RUN pip install --no-cache-dir uv
+# ── Caché de dependencias Python ────────────────────────────────────────────────
+# Copiamos SOLO los ficheros de metadatos primero para aprovechar el caché de capas:
+# si el código fuente cambia pero las dependencias no, esta capa no se reconstruye.
+COPY pyproject.toml README.md uv.lock .python-version ./
 
-# Instalamos las dependencias necesarias para el servidor web y el servicio de enriquecimiento.
-RUN uv pip install --system \
-    "fastapi>=0.116.1" \
-    "uvicorn[standard]>=0.35.0" \
-    "python-multipart>=0.0.20" \
-    "numpy>=2.0.0" \
-    "pandas>=3.0.0" \
-    "pillow>=12.1.1" \
-    "scikit-learn>=1.8.0" \
-    "xgboost>=3.2.0" \
-    "tensorflow-cpu>=2.21.0" \
-    "ollama>=0.6.1" \
-    "geopandas>=1.1.2" \
-    "geopy>=2.4.1" \
-    "minio>=7.2.20" \
-    "python-dotenv>=1.0.0" \
-    "scipy>=1.17.1" \
-    "urllib3>=2.0.0" \
-    "wandb>=0.15.0" \
-    "pyarrow>=15.0.0"
+# Instalamos las dependencias en el entorno virtual sin tocar el código fuente.
+# --frozen: usa el lockfile tal cual (reproducibilidad)
+# --no-cache: evita almacenar cache de pip dentro de la imagen (imagen más ligera)
+RUN uv sync --frozen --no-cache --no-install-project
 
-# Copiamos el resto de los archivos.
-# El archivo .containerignore filtrará automáticamente todas las carpetas pesadas de datos,
-# notebooks, y scripts de entrenamiento para que solo la app y los modelos queden en la imagen.
+# Descarga los recursos de NLTK necesarios para el módulo de análisis de texto
+RUN /maiday/.venv/bin/python -m nltk.downloader stopwords wordnet punkt_tab
+
+# ── Código fuente ────────────────────────────────────────────────────────────────
+# Se copia después de instalar dependencias para maximizar el reuso de caché.
+# El archivo .containerignore excluye datos pesados, notebooks y scripts de entrenamiento.
 COPY . .
+
+# Segunda sincronización: instala el proyecto ahora que el código fuente está disponible
+RUN uv sync --frozen --no-cache
 
 EXPOSE 8000
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Ejecutamos uvicorn desde el entorno virtual creado por uv
+CMD ["/maiday/.venv/bin/uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

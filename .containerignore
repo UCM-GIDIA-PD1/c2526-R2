@@ -2,14 +2,16 @@
 .git/
 .gitignore
 
-# Entornos virtuales y dependencias locales
+# Entornos virtuales locales
+# (uv crea el .venv dentro del contenedor; el local no debe copiarse)
 .venv/
-__pycache__/
-*.pyc
-.python-version
-uv.lock
 
-# Configuraciones y logs
+# Cachés de Python (glob recursivo para capturar subcarpetas anidadas)
+**/__pycache__/
+*.pyc
+*.pyo
+
+# Configuraciones y logs de desarrollo
 .env
 .idea/
 wandb/
@@ -18,7 +20,7 @@ wandb/
 *.ipynb
 generate_frontend.py
 
-# Directorios de datos, scraping y entrenamiento (no necesarios para ejecutar el servidor web)
+# Directorios de datos, scraping y entrenamiento (no necesarios para servir la app)
 src/1_Extraccion/
 src/2_Limpieza/
 src/3_Transformacion/
@@ -32,5 +34,6 @@ datos_optimizados_tfrecords/
 datos_locales/
 *.parquet
 *.tfrecord
-*.h5
-*.hdf5
+
+# NOTA: model_cache/ NO está ignorado → los modelos se copian correctamente al contenedor.
+# NOTA: *.h5 / *.hdf5 tampoco se ignoran por si los modelos de Keras usan ese formato.
