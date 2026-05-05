@@ -16,7 +16,9 @@ from pydantic import BaseModel, Field
 
 from app.services.game_service import (
     calcular_ganador,
+    calcular_ganador_comparacion,
     cargar_vivienda_aleatoria,
+    cargar_dos_viviendas_aleatorias,
     extraer_pistas,
     predecir_modelo,
 )
@@ -66,6 +68,34 @@ class ResultadoJuegoResponse(BaseModel):
     ganador:           str
     diferencia:        float
     mensaje:           str
+
+
+class DosViviendasResponse(BaseModel):
+    """Respuesta con los datos de dos viviendas para comparar."""
+    vivienda1: ViviendaJuegoResponse
+    vivienda2: ViviendaJuegoResponse
+
+
+class ResultadoComparacionInput(BaseModel):
+    """Datos que envía el cliente para calcular el resultado de la comparación."""
+    eleccion_usuario: int = Field(description="Elección del usuario (1 o 2).")
+    vivienda1_precio_real: float
+    vivienda2_precio_real: float
+    vivienda1_features: dict
+    vivienda2_features: dict
+
+
+class ResultadoComparacionResponse(BaseModel):
+    """Resultado completo de la comparación."""
+    vivienda1_precio_real: float
+    vivienda2_precio_real: float
+    vivienda1_precio_modelo: float
+    vivienda2_precio_modelo: float
+    mas_caro_real: int
+    eleccion_usuario: int
+    eleccion_modelo: int
+    ganador: str
+    mensaje: str
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -138,3 +168,70 @@ def calcular_resultado_juego(data: ResultadoJuegoInput) -> ResultadoJuegoRespons
         precio_real=data.precio_real,
     )
     return ResultadoJuegoResponse(**resultado)
+
+
+@router.get("/dos_viviendas", response_model=DosViviendasResponse)
+def obtener_dos_viviendas_juego() -> DosViviendasResponse:
+    """
+    Selecciona un barrio aleatorio y dentro de él dos viviendas aleatorias.
+    Devuelve las pistas e imágenes de ambas.
+    """
+    try:
+        f1, p1, img1, f2, p2, img2 = cargar_dos_viviendas_aleatorias()
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        logger.exception("Error cargando dos viviendas aleatorias")
+        raise HTTPException(status_code=500, detail=f"Error al cargar viviendas: {e}")
+
+    img1_b64, img1_mime = None, None
+    if img1:
+        img1_b64 = base64.b64encode(img1).decode("utf-8")
+        img1_mime = _detectar_mime(img1)
+
+    img2_b64, img2_mime = None, None
+    if img2:
+        img2_b64 = base64.b64encode(img2).decode("utf-8")
+        img2_mime = _detectar_mime(img2)
+
+    v1 = ViviendaJuegoResponse(
+        pistas=extraer_pistas(f1),
+        imagen_b64=img1_b64,
+        imagen_mime=img1_mime,
+        features_para_modelo=f1,
+        precio_real=p1,
+    )
+    v2 = ViviendaJuegoResponse(
+        pistas=extraer_pistas(f2),
+        imagen_b64=img2_b64,
+        imagen_mime=img2_mime,
+        features_para_modelo=f2,
+        precio_real=p2,
+    )
+
+    return DosViviendasResponse(vivienda1=v1, vivienda2=v2)
+
+
+@router.post("/resultado_comparacion", response_model=ResultadoComparacionResponse)
+def calcular_resultado_comparacion(data: ResultadoComparacionInput) -> ResultadoComparacionResponse:
+    """
+    Recibe la elección del usuario (1 o 2), obtiene las predicciones del modelo para ambas,
+    y determina el ganador del modo 'Cuál es el más caro'.
+    """
+    try:
+        precio_modelo_1 = predecir_modelo(data.vivienda1_features)
+        precio_modelo_2 = predecir_modelo(data.vivienda2_features)
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+    except Exception as e:
+        logger.exception("Error inesperado al predecir con el modelo")
+        raise HTTPException(status_code=500, detail=f"Error interno: {e}")
+
+    resultado = calcular_ganador_comparacion(
+        eleccion_usuario=data.eleccion_usuario,
+        vivienda1_precio_real=data.vivienda1_precio_real,
+        vivienda2_precio_real=data.vivienda2_precio_real,
+        vivienda1_precio_modelo=precio_modelo_1,
+        vivienda2_precio_modelo=precio_modelo_2,
+    )
+    return ResultadoComparacionResponse(**resultado)

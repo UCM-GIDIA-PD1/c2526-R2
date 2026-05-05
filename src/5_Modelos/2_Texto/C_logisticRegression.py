@@ -1,12 +1,15 @@
 import numpy as np
 import pandas as pd
-import optuna
 import wandb
+import optuna
+import joblib
 
 from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
 from sklearn.pipeline import Pipeline
-from sklearn.metrics import accuracy_score, f1_score, recall_score, precision_score
+from sklearn.metrics import (
+    accuracy_score, f1_score, precision_score, recall_score
+)
 from sklearn.model_selection import StratifiedKFold, train_test_split
 from sklearn.base import clone
 
@@ -17,211 +20,190 @@ from funciones_texto import bajar_df_texto, x_y_split
 
 
 # =========================
+# CONFIG
+# =========================
+WANDB_ENTITY = "pd1-c2526-team2"
+WANDB_PROJECT = "modelo-texto-final"
+WANDB_GROUP = "texto"
+MODEL_TYPE = "logreg"
+RANDOM_STATE = 42
+CV_N_SPLITS = 5
+
+ARTIFACT_NAME = "best-logreg-texto"
+MODEL_FILENAME = "best_logreg_texto.joblib"
+
+
+# =========================
 # MÉTRICAS
 # =========================
 def evaluar_modelo(model, X_test, y_test):
-
     y_pred = model.predict(X_test)
 
     return {
         "accuracy": accuracy_score(y_test, y_pred),
         "f1_macro": f1_score(y_test, y_pred, average="macro"),
-        "recall_macro": recall_score(y_test, y_pred, average="macro"),
         "precision_macro": precision_score(y_test, y_pred, average="macro", zero_division=0),
+        "recall_macro": recall_score(y_test, y_pred, average="macro"),
     }
 
 
 # =========================
-# GRID SEARCH + WANDB (1 RUN)
+# ARTIFACT
+# =========================
+def guardar_artifact(model, metadata, run):
+    joblib.dump(model, MODEL_FILENAME)
+
+    artifact = wandb.Artifact(
+        name=ARTIFACT_NAME,
+        type="model",
+        metadata=metadata,
+        description="Mejor Logistic Regression (TFIDF/Count + LogisticRegression)"
+    )
+
+    artifact.add_file(MODEL_FILENAME)
+    run.log_artifact(artifact)
+
+
+# =========================
+# GRID SEARCH
 # =========================
 def entrenar_logreg_texto(X_train, y_train, X_test, y_test):
 
-    spanish_stopwords = stopwords.words("spanish")
+    stop_words = stopwords.words("spanish")
+    skf = StratifiedKFold(n_splits=CV_N_SPLITS, shuffle=True, random_state=RANDOM_STATE)
 
-    vectorizers = {
-        "count": CountVectorizer,
-        "tfidf": TfidfVectorizer
-    }
+    run = wandb.init(
+        entity=WANDB_ENTITY,
+        project=WANDB_PROJECT,
+        group=WANDB_GROUP,
+        name="logreg-grid",
+        job_type="grid-search",
+        config={"model": MODEL_TYPE, "search": "grid"}
+    )
 
     Cs = [0.1, 1.0, 5.0]
     ngrams = [(1, 1), (1, 2)]
     max_features_list = [5000, 10000]
 
-    mejor_resultado = None
-
-    skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
-
-    run = wandb.init(
-        project="modelo-texto-f",
-        group="logreg-grid",
-        name="logreg-grid",
-        tags=["logreg", "grid"],
-        config={"model": "logreg", "search": "grid"}
-    )
+    best_score = -1
+    best_model = None
+    best_params = None
 
     print("Buscando mejor Logistic Regression (Grid)...")
 
-    for vec_name, vec_class in vectorizers.items():
+    for vec_name, vec_class in {"tfidf": TfidfVectorizer, "count": CountVectorizer}.items():
         for C in Cs:
             for ngram in ngrams:
                 for max_feat in max_features_list:
 
                     model = Pipeline([
-                        ("vectorizer", vec_class(
+                        ("vec", vec_class(
                             max_features=max_feat,
                             ngram_range=ngram,
-                            stop_words=spanish_stopwords
+                            stop_words=stop_words
                         )),
-                        ("classifier", LogisticRegression(
+                        ("clf", LogisticRegression(
                             C=C,
                             max_iter=1000,
                             class_weight="balanced",
-                            random_state=42
+                            random_state=RANDOM_STATE
                         ))
                     ])
 
-                    cv_scores = []
+                    scores = []
 
-                    for train_idx, val_idx in skf.split(X_train, y_train):
+                    for tr_idx, val_idx in skf.split(X_train, y_train):
+                        X_tr, X_val = X_train.iloc[tr_idx], X_train.iloc[val_idx]
+                        y_tr, y_val = y_train.iloc[tr_idx], y_train.iloc[val_idx]
 
-                        X_tr = X_train.iloc[train_idx]
-                        X_vl = X_train.iloc[val_idx]
-                        y_tr = y_train.iloc[train_idx]
-                        y_vl = y_train.iloc[val_idx]
+                        m = clone(model)
+                        m.fit(X_tr, y_tr)
+                        scores.append(f1_score(y_val, m.predict(X_val), average="macro"))
 
-                        model_cv = clone(model)
-                        model_cv.fit(X_tr, y_tr)
-
-                        y_pred = model_cv.predict(X_vl)
-                        f1 = f1_score(y_vl, y_pred, average="macro")
-
-                        cv_scores.append(f1)
-
-                    f1_mean = np.mean(cv_scores)
-                    f1_std = np.std(cv_scores)
+                    mean_f1 = np.mean(scores)
 
                     wandb.log({
-                        "cv_f1_mean": f1_mean,
-                        "cv_f1_std": f1_std,
+                        "cv_f1": mean_f1,
+                        "vectorizer": vec_name,
                         "C": C,
                         "ngram": str(ngram),
-                        "max_features": max_feat,
-                        "vectorizer": vec_name
+                        "max_features": max_feat
                     })
 
-                    if (mejor_resultado is None) or (f1_mean > mejor_resultado["f1_macro"]):
-                        mejor_resultado = {
+                    if mean_f1 > best_score:
+                        best_score = mean_f1
+                        best_model = model.fit(X_train, y_train)
+                        best_params = {
                             "vectorizer": vec_name,
-                            "C": C,
-                            "ngram": ngram,
-                            "max_features": max_feat,
-                            "f1_macro": f1_mean,
-                            "f1_std": f1_std
-                        }
-                        mejor_config = {
-                            "vec_class": vec_class,
                             "C": C,
                             "ngram": ngram,
                             "max_features": max_feat
                         }
 
-    wandb.log({
-        "best_cv_f1": mejor_resultado["f1_macro"],
-        "best_params": mejor_resultado
-    })
+    print("\nBEST GRID:", best_score)
 
-    mejor_modelo = Pipeline([
-        ("vectorizer", mejor_config["vec_class"](
-            max_features=mejor_config["max_features"],
-            ngram_range=mejor_config["ngram"],
-            stop_words=spanish_stopwords
-        )),
-        ("classifier", LogisticRegression(
-            C=mejor_config["C"],
-            max_iter=1000,
-            class_weight="balanced",
-            random_state=42
-        ))
-    ])
-
-    mejor_modelo.fit(X_train, y_train)
-
-    metricas_test = evaluar_modelo(mejor_modelo, X_test, y_test)
+    metrics = evaluar_modelo(best_model, X_test, y_test)
 
     wandb.log({
-        "test_f1_macro": metricas_test["f1_macro"],
-        "test_accuracy": metricas_test["accuracy"],
-        "test_precision": metricas_test["precision_macro"],
-        "test_recall": metricas_test["recall_macro"]
+        "test_metrics": metrics,
+        "best_cv_f1": best_score
     })
 
-    print("\n=== RESULTADOS EN TEST ===")
-    print(metricas_test)
+    guardar_artifact(best_model, best_params, run)
 
     run.finish()
-
-    return mejor_modelo, mejor_resultado
+    return best_model, best_params
 
 
 # =========================
-# OPTUNA + WANDB (1 RUN)
+# OPTUNA
 # =========================
 def entrenar_logreg_texto_optuna(X_train, y_train, X_test, y_test):
 
-    spanish_stopwords = stopwords.words("spanish")
-
-    skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+    stop_words = stopwords.words("spanish")
+    skf = StratifiedKFold(n_splits=CV_N_SPLITS, shuffle=True, random_state=RANDOM_STATE)
 
     run = wandb.init(
-        project="modelo-texto-f",
-        group="logreg-optuna",
+        entity=WANDB_ENTITY,
+        project=WANDB_PROJECT,
+        group=WANDB_GROUP,
         name="logreg-optuna",
-        tags=["logreg", "optuna"],
-        config={"model": "logreg", "search": "optuna"}
+        job_type="optuna",
+        config={"model": MODEL_TYPE, "search": "optuna"}
     )
 
     def objective(trial):
 
-        vec_name = trial.suggest_categorical("vectorizer", ["count", "tfidf"])
+        vec_name = trial.suggest_categorical("vectorizer", ["tfidf", "count"])
         C = trial.suggest_float("C", 0.1, 5.0)
         ngram = trial.suggest_categorical("ngram", [(1, 1), (1, 2)])
-        max_features = trial.suggest_int("max_features", 2000, 15000, step=2000)
+        max_features = trial.suggest_int("max_features", 1000, 15000, step=1000)
 
-        vec_class = CountVectorizer if vec_name == "count" else TfidfVectorizer
+        vec_class = TfidfVectorizer if vec_name == "tfidf" else CountVectorizer
+
+        model = Pipeline([
+            ("vec", vec_class(
+                max_features=max_features,
+                ngram_range=ngram,
+                stop_words=stop_words
+            )),
+            ("clf", LogisticRegression(
+                C=C,
+                max_iter=1000,
+                class_weight="balanced",
+                random_state=RANDOM_STATE
+            ))
+        ])
 
         scores = []
 
-        for fold_idx, (train_idx, val_idx) in enumerate(skf.split(X_train, y_train)):
+        for tr_idx, val_idx in skf.split(X_train, y_train):
+            X_tr, X_val = X_train.iloc[tr_idx], X_train.iloc[val_idx]
+            y_tr, y_val = y_train.iloc[tr_idx], y_train.iloc[val_idx]
 
-            X_tr = X_train.iloc[train_idx]
-            X_vl = X_train.iloc[val_idx]
-            y_tr = y_train.iloc[train_idx]
-            y_vl = y_train.iloc[val_idx]
-
-            model = Pipeline([
-                ("vectorizer", vec_class(
-                    max_features=max_features,
-                    ngram_range=ngram,
-                    stop_words=spanish_stopwords
-                )),
-                ("classifier", LogisticRegression(
-                    C=C,
-                    max_iter=1000,
-                    class_weight="balanced",
-                    random_state=42
-                ))
-            ])
-
-            model.fit(X_tr, y_tr)
-            y_pred = model.predict(X_vl)
-
-            f1 = f1_score(y_vl, y_pred, average="macro")
-            scores.append(f1)
-
-            trial.report(np.mean(scores), step=fold_idx)
-
-            if trial.should_prune():
-                raise optuna.TrialPruned()
+            m = clone(model)
+            m.fit(X_tr, y_tr)
+            scores.append(f1_score(y_val, m.predict(X_val), average="macro"))
 
         return np.mean(scores)
 
@@ -230,60 +212,59 @@ def entrenar_logreg_texto_optuna(X_train, y_train, X_test, y_test):
 
     best_params = study.best_params
 
-    wandb.log({"best_params": best_params})
-
-    vec_class = CountVectorizer if best_params["vectorizer"] == "count" else TfidfVectorizer
+    vec_class = TfidfVectorizer if best_params["vectorizer"] == "tfidf" else CountVectorizer
 
     best_model = Pipeline([
-        ("vectorizer", vec_class(
+        ("vec", vec_class(
             max_features=best_params["max_features"],
             ngram_range=best_params["ngram"],
-            stop_words=spanish_stopwords
+            stop_words=stop_words
         )),
-        ("classifier", LogisticRegression(
+        ("clf", LogisticRegression(
             C=best_params["C"],
             max_iter=1000,
             class_weight="balanced",
-            random_state=42
+            random_state=RANDOM_STATE
         ))
     ])
 
     best_model.fit(X_train, y_train)
 
-    metricas_test = evaluar_modelo(best_model, X_test, y_test)
+    metrics = evaluar_modelo(best_model, X_test, y_test)
 
     wandb.log({
-        "test_f1_macro": metricas_test["f1_macro"],
-        "test_accuracy": metricas_test["accuracy"],
-        "test_precision": metricas_test["precision_macro"],
-        "test_recall": metricas_test["recall_macro"]
+        "test_metrics": metrics,
+        "best_cv_f1": study.best_value
     })
 
-    print("\n=== RESULTADOS EN TEST ===")
-    print(metricas_test)
+    guardar_artifact(best_model, best_params, run)
 
     run.finish()
-
     return best_model, best_params
 
 
 # =========================
 # MAIN
 # =========================
-if __name__ == "__main__":
+def main():
 
-    nltk.download("stopwords")
+    nltk.download("stopwords", quiet=True)
+    wandb.login()
 
     df = bajar_df_texto()
     X, y = x_y_split(df)
 
     X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.2, stratify=y, random_state=42
+        X, y, test_size=0.2, stratify=y, random_state=RANDOM_STATE
     )
 
-    modo = input("Selecciona modo: 1 (Grid) / 2 (Optuna): ")
+    modo = input("1 (Grid) / 2 (Optuna): ")
 
     if modo == "1":
         entrenar_logreg_texto(X_train, y_train, X_test, y_test)
     else:
         entrenar_logreg_texto_optuna(X_train, y_train, X_test, y_test)
+
+
+if __name__ == "__main__":
+    main()

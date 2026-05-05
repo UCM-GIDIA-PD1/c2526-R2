@@ -315,7 +315,7 @@ function initTextoForm() {
     setResult("texto-result", "texto-result-card", "Procesando clasificación...");
     const payload = { texto: String(new FormData(form).get("texto")) };
     const data = await postJson("/predict/texto", payload);
-    setResult("texto-result", "texto-result-card", `Categoría: ${data.prediction}`);
+    setResult("texto-result", "texto-result-card", `Categoría: ${data.clase}`);
   });
 }
 

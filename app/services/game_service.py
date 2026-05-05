@@ -134,40 +134,26 @@ def _sanitize_row(row: pd.Series, exclude: list[str]) -> dict[str, Any]:
 # 1. CARGA DE DATOS  (barrio aleatorio → vivienda aleatoria)
 # ─────────────────────────────────────────────────────────────────────────────
 
-def cargar_vivienda_aleatoria() -> tuple[dict[str, Any], float, Optional[bytes]]:
-    """
-    Selecciona un .parquet aleatorio de raw/datos_primarios/venta/ (un barrio),
-    elige una vivienda aleatoria con precio válido y devuelve sus datos.
-
-    Returns:
-        features   (dict)       : Features sanitizadas para el modelo.
-        precio_real (float)     : Precio real de la vivienda.
-        imagen_bytes (bytes|None): Bytes de la primera imagen disponible.
-
-    Raises:
-        ValueError: Si no hay parquets o ninguna vivienda tiene precio válido.
-    """
+def _cargar_df_barrio_aleatorio() -> tuple[pd.DataFrame, str]:
+    """Selecciona un barrio aleatorio y devuelve su DataFrame filtrado con precio válido."""
     client, bucket, group = _crear_cliente()
     prefix = f"{group}/{RAW_VENTA_PATH}/"
 
-    # 1. Listar todos los .parquet disponibles
     objetos = list(client.list_objects(bucket, prefix=prefix, recursive=True))
     parquets = [
-        obj.object_name for obj in objetos
-        if obj.object_name.endswith(".parquet")
+        obj.object_name for obj in objetos 
+        if obj.object_name.endswith(".parquet") and obj.object_name.split("/")[-1] != "ids.parquet"
     ]
 
     if not parquets:
         raise ValueError(f"No hay archivos .parquet en '{prefix}'.")
 
-    # 2. Elegir un parquet (barrio) aleatorio
     parquet_elegido = random.choice(parquets)
     barrio_nombre = parquet_elegido.split("/")[-1].replace(".parquet", "")
     logger.info("Barrio seleccionado: '%s'", barrio_nombre)
 
     df = _descargar_parquet(client, bucket, parquet_elegido)
 
-    # 3. Convertir Precio y Superficie a numérico (vienen como str en el raw)
     df[COLUMNA_PRECIO] = (
         df[COLUMNA_PRECIO]
         .astype(str)
@@ -184,21 +170,31 @@ def cargar_vivienda_aleatoria() -> tuple[dict[str, Any], float, Optional[bytes]]
             .pipe(pd.to_numeric, errors="coerce")
         )
 
-    # 4. Filtrar viviendas con precio válido
     df_valido = df[df[COLUMNA_PRECIO].notna() & (df[COLUMNA_PRECIO] > 0)]
     if df_valido.empty:
-        raise ValueError(
-            f"No hay viviendas con precio válido en '{barrio_nombre}'."
-        )
+        raise ValueError(f"No hay viviendas con precio válido en '{barrio_nombre}'.")
 
-    # 5. Elegir una vivienda aleatoria
+    return df_valido, barrio_nombre
+
+
+def cargar_vivienda_aleatoria() -> tuple[dict[str, Any], float, Optional[bytes]]:
+    """
+    Selecciona un .parquet aleatorio de raw/datos_primarios/venta/ (un barrio),
+    elige una vivienda aleatoria con precio válido y devuelve sus datos.
+
+    Returns:
+        features   (dict)       : Features sanitizadas para el modelo.
+        precio_real (float)     : Precio real de la vivienda.
+        imagen_bytes (bytes|None): Bytes de la primera imagen disponible.
+
+    Raises:
+        ValueError: Si no hay parquets o ninguna vivienda tiene precio válido.
+    """
+    df_valido, barrio_nombre = _cargar_df_barrio_aleatorio()
+
     fila = df_valido.sample(1).iloc[0]
     precio_real = float(fila[COLUMNA_PRECIO])
-
-    # 6. Extraer imagen directamente de la columna Imagenes
     imagen_bytes = obtener_imagen_de_fila(fila)
-
-    # 7. Sanitizar features (excluir columnas no serializables)
     features = _sanitize_row(fila, exclude=[COLUMNA_PRECIO, "Imagenes"])
 
     logger.info(
@@ -208,6 +204,35 @@ def cargar_vivienda_aleatoria() -> tuple[dict[str, Any], float, Optional[bytes]]
     )
 
     return features, precio_real, imagen_bytes
+
+
+def cargar_dos_viviendas_aleatorias() -> tuple[dict, float, Optional[bytes], dict, float, Optional[bytes]]:
+    """
+    Selecciona un barrio aleatorio y elige DOS viviendas diferentes de ese mismo barrio.
+    """
+    df_valido, barrio_nombre = _cargar_df_barrio_aleatorio()
+    
+    if len(df_valido) < 2:
+        raise ValueError(f"No hay suficientes viviendas (mínimo 2) en '{barrio_nombre}'.")
+
+    filas = df_valido.sample(2)
+    fila1 = filas.iloc[0]
+    fila2 = filas.iloc[1]
+
+    precio_real_1 = float(fila1[COLUMNA_PRECIO])
+    imagen_bytes_1 = obtener_imagen_de_fila(fila1)
+    features_1 = _sanitize_row(fila1, exclude=[COLUMNA_PRECIO, "Imagenes"])
+
+    precio_real_2 = float(fila2[COLUMNA_PRECIO])
+    imagen_bytes_2 = obtener_imagen_de_fila(fila2)
+    features_2 = _sanitize_row(fila2, exclude=[COLUMNA_PRECIO, "Imagenes"])
+
+    logger.info(
+        "2 Viviendas seleccionadas — barrio: %s. Precios: %.0f € y %.0f €",
+        barrio_nombre, precio_real_1, precio_real_2
+    )
+
+    return features_1, precio_real_1, imagen_bytes_1, features_2, precio_real_2, imagen_bytes_2
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -434,6 +459,54 @@ def calcular_ganador(
         "ganador":            ganador,
         "diferencia":         round(diferencia,      2),
         "mensaje":            mensaje,
+    }
+
+
+def calcular_ganador_comparacion(
+    eleccion_usuario: int,
+    vivienda1_precio_real: float,
+    vivienda2_precio_real: float,
+    vivienda1_precio_modelo: float,
+    vivienda2_precio_modelo: float,
+) -> dict[str, Any]:
+    """
+    Compara qué vivienda es más cara (1 o 2).
+    Evalúa si el usuario y/o el modelo acertaron.
+    """
+    mas_caro_real = 1 if vivienda1_precio_real > vivienda2_precio_real else 2
+    if vivienda1_precio_real == vivienda2_precio_real:
+        mas_caro_real = 0 # Empate en la vida real, raro pero posible
+
+    mas_caro_modelo = 1 if vivienda1_precio_modelo > vivienda2_precio_modelo else 2
+    if vivienda1_precio_modelo == vivienda2_precio_modelo:
+        mas_caro_modelo = 0
+
+    acierto_usuario = (eleccion_usuario == mas_caro_real) or (mas_caro_real == 0)
+    acierto_modelo = (mas_caro_modelo == mas_caro_real) or (mas_caro_real == 0)
+
+    if acierto_usuario and not acierto_modelo:
+        ganador = "usuario"
+        mensaje = "¡Bien hecho! Supiste identificar la vivienda más cara. La IA se equivocó."
+    elif acierto_modelo and not acierto_usuario:
+        ganador = "modelo"
+        mensaje = "La IA acertó cuál era la más cara y tú no. ¡Mejor suerte la próxima vez!"
+    elif acierto_usuario and acierto_modelo:
+        ganador = "empate"
+        mensaje = "¡Ambos acertaron! Tienes un buen ojo, al igual que nuestro modelo."
+    else:
+        ganador = "ninguno"
+        mensaje = "Ninguno acertó. ¡Ambos se dejaron engañar por las apariencias!"
+
+    return {
+        "vivienda1_precio_real": round(vivienda1_precio_real, 2),
+        "vivienda2_precio_real": round(vivienda2_precio_real, 2),
+        "vivienda1_precio_modelo": round(vivienda1_precio_modelo, 2),
+        "vivienda2_precio_modelo": round(vivienda2_precio_modelo, 2),
+        "mas_caro_real": mas_caro_real,
+        "eleccion_usuario": eleccion_usuario,
+        "eleccion_modelo": mas_caro_modelo,
+        "ganador": ganador,
+        "mensaje": mensaje,
     }
 
 

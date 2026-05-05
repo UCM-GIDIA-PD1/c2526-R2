@@ -5,6 +5,11 @@ import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.base import BaseEstimator, TransformerMixin
 from sentence_transformers import SentenceTransformer
+import wandb
+from sklearn.metrics import (
+    accuracy_score, f1_score, recall_score, precision_score,
+    classification_report, confusion_matrix,
+)
 
 
 MODEL_EMBEDDINGS = "paraphrase-multilingual-MiniLM-L12-v2"
@@ -179,3 +184,108 @@ def train_val_test_split(x: pd.Series, y: pd.Series) -> tuple:
         x_temp, y_temp, test_size=0.5, random_state=42, stratify=y_temp
     )
     return x_train, x_val, x_test, y_train, y_val, y_test
+
+
+def evaluar_modelo(model, X, y) -> dict:
+    """Calcula las métricas estándar del proyecto sobre (X, y)."""
+    y_pred = model.predict(X)
+    return {
+        "f1_macro": f1_score(y, y_pred, average="macro"),
+        "accuracy": accuracy_score(y, y_pred),
+        "precision_macro": precision_score(y, y_pred, average="macro", zero_division=0),
+        "recall_macro": recall_score(y, y_pred, average="macro", zero_division=0),
+    }
+
+
+def analizar_por_longitud(model, X_test, y_test) -> pd.DataFrame:
+    """Calcula F1-macro por segmento de longitud del texto (en palabras)."""
+    df = pd.DataFrame({"texto": X_test.values, "y_true": y_test.values})
+    df["longitud"] = df["texto"].apply(lambda x: len(x.split()))
+
+    bins = [0, 20, 50, 100, np.inf]
+    labels = ["corto", "medio", "largo", "muy_largo"]
+    df["segmento"] = pd.cut(df["longitud"], bins=bins, labels=labels)
+
+    resultados = []
+    for seg in labels:
+        subset = df[df["segmento"] == seg]
+        if len(subset) == 0:
+            continue
+        y_pred = model.predict(subset["texto"])
+        resultados.append({
+            "segmento": seg,
+            "n_samples": len(subset),
+            "f1_macro": f1_score(subset["y_true"], y_pred, average="macro"),
+        })
+    return pd.DataFrame(resultados)
+
+
+def loguear_resultados_test(model, X_test, y_test) -> dict:
+    """Loguea en wandb TODAS las métricas de test con el esquema unificado.
+
+    Esta función produce los mismos nombres de métricas y tablas para
+    cualquier modelo del proyecto, lo que permite comparar runs entre sí.
+    """
+    metricas = evaluar_modelo(model, X_test, y_test)
+    y_pred = model.predict(X_test)
+    labels = sorted(np.unique(y_test))
+
+    # 1. Métricas globales en test
+    wandb.log({
+        "test/f1_macro": metricas["f1_macro"],
+        "test/accuracy": metricas["accuracy"],
+        "test/precision_macro": metricas["precision_macro"],
+        "test/recall_macro": metricas["recall_macro"],
+    })
+
+    # 2. Métricas por clase
+    report = classification_report(y_test, y_pred, output_dict=True, zero_division=0)
+    per_class_log = {}
+    for clase in labels:
+        if clase in report:
+            per_class_log[f"test/per_class/{clase}/f1"] = report[clase]["f1-score"]
+            per_class_log[f"test/per_class/{clase}/precision"] = report[clase]["precision"]
+            per_class_log[f"test/per_class/{clase}/recall"] = report[clase]["recall"]
+            per_class_log[f"test/per_class/{clase}/support"] = report[clase]["support"]
+    wandb.log(per_class_log)
+
+    # 3. Análisis por longitud
+    df_long = analizar_por_longitud(model, X_test, y_test)
+    by_length_log = {}
+    for _, row in df_long.iterrows():
+        by_length_log[f"test/by_length/{row['segmento']}/f1_macro"] = row["f1_macro"]
+        by_length_log[f"test/by_length/{row['segmento']}/n_samples"] = row["n_samples"]
+    wandb.log(by_length_log)
+
+    # 4. Matriz de confusión (wandb espera ÍNDICES enteros, no strings)
+    class_to_idx = {c: i for i, c in enumerate(labels)}
+    y_true_idx = [class_to_idx[c] for c in np.asarray(y_test)]
+    y_pred_idx = [class_to_idx[c] for c in np.asarray(y_pred)]
+
+    wandb.log({
+        "test/confusion_matrix": wandb.plot.confusion_matrix(
+            y_true=y_true_idx,
+            preds=y_pred_idx,
+            class_names=[str(l) for l in labels],
+        )
+    })
+    
+
+    # 5. Tablas auxiliares
+    wandb.log({"test/by_length_table": wandb.Table(dataframe=df_long)})
+    report_df = (
+        pd.DataFrame(report).T.reset_index().rename(columns={"index": "clase"})
+    )
+    wandb.log({"test/classification_report": wandb.Table(dataframe=report_df)})
+
+    # Para imprimir en consola
+    print("\n=== RESULTADOS EN TEST ===")
+    print(metricas)
+    print("\n=== ANALISIS POR CLASE ===")
+    print(classification_report(y_test, y_pred, zero_division=0))
+    print("\n=== ANALISIS POR LONGITUD ===")
+    print(df_long)
+    print("\n=== MATRIZ DE CONFUSION ===")
+    print(pd.DataFrame(confusion_matrix(y_test, y_pred), index=labels, columns=labels))
+
+    return metricas
