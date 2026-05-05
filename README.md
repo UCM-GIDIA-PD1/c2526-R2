@@ -182,6 +182,7 @@ El proyecto lee y escribe datasets en un servidor MinIO, y utiliza Weights & Bia
 | `WANDB_API_KEY` | API Key de Weights & Biases (seguimiento de experimentos) |
 
 ```env
+#Las claves no deben estar entre comillas para que no de problemas en podman
 MINIO_ENDPOINT=minio.fdi.ucm.es
 MINIO_ACCESS_KEY=TU_ACCESS_KEY
 MINIO_SECRET_KEY=TU_SECRET_KEY
