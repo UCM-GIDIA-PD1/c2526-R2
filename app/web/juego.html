@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="MAiDay Minijuego — ¿Conoces Madrid mejor que la IA? Adivina el precio de una vivienda real.">
-  <title>MAiDay | ¿Conoces Madrid mejor que la IA?</title>
+  <meta name="description" content="MAiDay Minijuegos — ¿Conoces Madrid mejor que la IA?">
+  <title>MAiDay | Minijuegos</title>
   <link rel="stylesheet" href="/static/style.css">
   <style>
     /* ── Game-specific styles ── */
     .game-wrapper {
-      max-width: 900px;
+      max-width: 1000px;
       margin: 0 auto;
       padding: 0 24px 80px;
     }
@@ -21,7 +21,26 @@
     /* ── Property card ── */
     .property-card {
       border: 1px solid var(--line);
+      margin-bottom: 20px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+    .cards-container {
+      display: flex;
+      gap: 24px;
+      flex-wrap: wrap;
+    }
+    .cards-container > .property-card {
       margin-bottom: 40px;
+    }
+    .compare-btn-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 16px;
+      background: var(--bg-soft);
+      border-top: 1px solid var(--line);
+      margin-top: auto;
     }
     .property-img {
       width: 100%;
@@ -316,11 +335,33 @@
     }
     .score-item.score-user .s-value { color: var(--accent); }
 
+    @media (max-width: 768px) {
+      .cards-container { flex-direction: column; }
+    }
     @media (max-width: 640px) {
       .results-grid { grid-template-columns: 1fr; }
       .result-col:not(:last-child)::after { display: none; }
       .hints-grid { grid-template-columns: 1fr 1fr; }
       .winner-banner { flex-direction: column; text-align: center; }
+    }
+    
+    .mode-select-btn {
+      padding: 32px;
+      border: 1px solid var(--line);
+      background: transparent;
+      color: var(--text);
+      font-family: var(--font-heading);
+      font-size: 1.4rem;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      width: 100%;
+      text-align: center;
+      margin-bottom: 16px;
+    }
+    .mode-select-btn:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: var(--bg-soft);
     }
   </style>
 </head>
@@ -334,16 +375,16 @@
       <li><a href="/precios">Predicción de Precios</a></li>
       <li><a href="/analisis">Análisis Avanzado</a></li>
       <li><a href="/mapas">Mapas</a></li>
-      <li><a href="/juego" class="active">Minijuego</a></li>
+      <li><a href="/juego" class="active">Minijuegos</a></li>
     </ul>
   </nav>
 
   <!-- ── Page Header ── -->
   <div class="page-header">
     <div class="container" style="padding-top:0">
-      <span class="section__label">Minijuego</span>
+      <span class="section__label">Minijuegos</span>
       <h1>¿Conoces Madrid mejor que la IA?</h1>
-      <p>Adivina el precio de una vivienda real. Compite contra nuestro modelo XGBoost y descubre quién se acerca más.</p>
+      <p>Compite contra nuestro modelo XGBoost. Adivina el precio o elige la vivienda más cara.</p>
     </div>
   </div>
 
@@ -365,21 +406,30 @@
       </div>
     </div>
 
-    <!-- ── Phase: Loading ── -->
-    <div class="game-phase active" id="phase-loading">
-      <div class="game-loading">
-        <div class="spinner-lg"></div>
-        <p>Cargando vivienda…</p>
+    <!-- ── Phase: Mode Selection ── -->
+    <div class="game-phase active" id="phase-mode">
+      <div style="max-width: 500px; margin: 40px auto;">
+        <button class="mode-select-btn" onclick="startGameMode('adivina')">
+          Adivina el Precio
+        </button>
+        <button class="mode-select-btn" onclick="startGameMode('compara')">
+          ¿Cuál es el más caro?
+        </button>
       </div>
     </div>
 
-    <!-- ── Phase: Guess ── -->
+    <!-- ── Phase: Loading ── -->
+    <div class="game-phase" id="phase-loading">
+      <div class="game-loading">
+        <div class="spinner-lg"></div>
+        <p>Cargando viviendas…</p>
+      </div>
+    </div>
+
+    <!-- ── Phase: Guess Price ── -->
     <div class="game-phase" id="phase-guess">
-      <div class="property-card" id="property-card">
-        <!-- Image injected by JS -->
-        <div id="property-img-container"></div>
-        <!-- Hints injected by JS -->
-        <div class="hints-grid" id="hints-grid"></div>
+      <div class="cards-container">
+        <div class="property-card" id="card-adivina"></div>
       </div>
 
       <label for="user-price" style="font-size:0.8rem; font-weight:600; letter-spacing:0.1em; text-transform:uppercase; color:var(--text-secondary); margin-bottom:8px; display:block;">
@@ -399,12 +449,24 @@
       </div>
 
       <div class="submit-row">
-        <button id="btn-submit" onclick="submitGuess()">
+        <button id="btn-submit" onclick="submitGuessPrice()">
           Revelar resultado
         </button>
         <button class="skip-btn" onclick="startNewRound()">
           Otra vivienda
         </button>
+        <button class="skip-btn" onclick="backToMenu()" style="margin-left: auto;">
+          Volver
+        </button>
+      </div>
+    </div>
+
+    <!-- ── Phase: Guess Compare ── -->
+    <div class="game-phase" id="phase-compare">
+      <div class="cards-container" id="cards-compare"></div>
+      <div class="submit-row" style="justify-content: flex-end;">
+        <button class="skip-btn" onclick="startNewRound()">Otra pareja</button>
+        <button class="skip-btn" onclick="backToMenu()">Volver</button>
       </div>
     </div>
 
@@ -429,8 +491,8 @@
       </div>
 
       <!-- Price comparison -->
-      <div class="results-grid">
-        <div class="result-col">
+      <div class="results-grid" id="results-grid-price">
+        <div class="result-col" id="res-user-col">
           <div class="r-label">Tu predicción</div>
           <div class="r-price" id="res-user-price">—</div>
           <div class="r-error" id="res-user-error">—</div>
@@ -446,9 +508,23 @@
           <div class="r-error" id="res-model-error">—</div>
         </div>
       </div>
+      
+      <!-- Compare Results -->
+      <div class="results-grid" id="results-grid-compare" style="display:none; grid-template-columns: 1fr 1fr;">
+        <div class="result-col real-col" style="border-right: 1px solid var(--line);">
+          <div class="r-label">Vivienda 1</div>
+          <div class="r-price" id="res-c-real-1">—</div>
+          <div class="r-error" id="res-c-model-1" style="color:var(--text-secondary); font-size:0.85rem;">IA: —</div>
+        </div>
+        <div class="result-col real-col">
+          <div class="r-label">Vivienda 2</div>
+          <div class="r-price" id="res-c-real-2">—</div>
+          <div class="r-error" id="res-c-model-2" style="color:var(--text-secondary); font-size:0.85rem;">IA: —</div>
+        </div>
+      </div>
 
-      <!-- Error bars -->
-      <div class="error-bars">
+      <!-- Error bars (only for adivina mode) -->
+      <div class="error-bars" id="error-bars-container">
         <div class="error-bar-row">
           <span class="error-bar-label">Tú</span>
           <div class="error-bar-track">
@@ -483,7 +559,9 @@
   <script>
     // ── State ──────────────────────────────────────────────────────────────
     let gameState = {
-      vivienda: null,   // response from GET /juego/vivienda
+      mode: null,       // 'adivina' | 'compara'
+      vivienda: null,   // for adivina
+      viviendas: null,  // for compara
       scores: { user: 0, tie: 0, model: 0 }
     };
 
@@ -513,6 +591,66 @@
       document.getElementById('score-tie').textContent = gameState.scores.tie;
       document.getElementById('score-model').textContent = gameState.scores.model;
     }
+    
+    function backToMenu() {
+      gameState.mode = null;
+      showPhase('phase-mode');
+    }
+
+    // ── Mode Selection ─────────────────────────────────────────────────────
+    function startGameMode(mode) {
+      gameState.mode = mode;
+      startNewRound();
+    }
+
+    // ── Generate Property Card HTML ────────────────────────────────────────
+    function createPropertyCardHTML(vivienda, index = null, isCompare = false) {
+      let imgHTML = '';
+      if (vivienda.imagen_b64) {
+        imgHTML = `
+          <img
+            class="property-img"
+            src="data:${vivienda.imagen_mime};base64,${vivienda.imagen_b64}"
+            alt="Foto de la vivienda"
+          >`;
+      } else {
+        imgHTML = `
+          <div class="property-img-placeholder">
+            <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+            <span>Imagen no disponible</span>
+          </div>`;
+      }
+
+      let hintsHTML = '';
+      const pistas = vivienda.pistas || {};
+      Object.entries(HINT_LABELS).forEach(([key, label]) => {
+        const val = pistas[key];
+        if (val === undefined || val === null) return;
+        hintsHTML += `
+          <div class="hint-item">
+            <div class="hint-label">${label}</div>
+            <div class="hint-value">${val}</div>
+          </div>`;
+      });
+      
+      let buttonHTML = '';
+      if (isCompare) {
+        buttonHTML = `
+          <div class="compare-btn-row">
+            <span style="font-weight: 600; font-size: 1.2rem; color: var(--text-secondary);">Vivienda ${index}</span>
+            <button onclick="submitGuessCompare(${index})" style="padding: 10px 24px; font-size: 0.9rem;">Elegir esta</button>
+          </div>
+        `;
+      }
+
+      return `
+        ${imgHTML}
+        <div class="hints-grid">
+          ${hintsHTML}
+        </div>
+        ${buttonHTML}
+      `;
+    }
 
     // ── Load a new round ───────────────────────────────────────────────────
     async function startNewRound() {
@@ -520,55 +658,38 @@
       document.getElementById('user-price').value = '';
 
       try {
-        const res = await fetch('/juego/vivienda');
-        if (!res.ok) throw new Error(await res.text());
-        const data = await res.json();
-        gameState.vivienda = data;
-        renderGuessPhase(data);
+        if (gameState.mode === 'adivina') {
+          const res = await fetch('/juego/vivienda');
+          if (!res.ok) throw new Error(await res.text());
+          const data = await res.json();
+          gameState.vivienda = data;
+          
+          document.getElementById('card-adivina').innerHTML = createPropertyCardHTML(data);
+          showPhase('phase-guess');
+        } else if (gameState.mode === 'compara') {
+          const res = await fetch('/juego/dos_viviendas');
+          if (!res.ok) throw new Error(await res.text());
+          const data = await res.json();
+          gameState.viviendas = data;
+          
+          document.getElementById('cards-compare').innerHTML = `
+            <div class="property-card">
+              ${createPropertyCardHTML(data.vivienda1, 1, true)}
+            </div>
+            <div class="property-card">
+              ${createPropertyCardHTML(data.vivienda2, 2, true)}
+            </div>
+          `;
+          showPhase('phase-compare');
+        }
       } catch (err) {
-        showPhase('phase-guess');
+        showPhase('phase-mode');
         alert('Error cargando vivienda: ' + err.message);
       }
     }
 
-    // ── Render the guess phase ─────────────────────────────────────────────
-    function renderGuessPhase(data) {
-      // Image
-      const imgContainer = document.getElementById('property-img-container');
-      if (data.imagen_b64) {
-        imgContainer.innerHTML = `
-          <img
-            class="property-img"
-            src="data:${data.imagen_mime};base64,${data.imagen_b64}"
-            alt="Foto de la vivienda"
-          >`;
-      } else {
-        imgContainer.innerHTML = `
-          <div class="property-img-placeholder">
-            <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-            <span>Imagen no disponible</span>
-          </div>`;
-      }
-
-      // Hints
-      const grid = document.getElementById('hints-grid');
-      grid.innerHTML = '';
-      const pistas = data.pistas || {};
-      Object.entries(HINT_LABELS).forEach(([key, label]) => {
-        const val = pistas[key];
-        if (val === undefined || val === null) return;
-        grid.innerHTML += `
-          <div class="hint-item">
-            <div class="hint-label">${label}</div>
-            <div class="hint-value">${val}</div>
-          </div>`;
-      });
-
-      showPhase('phase-guess');
-    }
-
-    // ── Submit guess ───────────────────────────────────────────────────────
-    async function submitGuess() {
+    // ── Submit guess (Price) ───────────────────────────────────────────────
+    async function submitGuessPrice() {
       const raw = document.getElementById('user-price').value.trim();
       const precioUsuario = parseFloat(raw);
 
@@ -597,7 +718,7 @@
 
         if (!res.ok) throw new Error(await res.text());
         const resultado = await res.json();
-        renderResults(resultado);
+        renderResultsPrice(resultado);
 
       } catch (err) {
         showPhase('phase-guess');
@@ -607,34 +728,43 @@
         btn.innerHTML = 'Revelar resultado';
       }
     }
+    
+    // ── Submit guess (Compare) ─────────────────────────────────────────────
+    async function submitGuessCompare(eleccion) {
+      showPhase('phase-calculating');
 
-    // ── Render results ─────────────────────────────────────────────────────
-    function renderResults(r) {
-      // Update scores
-      if (r.ganador === 'usuario') gameState.scores.user++;
-      else if (r.ganador === 'modelo') gameState.scores.model++;
-      else gameState.scores.tie++;
-      updateScoreBar();
+      try {
+        const payload = {
+          eleccion_usuario: eleccion,
+          vivienda1_precio_real: gameState.viviendas.vivienda1.precio_real,
+          vivienda2_precio_real: gameState.viviendas.vivienda2.precio_real,
+          vivienda1_features: gameState.viviendas.vivienda1.features_para_modelo,
+          vivienda2_features: gameState.viviendas.vivienda2.features_para_modelo
+        };
 
-      // Winner banner
-      const banner = document.getElementById('winner-banner');
-      const icon = document.getElementById('winner-icon');
-      const title = document.getElementById('winner-title');
-      const msg = document.getElementById('winner-msg');
+        const res = await fetch('/juego/resultado_comparacion', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
 
-      banner.className = 'winner-banner ' + r.ganador;
+        if (!res.ok) throw new Error(await res.text());
+        const resultado = await res.json();
+        renderResultsCompare(resultado);
 
-      if (r.ganador === 'usuario') {
-        icon.textContent = '🏆';
-        title.textContent = '¡Has ganado!';
-      } else if (r.ganador === 'modelo') {
-        icon.textContent = '🤖';
-        title.textContent = 'La IA ha ganado';
-      } else {
-        icon.textContent = '🤝';
-        title.textContent = '¡Empate!';
+      } catch (err) {
+        showPhase('phase-compare');
+        alert('Error calculando resultado: ' + err.message);
       }
-      msg.textContent = r.mensaje;
+    }
+
+    // ── Render results (Price) ─────────────────────────────────────────────
+    function renderResultsPrice(r) {
+      updateWinnerState(r.ganador, r.mensaje);
+
+      document.getElementById('results-grid-price').style.display = 'grid';
+      document.getElementById('results-grid-compare').style.display = 'none';
+      document.getElementById('error-bars-container').style.display = 'block';
 
       // Prices
       document.getElementById('res-real-price').textContent = formatEur(r.precio_real);
@@ -649,8 +779,8 @@
       // Highlight winner column
       const modelCol = document.getElementById('res-model-col');
       modelCol.className = 'result-col' + (r.ganador === 'modelo' ? ' winner-col' : '');
-      document.querySelectorAll('.result-col')[0].className =
-        'result-col' + (r.ganador === 'usuario' ? ' winner-col' : '');
+      const userCol = document.getElementById('res-user-col');
+      userCol.className = 'result-col' + (r.ganador === 'usuario' ? ' winner-col' : '');
 
       // Error bars (normalise to the larger value)
       const maxPct = Math.max(r.pct_error_usuario, r.pct_error_modelo, 1);
@@ -665,10 +795,66 @@
 
       showPhase('phase-results');
     }
+    
+    // ── Render results (Compare) ───────────────────────────────────────────
+    function renderResultsCompare(r) {
+      updateWinnerState(r.ganador, r.mensaje);
+
+      document.getElementById('results-grid-price').style.display = 'none';
+      document.getElementById('results-grid-compare').style.display = 'grid';
+      document.getElementById('error-bars-container').style.display = 'none';
+
+      document.getElementById('res-c-real-1').textContent = formatEur(r.vivienda1_precio_real);
+      document.getElementById('res-c-model-1').textContent = 'IA estimó: ' + formatEur(r.vivienda1_precio_modelo);
+      
+      document.getElementById('res-c-real-2').textContent = formatEur(r.vivienda2_precio_real);
+      document.getElementById('res-c-model-2').textContent = 'IA estimó: ' + formatEur(r.vivienda2_precio_modelo);
+      
+      document.getElementById('res-c-real-1').parentElement.classList.remove('winner-col');
+      document.getElementById('res-c-real-2').parentElement.classList.remove('winner-col');
+      
+      if (r.mas_caro_real === 1) {
+        document.getElementById('res-c-real-1').parentElement.classList.add('winner-col');
+      } else if (r.mas_caro_real === 2) {
+        document.getElementById('res-c-real-2').parentElement.classList.add('winner-col');
+      }
+
+      showPhase('phase-results');
+    }
+    
+    // ── Update Winner Banner & Scores ──────────────────────────────────────
+    function updateWinnerState(ganador, mensaje) {
+      if (ganador === 'usuario') gameState.scores.user++;
+      else if (ganador === 'modelo') gameState.scores.model++;
+      else if (ganador === 'empate') gameState.scores.tie++;
+      updateScoreBar();
+
+      const banner = document.getElementById('winner-banner');
+      const icon = document.getElementById('winner-icon');
+      const title = document.getElementById('winner-title');
+      const msg = document.getElementById('winner-msg');
+
+      banner.className = 'winner-banner ' + ganador;
+
+      if (ganador === 'usuario') {
+        icon.textContent = '🏆';
+        title.textContent = '¡Has ganado!';
+      } else if (ganador === 'modelo') {
+        icon.textContent = '🤖';
+        title.textContent = 'La IA ha ganado';
+      } else if (ganador === 'empate') {
+        icon.textContent = '🤝';
+        title.textContent = '¡Empate!';
+      } else {
+        icon.textContent = '🙈';
+        title.textContent = 'Nadie ganó';
+      }
+      msg.textContent = mensaje;
+    }
 
     // ── Keyboard shortcut: Enter submits ──────────────────────────────────
     document.getElementById('user-price').addEventListener('keydown', e => {
-      if (e.key === 'Enter') submitGuess();
+      if (e.key === 'Enter' && gameState.mode === 'adivina') submitGuessPrice();
     });
 
     // ── Nav scroll effect ──────────────────────────────────────────────────
@@ -677,7 +863,8 @@
     });
 
     // ── Boot ──────────────────────────────────────────────────────────────
-    startNewRound();
+    // startNewRound(); // wait for mode selection
+
   </script>
 
 </body>
