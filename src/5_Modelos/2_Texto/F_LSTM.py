@@ -105,6 +105,18 @@ def entrenar_lstm_texto(X_train, y_train, X_test, y_test):
             - mejor_modelo: Modelo entrenado con la mejor configuración encontrada.
             - mejor_resultado (dict): Diccionario con la configuración y métricas del mejor modelo.
     """
+    
+    run = wandb.init(
+    project="modelo-texto-f",
+    entity="pd1-c2526-team2",
+    name="lstm-grid",
+    group="lstm-grid",
+    job_type="grid",
+    config={
+        "model": "lstm",
+        "search": "grid"
+    }
+)
 
     clases = {label: i for i, label in enumerate(sorted(y_train.unique()))}
     y_train_enc = y_train.map(clases).values
@@ -176,6 +188,15 @@ def entrenar_lstm_texto(X_train, y_train, X_test, y_test):
 
                     f1_mean = np.mean(cv_scores)
                     f1_std = np.std(cv_scores)
+                    
+                    wandb.log({
+                        "cv_f1_mean": f1_mean,
+                        "cv_f1_std": f1_std,
+                        "max_words": max_words,
+                        "max_len": max_len,
+                        "embedding_dim": emb_dim,
+                        "lstm_units": lstm_units
+                    })
 
                     print({"f1_macro": f1_mean, "f1_std": f1_std})
 
@@ -203,7 +224,10 @@ def entrenar_lstm_texto(X_train, y_train, X_test, y_test):
 
     print("\n=== MEJOR MODELO LSTM ===")
     print(mejor_resultado)
-
+    wandb.log({
+        "best_cv_f1": mejor_resultado["f1_macro"],
+        "best_model": mejor_resultado["nombre"]
+    })
     """wandb.log({"resultados_modelos": table})
 
     wandb.log({
@@ -234,6 +258,13 @@ def entrenar_lstm_texto(X_train, y_train, X_test, y_test):
 
     print("\n=== RESULTADOS EN TEST ===")
     print(metricas_test)
+    
+    wandb.log({
+        "test_f1_macro": metricas_test["f1_macro"],
+        "test_accuracy": metricas_test["accuracy"],
+        "test_precision": metricas_test["precision_macro"],
+        "test_recall": metricas_test["recall_macro"]
+    })
     print("\n=== ANALISIS POR LONGITUD ===")
     print(analizar_por_longitud(X_test, y_test_enc, y_pred_test))
 
@@ -244,6 +275,9 @@ def entrenar_lstm_texto(X_train, y_train, X_test, y_test):
 
     run.finish()"""
 
+    mejor_modelo.save("lstm_grid_best.h5")
+    wandb.save("lstm_grid_best.h5")
+    run.finish()
     return mejor_modelo, mejor_resultado
 
 def analizar_por_longitud(X_text, y_true, y_pred):
@@ -280,6 +314,18 @@ def analizar_por_longitud(X_text, y_true, y_pred):
     return pd.DataFrame(resultados)
 
 def entrenar_lstm_texto_optuna(X_train, y_train, X_test, y_test):
+    
+    run = wandb.init(
+        project="modelo-texto-f",
+        entity="pd1-c2526-team2",
+        name="lstm-optuna",
+        group="lstm-optuna",
+        job_type="optuna",
+        config={
+            "model": "lstm",
+            "search": "optuna"
+        }
+    )
 
     clases = {label: i for i, label in enumerate(sorted(y_train.unique()))}
     y_train_enc = y_train.map(clases).values
@@ -324,6 +370,10 @@ def entrenar_lstm_texto_optuna(X_train, y_train, X_test, y_test):
 
             f1 = f1_score(y_vl, y_pred, average="macro")
             cv_scores.append(f1)
+            wandb.log({
+                "trial_f1": f1,
+                "fold": fold_idx
+            })
 
             trial.report(f1, step=fold_idx)
 
@@ -343,8 +393,14 @@ def entrenar_lstm_texto_optuna(X_train, y_train, X_test, y_test):
     )
 
     study.optimize(objective, n_trials=20)
+        
 
     best_params = study.best_params
+    
+    wandb.log({
+        "best_params": best_params,
+        "best_cv_f1": study.best_value
+    })
 
     print("\n=== MEJOR CONFIG OPTUNA ===")
     print(best_params)
@@ -373,12 +429,23 @@ def entrenar_lstm_texto_optuna(X_train, y_train, X_test, y_test):
 
     y_pred_test = np.argmax(mejor_modelo.predict(X_test_seq), axis=1)
     metricas_test = evaluar_modelo(y_test_enc, y_pred_test)
+    
+    wandb.log({
+        "test_f1_macro": metricas_test["f1_macro"],
+        "test_accuracy": metricas_test["accuracy"],
+        "test_precision": metricas_test["precision_macro"],
+        "test_recall": metricas_test["recall_macro"]
+    })
 
     print("\n=== RESULTADOS EN TEST ===")
     print(metricas_test)
 
     print("\n=== ANALISIS POR LONGITUD ===")
     print(analizar_por_longitud(X_test, y_test_enc, y_pred_test))
+    
+    mejor_modelo.save("lstm_optuna_best.h5")
+    wandb.save("lstm_optuna_best.h5")
+    run.finish()
 
     return mejor_modelo, best_params
 
@@ -403,7 +470,7 @@ def main():
         random_state=42
     )
 
-    #wandb.login()
+    wandb.login()
 
     modo = input("Selecciona modo: 1 (Grid) / 2 (Optuna): ")
 
