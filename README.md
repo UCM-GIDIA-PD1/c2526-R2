@@ -156,10 +156,7 @@ Para un despliegue aislado, puedes construir el contenedor utilizando el archivo
 podman build -t maiday-app -f Containerfile .
 
 # Ejecutar el contenedor (comando completo de producción)
-podman run --rm -p 8000:8000 \
-    --env-file .env \
-    --add-host host.containers.internal:host-gateway \
-    maiday-app
+podman run --rm -p 8000:8000 --env-file .env --add-host host.containers.internal:host-gateway maiday-app
 ```
 
 > **¿Por qué `--add-host host.containers.internal:host-gateway`?**
